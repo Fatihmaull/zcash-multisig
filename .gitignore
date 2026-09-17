@@ -1,0 +1,50 @@
+# Rust
+/target/
+**/target/
+*.pdb
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# NEVER commit key material — see docs/03-architecture.md §2
+# FROST shares, spend authorizing keys, and viewing keys stay out of version control.
+*.share
+*.frost
+shares/
+secrets/
+keys/
+
+# Zcash node data
+zebra-data/
+zaino-data/
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
