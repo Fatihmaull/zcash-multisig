@@ -78,7 +78,7 @@ for the track, where 10 slots against 50–100 submissions means we need the top
 |---|---|
 | **Likelihood** | Medium-high |
 | **Impact** | Severe |
-| **Trigger** | No working Ironwood-aware node access by **20 Sep** |
+| **Trigger** | No working Ironwood-aware node access by **21 Sep** |
 
 Zebra testnet sync plus Zaino indexing is realistically 3–4 days — 15% of the remaining calendar
 spent on something that is not the product.

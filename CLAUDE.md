@@ -126,7 +126,7 @@ importance:
 
 | Date | Gate |
 |---|---|
-| 20 Sep | **A** — `frost-zcash-demo` running with RedPallas, coordinator + 2 participants. Verdict on PCZT v2 + Ironwood. |
+| 21 Sep | **A** — `frost-zcash-demo` running with RedPallas, coordinator + 2 participants. Verdict on PCZT v2 + Ironwood. |
 | 27 Sep | **B** — 2-of-3 shielded Ironwood spend confirmed on testnet, CLI only. **No UI required.** |
 | 4 Oct | **C** — end to end through the web UI. **Feature freeze.** |
 | 5 Oct | **D** — demo recording begins. |
@@ -141,7 +141,8 @@ It is a decision point, not a reason to push harder on the same path.
 
 **Pre-development.** No application code yet.
 
-The next action is spike **S1** in [docs/05-plan.md](docs/05-plan.md): read
+The next action is spike **S1** — tasks P0-A1 through P0-A5 in
+[docs/10-roadmap.md](docs/10-roadmap.md): read
 `ZcashFoundation/frost` and `ZcashFoundation/frost-zcash-demo`, get the demo running locally
 with RedPallas — coordinator and participants in separate terminals — then report on the real
 v3.x API surface, where the developer experience breaks down, and what should change about the

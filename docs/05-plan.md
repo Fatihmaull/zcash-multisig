@@ -1,6 +1,10 @@
 # 05 — Plan
 
-**26 days.** 16 September → 12 October 2026. No extension exists.
+**24 days.** 17 September → 10 October 2026 (hard deadline 12 October). No extension exists.
+
+This document owns the **gates and the reasoning behind them**. The task-level breakdown — every
+task, its estimate, its owner and its dependencies — lives in [10-roadmap.md](10-roadmap.md).
+Where dates disagree, 10-roadmap.md is authoritative.
 
 ---
 
@@ -10,7 +14,7 @@ Each gate is a go/no-go decision with a date and an owner, not a milestone to sl
 
 | Gate | Date | Condition | If missed |
 |---|---|---|---|
-| **A** | **20 Sep** | `frost-zcash-demo` runs with `-C redpallas`, coordinator + 2 participants in separate terminals. Written verdict on PCZT v2 + Ironwood feasibility. | Stop feature work. All hands on the spike. This gate cannot slip past 22 Sep. |
+| **A** | **21 Sep** | `frost-zcash-demo` runs with `-C redpallas`, coordinator + 2 participants in separate terminals. Written verdict on PCZT v2 + Ironwood feasibility. | Stop feature work. All hands on the spike. This gate cannot slip past 22 Sep. |
 | **B** | **27 Sep** | A 2-of-3 shielded **Ironwood** spend confirms on testnet. **CLI only — no UI required.** | Trigger the degraded demo in [06-risk-register.md](06-risk-register.md). This is a decision point, not a reason to push harder on the same path. |
 | **C** | **4 Oct** | The full flow works through the web UI. **Feature freeze.** | Ship what works. Cut F6 first, then F3 reminders. |
 | **D** | **5 Oct** | Demo recording begins. | Nothing else matters more. Stop coding. |
@@ -36,7 +40,7 @@ both people converge on the interesting Rust problem and nobody builds the produ
 **Demo production belongs to one named person from day 1.** It is the most common thing a
 hackathon team discovers it forgot.
 
-## Week 1 — 16–22 Sep · Retire the unknowns
+## Week 1 — 17–21 Sep · Retire the unknowns
 
 Goal: know whether this project is buildable. Write no application code.
 
@@ -63,7 +67,7 @@ Begin the outreach in [09-traction.md](09-traction.md). This is the one judging 
 cannot be earned by coding, and it has a lead time measured in weeks, not days. Starting it in
 week 4 is starting it too late.
 
-**→ Gate A, 20 Sep.**
+**→ Gate A, 21 Sep.**
 
 ## Week 2 — 23–29 Sep · Land the happy path
 

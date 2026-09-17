@@ -18,10 +18,10 @@ shielded funds usable by a treasurer on a Monday morning.
 | | |
 |---|---|
 | **Phase** | Pre-development — documentation complete, no application code yet |
-| **Next action** | Spike S1 (see [docs/05-plan.md](docs/05-plan.md)) — get `frost-zcash-demo` running with RedPallas |
+| **Next action** | Spike S1, tasks P0-A1–A5 (see [docs/10-roadmap.md](docs/10-roadmap.md)) — get `frost-zcash-demo` running with RedPallas |
 | **Hackathon** | Colosseum Crypto World's Fair, Zcash track |
 | **Window** | 14 Sep – 12 Oct 2026 |
-| **Days remaining** | 26 (as of 16 Sep 2026) |
+| **Days remaining** | 24 to target submission (as of 17 Sep 2026) |
 | **Target** | Top 10 of the Zcash track ($10,000). General pool is a lottery ticket, not a plan. |
 | **Network** | **Testnet only. No mainnet funds, ever, during this build.** |
 
@@ -35,7 +35,8 @@ shielded funds usable by a treasurer on a Monday morning.
 | [02-product-spec.md](docs/02-product-spec.md) | The problem, the flows we build, and the hard scope boundary |
 | [03-architecture.md](docs/03-architecture.md) | Components, trust boundaries, what never touches our server |
 | [04-technical-constraints.md](docs/04-technical-constraints.md) | Non-negotiable technical facts, verified Sept 2026, with failure modes |
-| [05-plan.md](docs/05-plan.md) | 26-day calendar, five hard gates, who does what |
+| [05-plan.md](docs/05-plan.md) | The five hard gates and the reasoning behind them |
+| [10-roadmap.md](docs/10-roadmap.md) | **Every task, estimated, assigned to a developer, with dependencies** |
 | [06-risk-register.md](docs/06-risk-register.md) | What kills this project and what we do instead |
 | [07-demo-script.md](docs/07-demo-script.md) | The three-minute video, beat by beat |
 | [08-prior-art.md](docs/08-prior-art.md) | Exact crates and repos — what to build on, what never to rebuild |
