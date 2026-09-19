@@ -132,7 +132,7 @@ Two details that are easy to get wrong:
 | Key share | Participant device only | Encrypted at rest with a passphrase the participant sets. Never transmitted, never backed up by us. |
 | Vault metadata, participants, threshold | Postgres | |
 | Approval requests, signer state, events | Postgres | Application event log — supporting evidence, not proof. |
-| Viewing key | Postgres, **opt-in per vault** | Enables audit export. Grants visibility, never spend authority. Must be an explicit, explained choice in the UI, not a default. |
+| Viewing key | Postgres, **opt-in per vault**, **encrypted at rest** | Enables audit export. Grants visibility, never spend authority — but a full viewing key reveals the vault's entire transaction history, so plaintext storage would be a privacy breach. AES-256-GCM envelope encryption via `apps/web/src/lib/viewing-key-crypto.ts`, key from `VIEWING_KEY_ENCRYPTION_KEY`. This protects a leaked dump or backup; it does **not** protect an attacker holding both the database and the environment. Must be an explicit, explained choice in the UI, not a default. |
 | Transaction history for audit | Derived on demand from viewing key via Zaino | The authoritative record. Never reconstructed from the event log. |
 
 ## 5. Stack
@@ -150,17 +150,54 @@ Two details that are easy to get wrong:
 Pin exact crate versions and commit `Cargo.lock`. PCZT v2 + Ironwood support is on release
 candidates; chasing upstream mid-hackathon is a documented failure mode, not diligence.
 
-## 6. Infrastructure decision — settle this in spike S1
+## 6. Infrastructure — P0-B1, decided 19 Sep 2026
 
-Running our own Zebra testnet node plus Zaino indexer is realistically **3–4 days of ops**,
-which is 15% of the remaining calendar spent on something that is not the product.
+**Decision: the public testnet endpoint `testnet.zec.rocks:443`.**
 
-Resolve on day 1, in this order of preference:
+Self-hosting Zebra + Zaino costs ~30 GB and a 2–12 hour initial sync before any product work can
+start. With Gate A two days out and P0-A4 — the task that owns risk R1 — blocked on node access,
+that day is not available to spend.
 
-1. **Public testnet Zaino / lightwalletd endpoint**, if one exists that serves Ironwood. Cheapest
-   by a wide margin.
-2. **Self-hosted Zebra + Zaino via Docker**, budgeted explicitly at 4 days and started on day 1
-   so the sync runs in the background while other work proceeds.
+### Verified before choosing
 
-Do not discover on day 12 that the node was the bottleneck. This is a scheduled decision with an
-owner and a date — see [05-plan.md](05-plan.md).
+Queried directly over gRPC on 19 Sep 2026, not taken from documentation:
+
+| Check | Result |
+|---|---|
+| Block height | 4,367,867 — **233,867 blocks past** testnet Ironwood activation (4,134,000) |
+| Backend | `/Zebra:6.3.0/` — Ironwood support landed in Zebra 6.0.0-rc.0 |
+| `CompactTx` field 9 | **`ironwoodActions`** present — light clients can scan the Ironwood pool |
+| `ChainMetadata` field 3 | **`ironwoodCommitmentTreeSize`** present |
+| Ironwood tree size | **307,456 notes** — the pool is in real use on testnet |
+| `GetTreeState` | returns `ironwoodTree` — this is our anchor source |
+| `SendTransaction` | available — broadcast path confirmed |
+
+Scanning, anchors and broadcast are all served. `testnet.lightwalletd.com:9067` is down;
+`lwd.testnet.zec.pro:443` is up but refuses gRPC reflection, so it could not be verified.
+
+### What we accept
+
+A third-party dependency on the two days that matter — Gate B and the demo recording. Version
+and rate limits are outside our control, and the operator sees our scanning queries (testnet
+only, so no real privacy loss, but worth naming in a privacy product).
+
+**Mitigation, and it is not "run the fallback now":** keep the Z3 `docker-compose` stack tested
+and ready to start. If the endpoint fails on 5 October we lose a day, not the demo. Running it
+today would cost a day we do not have, to insure against a risk that may never arrive.
+
+### Revisit if
+
+- The endpoint rate-limits our scanning during Phase 1, or
+- It is unreachable at any point during Phase 3, or
+- `zcash_client_backend 0.24.0-rc.1`'s proto turns out not to match field 9 (a P0-A4 check).
+
+Any of those triggers a same-day switch to the self-hosted fallback.
+
+### Also considered
+
+**Local Regtest** (Z3, instant blocks, Ironwood activatable at height 1, no faucet needed) is
+genuinely attractive for P1-B3's reproducible fixture and would remove the P0-B3 dependency
+entirely. It is not the choice for the demo: a private chain produces no public explorer link,
+and "it works on my own chain" is materially weaker evidence in front of a Zcash-track judge
+than a confirmed testnet transaction. Worth adding in Phase 2 **alongside** testnet if fixture
+resets start costing real time — not instead of it.

@@ -403,8 +403,8 @@ export function KeyCeremonyView() {
                 {/* Key Summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-                    <span className="text-[var(--text-muted)] block text-[11px]">Balance Privacy</span>
-                    <span className="text-[var(--text-primary)] font-semibold">100% Shielded (Encrypted)</span>
+                    <span className="text-[var(--text-muted)] block text-[11px]">Pool</span>
+                    <span className="text-[var(--text-primary)] font-semibold">Shielded (Ironwood)</span>
                   </div>
                   <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
                     <span className="text-[var(--text-muted)] block text-[11px]">Spend Policy</span>

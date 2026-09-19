@@ -161,7 +161,6 @@ export function ApprovalDetailView({
               <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] space-y-1">
                 <span className="text-[var(--text-muted)]">Transfer Amount</span>
                 <p className="text-[var(--text-primary)] font-semibold text-sm font-mono">2.50000000 TAZ</p>
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Balance verified in vault</span>
               </div>
             </div>
 

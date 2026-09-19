@@ -53,12 +53,12 @@ export default function VaultsPage() {
                 <span className="font-semibold text-[var(--text-primary)]">2 of 3 signers</span>
               </div>
               <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)] block text-[11px]">Shielded Balance</span>
-                <span className="font-semibold text-[var(--zcash-gold)] font-mono">14.50000000 TAZ</span>
+                <span className="text-[var(--text-muted)] block text-[11px]">Network</span>
+                <span className="font-semibold text-[var(--zcash-gold)] font-mono">Testnet</span>
               </div>
               <div className="col-span-2 p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                 <span className="text-[var(--text-muted)] block text-[11px]">Privacy Level</span>
-                <span className="text-[var(--text-secondary)]">Balance and transaction history are completely hidden from public view</span>
+                <span className="text-[var(--text-secondary)]">Amounts and transaction history are not published on the public ledger</span>
               </div>
             </div>
           </div>

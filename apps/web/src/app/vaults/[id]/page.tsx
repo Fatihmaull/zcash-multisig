@@ -49,7 +49,10 @@ export default async function VaultDetailPage({
           <div className="text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
             14.50000000 <span className="text-xs text-[var(--zcash-gold)]">TAZ</span>
           </div>
-          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">Shielded from public observers</p>
+          {/* Placeholder figure. Real balances require note scanning against a
+              Zcash node — roadmap task P1-B1. Kept here because composing a
+              spend needs the context; must not ship unlabelled. */}
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">Simulated — note scanning not yet connected</p>
         </div>
 
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs">

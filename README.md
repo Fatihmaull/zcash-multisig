@@ -31,6 +31,7 @@ shielded funds usable by a treasurer on a Monday morning.
 
 | Doc | What it settles |
 |---|---|
+| [00-plain-english.md](docs/00-plain-english.md) | The project explained without jargon — the public-facing overview |
 | [01-strategy.md](docs/01-strategy.md) | Why the Zcash track, how we're positioned, how we score against each judging criterion |
 | [02-product-spec.md](docs/02-product-spec.md) | The problem, the flows we build, and the hard scope boundary |
 | [03-architecture.md](docs/03-architecture.md) | Components, trust boundaries, what never touches our server |
@@ -41,6 +42,7 @@ shielded funds usable by a treasurer on a Monday morning.
 | [07-demo-script.md](docs/07-demo-script.md) | The three-minute video, beat by beat |
 | [08-prior-art.md](docs/08-prior-art.md) | Exact crates and repos — what to build on, what never to rebuild |
 | [09-traction.md](docs/09-traction.md) | The one judging criterion we cannot earn by coding |
+| [11-contract-review.md](docs/11-contract-review.md) | Open questions on the coordinator contract — resolve before 22 Sep, then delete |
 
 [CLAUDE.md](CLAUDE.md) is the persistent context for Claude Code sessions. It is loaded
 automatically; you do not need to paste a brief.

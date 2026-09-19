@@ -8,6 +8,7 @@
 // ──────────────────────────────────────────────────────────────
 
 import { PrismaClient } from "@prisma/client";
+import { encryptViewingKey } from "../src/lib/viewing-key-crypto";
 
 const prisma = new PrismaClient();
 
@@ -124,8 +125,13 @@ async function main() {
   await prisma.viewingKeyRecord.create({
     data: {
       vaultId: vault.id,
-      encodedViewingKey:
-        "zxviewtestsapling1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+      // Deliberately not a plausible-looking key. A realistic-looking
+      // string in seed data eventually gets mistaken for a real one.
+      // Sapling-format placeholders were also wrong here: this build
+      // targets the Ironwood pool (constraint C1).
+      encryptedViewingKey: encryptViewingKey(
+        "PLACEHOLDER-NOT-A-REAL-VIEWING-KEY-seed-data-only",
+      ),
       scope: "FULL_VIEWING",
       addedBy: "Alice (Treasurer)",
     },
