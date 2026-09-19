@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "quorum-core",
+    "quorum-signer",
+    "quorum-coordinator",
+]
+
+# ──────────────────────────────────────────────────────────────
+# Pinned dependency versions — DO NOT chase upstream mid-hackathon.
+# See docs/04-technical-constraints.md §C7.
+# ──────────────────────────────────────────────────────────────
+[workspace.dependencies]
+frost-core = "3.0.0"
+# frost-rerandomized — re-exported from ciphersuite crate
+frost-ed25519 = "3.0.0"
+reddsa = "0.5"
+pczt = "=0.8.0-rc.1"
+zcash_client_backend = "=0.24.0-rc.1"
+zcash_keys = "0.6"
+zcash_address = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

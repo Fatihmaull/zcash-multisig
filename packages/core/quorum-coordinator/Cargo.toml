@@ -1,0 +1,16 @@
+[package]
+name = "quorum-coordinator"
+version = "0.1.0"
+edition = "2021"
+description = "FROST coordinator — PCZT assembly, share aggregation, broadcast"
+
+[dependencies]
+quorum-core = { path = "../quorum-core" }
+frost-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
