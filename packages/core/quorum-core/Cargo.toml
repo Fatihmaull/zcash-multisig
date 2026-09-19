@@ -1,0 +1,11 @@
+[package]
+name = "quorum-core"
+version = "0.1.0"
+edition = "2021"
+description = "FROST wrapper types and DKG orchestration for Quorum"
+
+[dependencies]
+frost-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="goldShield" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#FCD34D" />
+      <stop offset="40%" stopColor="#F59E0B" />
+      <stop offset="100%" stopColor="#B45309" />
+    </linearGradient>
+    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1E2638" />
+      <stop offset="100%" stopColor="#0B0F19" />
+    </linearGradient>
+    <linearGradient id="zGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#FDE68A" />
+      <stop offset="50%" stopColor="#F59E0B" />
+      <stop offset="100%" stopColor="#D97706" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Shield Outline -->
+  <path 
+    d="M32 4 L54 12 V32 C54 44 44.5 54.5 32 59 C19.5 54.5 10 44 10 32 V12 L32 4 Z" 
+    fill="url(#shieldBg)" 
+    stroke="url(#goldShield)" 
+    stroke-width="2.5" 
+    stroke-linejoin="round"
+  />
+
+  <!-- Stylized Quorum Outer Circle 'Q' -->
+  <circle 
+    cx="32" 
+    cy="31" 
+    r="14" 
+    stroke="url(#goldShield)" 
+    stroke-width="3" 
+    stroke-dasharray="70 18" 
+    stroke-linecap="round"
+  />
+
+  <!-- Q Tail -->
+  <path 
+    d="M39 38 L47 46" 
+    stroke="url(#goldShield)" 
+    stroke-width="3.5" 
+    stroke-linecap="round"
+  />
+
+  <!-- Zcash 'Z' inside -->
+  <path 
+    d="M26 23 H38 L26 39 H38" 
+    stroke="url(#zGold)" 
+    stroke-width="3.2" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+  <path 
+    d="M32 20 V23 M32 39 V42" 
+    stroke="url(#zGold)" 
+    stroke-width="2.5" 
+    stroke-linecap="round"
+  />
+</svg>

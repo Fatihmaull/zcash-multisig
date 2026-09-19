@@ -1,0 +1,193 @@
+// ──────────────────────────────────────────────────────────────
+// Quorum — Database Schema (Prisma)
+//
+// ZERO-CUSTODY: This schema NEVER stores key shares, spend keys,
+// seed phrases, or any private cryptographic material.
+// See docs/03-architecture.md §2.
+//
+// Entities:
+//   Vault               — threshold t-of-n, shielded address, status
+//   Participant          — public identifier only, NEVER private shares
+//   ApprovalRequest      — spend request lifecycle + state machine
+//   SignatureRoundEvent  — FROST round event log for attribution
+//   ViewingKeyRecord     — opt-in audit key (visibility, never spend)
+// ──────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────
+
+enum VaultStatus {
+  PENDING_DKG
+  ACTIVE
+  ARCHIVED
+}
+
+enum ZcashNetwork {
+  TESTNET
+  MAINNET
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  BROADCASTED
+}
+
+enum RoundType {
+  COMMITMENT
+  SIGNATURE_SHARE
+}
+
+enum RoundEventStatus {
+  PENDING
+  RECEIVED
+  TIMEOUT
+  INVALID
+}
+
+enum ViewingKeyScope {
+  FULL_VIEWING
+  INCOMING_VIEWING
+}
+
+// ── Vault ────────────────────────────────────────────────────
+// A threshold-controlled shielded address. No key material stored.
+
+model Vault {
+  id                String       @id @default(cuid())
+  label             String
+  /// Threshold required for signing (the "t" in t-of-n)
+  threshold         Int
+  /// Total number of participants (the "n" in t-of-n)
+  totalParticipants Int          @map("total_participants")
+  /// Zcash shielded unified address — public, not a key
+  shieldedAddress   String?      @map("shielded_address")
+  status            VaultStatus  @default(PENDING_DKG)
+  network           ZcashNetwork @default(TESTNET)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  participants    Participant[]
+  approvalRequests ApprovalRequest[]
+  viewingKeys     ViewingKeyRecord[]
+
+  @@map("vaults")
+}
+
+// ── Participant ──────────────────────────────────────────────
+// Public signer identity. NEVER stores share material.
+// publicKeyIdentifier is the hex-encoded verifying share (public).
+
+model Participant {
+  id                  String  @id @default(cuid())
+  vaultId             String  @map("vault_id")
+  /// Human-readable label (e.g. "Alice — Treasurer")
+  label               String
+  /// Hex-encoded verifying share — PUBLIC identifier for attribution.
+  /// Set after DKG completes. This is NOT a private key.
+  publicKeyIdentifier String? @map("public_key_identifier")
+  isActive            Boolean @default(true) @map("is_active")
+
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  vault               Vault                @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  signatureRoundEvents SignatureRoundEvent[]
+
+  @@map("participants")
+}
+
+// ── Approval Request ─────────────────────────────────────────
+// A shielded spend request with lifecycle state machine.
+// Status: PENDING → APPROVED → BROADCASTED
+//         PENDING → REJECTED
+//         PENDING → EXPIRED
+
+model ApprovalRequest {
+  id               String         @id @default(cuid())
+  vaultId          String         @map("vault_id")
+  /// Zcash shielded recipient address
+  recipientAddress String         @map("recipient_address")
+  /// Amount in zatoshi (1 ZEC = 100_000_000). BigInt avoids float errors.
+  amountZatoshi    BigInt         @map("amount_zatoshi")
+  /// Optional encrypted memo field
+  memo             String?
+  status           ApprovalStatus @default(PENDING)
+  /// Transaction ID, set after broadcast
+  txid             String?
+  /// Anchor block height, set at broadcast time (v6 deferred anchor)
+  anchorBlock      Int?           @map("anchor_block")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  expiresAt DateTime? @map("expires_at")
+
+  // Relations
+  vault               Vault                @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  signatureRoundEvents SignatureRoundEvent[]
+
+  @@index([vaultId, status])
+  @@map("approval_requests")
+}
+
+// ── Signature Round Event ────────────────────────────────────
+// Every FROST round interaction is logged as an event.
+// culpritDetected maps to InvalidSignatureShare::culprits (v3 vector).
+
+model SignatureRoundEvent {
+  id                String           @id @default(cuid())
+  approvalRequestId String           @map("approval_request_id")
+  participantId     String           @map("participant_id")
+  roundType         RoundType        @map("round_type")
+  status            RoundEventStatus @default(PENDING)
+  /// True if InvalidSignatureShare::culprits identified this participant
+  culpritDetected   Boolean          @default(false) @map("culprit_detected")
+  /// Structured error code from CoordinatorErrorCode taxonomy
+  errorCode         String?          @map("error_code")
+  /// Human-readable error details for UI display
+  errorDetails      String?          @map("error_details")
+
+  timestamp DateTime @default(now())
+
+  // Relations
+  approvalRequest ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  participant     Participant     @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([approvalRequestId])
+  @@index([participantId])
+  @@map("signature_round_events")
+}
+
+// ── Viewing Key Record ───────────────────────────────────────
+// Opt-in per vault. Grants visibility (audit), NEVER spend authority.
+// See docs/03-architecture.md §4 and docs/02-product-spec.md §F6.
+
+model ViewingKeyRecord {
+  id               String          @id @default(cuid())
+  vaultId          String          @map("vault_id")
+  /// Encoded viewing key (full or incoming)
+  encodedViewingKey String         @map("encoded_viewing_key")
+  scope            ViewingKeyScope @default(FULL_VIEWING)
+  /// Who added this viewing key (participant label)
+  addedBy          String?         @map("added_by")
+
+  addedAt DateTime @default(now()) @map("added_at")
+
+  // Relations
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  @@map("viewing_key_records")
+}
