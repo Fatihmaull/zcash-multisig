@@ -141,9 +141,20 @@ It is a decision point, not a reason to push harder on the same path.
 
 **Pre-development.** No application code yet.
 
-**P0-B1 resolved (19 Sep):** node access is the public endpoint `testnet.zec.rocks:443`,
-verified to serve the Ironwood pool. Configured as `LIGHTWALLETD_ENDPOINT`. P0-A4 is
-unblocked — see [docs/03-architecture.md](docs/03-architecture.md) §6.
+**Spike S1 complete (19 Sep).** Read [docs/12-spike-s1-report.md](docs/12-spike-s1-report.md)
+before writing Phase 1 code. Headlines:
+
+- Node access: public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood.
+- **The reference demo is on FROST v2, not v3** — do not copy its patterns. Use report §4 and
+  `packages/core/quorum-core/tests/redpallas_v3_smoke.rs` as the reference instead.
+- `sign()` is deprecated; use `sign_with_randomizer_seed()` with a seed from
+  `RandomizedParams::new_from_commitments()`.
+- Two dependency pins were broken and are fixed. Assume more are hiding in the unexercised half
+  of the workspace table.
+- `frostd` = TLS + Noise_K participant-to-participant. Satisfies C5; the bootstrap contact
+  exchange is the residual MITM surface, and F1 must treat it as a security step.
+- **Open, escalated to ZF:** FROST vault FVK derivation may be incompatible with Ironwood's
+  quantum recoverability — report §7. Do not claim Ironwood support until answered.
 
 The next action is spike **S1** — tasks P0-A1 through P0-A5 in
 [docs/10-roadmap.md](docs/10-roadmap.md): read

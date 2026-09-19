@@ -40,8 +40,12 @@ frost-core = "3.0.0"
 # anchor deferrability are still moving upstream (librustzcash #2467, #2525).
 pczt = "=0.8.0-rc.1"
 zcash_client_backend = "=0.24.0-rc.1"
-zcash_keys = "0.6"
-zcash_address = "0.7"
+# CORRECTED in spike S1. The previous pins (zcash_keys 0.6, zcash_address 0.7)
+# did not resolve at all: zcash_address 0.7 depends on core2 0.3.x, every
+# version of which is yanked. These are the versions frost-zcash-demo uses and
+# that resolve cleanly with pczt 0.8.0-rc.1.
+zcash_keys = "0.15"
+zcash_address = "0.13"
 
 # ── General ───────────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
@@ -51,3 +55,6 @@ anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Dev only — rand 0.8 is the line matching frost-core 3.0.0's rand_core 0.6.
+rand = "0.8"

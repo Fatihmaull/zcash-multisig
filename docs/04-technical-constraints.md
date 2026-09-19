@@ -157,14 +157,25 @@ the one mistake with permanent consequences, and the demo is not improved by it.
 
 Answer these before writing application code, and record the answers here.
 
-1. Does `frost-zcash-demo` run end to end with `-C redpallas` on current crates, coordinator and
-   participants in separate terminals?
-2. What is the real v3.x API surface for rerandomized signing — how are `RandomizedParams`
-   constructed and threaded through both rounds?
-3. Can `pczt 0.8.0-rc.1` build a v6 transaction with an Ironwood bundle today? Is anchor
-   deferral actually implemented, or still open per #2525?
-4. Does `zcash_client_backend 0.24.0-rc.1` scan the Ironwood pool and select spendable notes?
-5. What exactly does `frostd` guarantee about channel authentication and confidentiality?
+1. ~~Does `frost-zcash-demo` run end to end with `-C redpallas`?~~ **Partly.**
+   `trusted-dealer -C redpallas` works; `frostd`'s redpallas router test and the frost-client
+   suite pass. But the standalone `coordinator` binary is **CLI-transport only** — it hardcodes
+   `CLIComms` despite advertising socket mode. The real multi-process path is
+   `frost-client` + `frostd`. Also: **the demo is on FROST v2**, so it is not a v3 reference.
+   See [12-spike-s1-report.md](12-spike-s1-report.md) §1 and §6.
+2. ~~What is the real v3.x API surface for rerandomized signing?~~ **Answered.** `sign()` is
+   deprecated; use `sign_with_randomizer_seed()` with a seed from
+   `RandomizedParams::new_from_commitments()`. Full flow in
+   [12-spike-s1-report.md](12-spike-s1-report.md) §4, executable in
+   `packages/core/quorum-core/tests/redpallas_v3_smoke.rs`.
+3. ~~Can `pczt 0.8.0-rc.1` build a v6 transaction with an Ironwood bundle?~~ **Yes** — it
+   carries `ironwood: orchard::Bundle` and the Signer role handles `ValuePool::Ironwood`.
+   **Anchor deferral remains unverified** (#2525 still open) — now a Phase 1 risk, P1-A4.
+4. **Still open.** Does `zcash_client_backend 0.24.0-rc.1` scan the Ironwood pool, and does its
+   proto match the endpoint's `CompactTx` field 9 `ironwoodActions`? Moved to P1-B1.
+5. ~~What exactly does `frostd` guarantee?~~ **Answered: TLS to the server, plus Noise
+   `Noise_K_25519_ChaChaPoly_BLAKE2s` participant-to-participant.** Recorded in
+   [03-architecture.md](03-architecture.md) §2.
 6. ~~Is there a public testnet Zaino/lightwalletd endpoint serving Ironwood, or must we
    self-host?~~ **Answered 19 Sep 2026: yes.** `testnet.zec.rocks:443` serves Ironwood —
    `CompactTx.ironwoodActions`, `ChainMetadata.ironwoodCommitmentTreeSize`, and
@@ -172,5 +183,11 @@ Answer these before writing application code, and record the answers here.
 7. ~~What is the testnet Ironwood activation height, and is our node past it?~~
    **Answered 19 Sep 2026: height 4,134,000** (Zebra 6.0.0-rc.0). The chosen endpoint was at
    4,367,867 when checked, with an Ironwood commitment tree of 307,456 notes.
-8. How does `zcash-sign` (the standalone Zcash Signer in `frost-zcash-tools`) structure
-   externally generated signatures? It is the reference pattern for our signer/coordinator split.
+8. ~~How does `zcash-sign` structure externally generated signatures?~~ **Answered, and it
+   surfaced a blocker.** It uses `orchard::pczt::Bundle` with the `unstable-frost` feature and
+   collects randomizers from the bundle. But it derives the vault's full viewing key via
+   `FullViewingKey::from_sk_ak_incompatible_with_quantum_recoverability_and_will_be_removed()`,
+   which exists only in a fork (zcash/orchard#475, **still open**) and is named for being
+   incompatible with the very property Ironwood exists to provide.
+   **Open question for the Zcash Foundation** — see
+   [12-spike-s1-report.md](12-spike-s1-report.md) §7.

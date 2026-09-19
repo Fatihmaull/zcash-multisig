@@ -67,11 +67,11 @@ application code.**
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P0-A1** | Read the `frost-core` **v3.0.0 changelog** and API docs. Write a one-page internal summary: how `RandomizedParams` is constructed and threaded through both rounds, and what changed from v2. Most tutorial content online predates v3 and will actively mislead. | 1d | — |
-| **P0-A2** | Clone `frost-zcash-demo`. Run `trusted-dealer` → `coordinator` → `participant` with `-C redpallas` over **CLI transport** (copy/paste JSON). Produce one valid aggregated signature. CLI first — it makes the protocol legible before transport hides it. | 1d | P0-A1 |
-| **P0-A3** | Re-run using `dkg` instead of `trusted-dealer`, and over **`frostd`** instead of CLI. Document what `frostd` actually guarantees about channel authentication and confidentiality — specifically whether participants authenticate to *each other* or only to the server. Write the answer into [03-architecture.md](03-architecture.md) §2. | 1d | P0-A2 |
-| **P0-A4** | **PCZT v2 + Ironwood feasibility spike. UNBLOCKED — start now.** Can `pczt 0.8.0-rc.1` build a v6 transaction with an Ironwood bundle? Does `zcash_client_backend 0.24.0-rc.1` scan the Ironwood pool, and does its proto match the endpoint's `CompactTx` field 9 `ironwoodActions`? Is anchor deferral implemented or still open per librustzcash #2525? Produce a written verdict. | 1.5d | ~~P0-B1~~ ✅, P0-B3 |
-| **P0-A5** | Read `zcash-sign` in `frost-zcash-tools`. Document the externally-generated-signature pattern — it is the reference architecture for our signer/coordinator split. | 0.5d | P0-A2 |
+| ~~**P0-A1**~~ | ✅ **DONE.** v3 API documented in [12-spike-s1-report.md](12-spike-s1-report.md) §4. | — | — |
+| ~~**P0-A2**~~ | ✅ **DONE.** `trusted-dealer -C redpallas` verified; `coordinator` binary found to be CLI-only. Demo is on v2, so a v3 proof was written instead: `quorum-core/tests/redpallas_v3_smoke.rs`, 2 passing tests. | — | — |
+| ~~**P0-A3**~~ | ✅ **DONE.** frostd = TLS + Noise_K participant-to-participant. Written into [03-architecture.md](03-architecture.md) §2. | — | — |
+| ~~**P0-A4**~~ | ✅ **DONE.** PCZT supports Ironwood (`ironwood: orchard::Bundle`, `ValuePool::Ironwood`). Two broken dependency pins found and fixed. One open issue escalated to ZF — report §7. Anchor deferral and client-backend scanning moved to Phase 1. | — | — |
+| ~~**P0-A5**~~ | ✅ **DONE.** Pattern documented; it is what surfaced the FVK issue in report §7. | — | — |
 
 **P0-A4 is the highest-value task in the entire project.** It is the one that tells you whether
 Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the phase.
@@ -82,7 +82,7 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 |---|---|---|---|
 | ~~**P0-B1**~~ | ✅ **DONE 19 Sep.** Public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood. Self-hosted Z3 stack kept as a tested, unstarted fallback. Decision and evidence in [03-architecture.md](03-architecture.md) §6. | — | — |
 | **P0-B2** | Repo scaffolding: Cargo workspace (`quorum-core`, `quorum-signer`, `quorum-coordinator`), Next.js app, `docker-compose` (Postgres + node), CI running `cargo check`, `cargo clippy`, `tsc`. Pin exact crate versions, commit `Cargo.lock`. | 1.5d | — |
-| **P0-B3** | Funded testnet wallet with ZEC **in the Ironwood pool**. Faucet, then shield. Confirm the node is past the testnet Ironwood activation height. Routinely takes longer than expected and blocks P0-A4. | 0.5d | P0-B1 |
+| **P0-B3** | **⬜ REMAINING — needs a human.** Fund a testnet wallet with ZEC **in the Ironwood pool**. Faucets: [zcashfaucet.jinolabs.xyz](https://zcashfaucet.jinolabs.xyz) (0.1 TAZ, shielded z2z, browser PoW), [Fauzec](https://fauzec.com/) (UA `utest1…` or Sapling `ztestsapling…`; no transparent), [Zeropond](http://zeropond.com/). **Note:** faucets pay into Sapling or a UA — getting funds *into Ironwood* likely needs a self-transfer afterwards. Verify which pool the received note lands in before assuming Gate B is fundable. | 0.5d | — |
 | **P0-B4** | Draft the DB schema: vaults, participants, approval requests, signer state, events, viewing keys. **No key material anywhere in the schema** — see [03-architecture.md](03-architecture.md) §2. | 1d | — |
 | **P0-B5** | **Traction kickoff.** Build the list of 10 contacts, draft the outreach email, post the Zcash Community Forum thread. See [09-traction.md](09-traction.md). | 0.5d + ongoing | — |
 
