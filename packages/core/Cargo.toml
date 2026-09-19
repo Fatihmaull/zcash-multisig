@@ -11,14 +11,39 @@ members = [
 # See docs/04-technical-constraints.md §C7.
 # ──────────────────────────────────────────────────────────────
 [workspace.dependencies]
+
+# ── Ciphersuite ───────────────────────────────────────────────
+# RedPallas, via reddsa. NEVER frost-ed25519 or any other default
+# ciphersuite — see docs/04-technical-constraints.md §C4. A signature
+# produced under the wrong ciphersuite is cryptographically valid and
+# authorizes nothing on Zcash.
+#
+# The `frost` feature is required: it gates reddsa::frost::redpallas.
+# Without it you get plain RedDSA and no FROST ciphersuite at all.
+reddsa = { version = "0.5", features = ["frost"] }
+
+# RandomizedParams lives in frost-rerandomized. reddsa re-exports items
+# from frost_rerandomized::frost_core, but NOT frost_rerandomized itself,
+# so rerandomized signing needs this as a direct dependency.
+#
+# NOT COVERED BY THE NCC AUDIT of frost-core. Never describe anything
+# built on this as audited. See docs/04-technical-constraints.md §C7.
+frost-rerandomized = "3.0.0"
+
+# Pulled transitively by frost-rerandomized; declared explicitly for the
+# core types. Must stay at the same version — verify with:
+#   cargo tree -i frost-core   (expect exactly one 3.0.0 in the tree)
 frost-core = "3.0.0"
-# frost-rerandomized — re-exported from ciphersuite crate
-frost-ed25519 = "3.0.0"
-reddsa = "0.5"
+
+# ── Zcash ─────────────────────────────────────────────────────
+# Release candidates. Pinned exactly; see §C7. Ironwood/v6 support and
+# anchor deferrability are still moving upstream (librustzcash #2467, #2525).
 pczt = "=0.8.0-rc.1"
 zcash_client_backend = "=0.24.0-rc.1"
 zcash_keys = "0.6"
 zcash_address = "0.7"
+
+# ── General ───────────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }

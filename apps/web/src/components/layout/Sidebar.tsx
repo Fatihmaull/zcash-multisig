@@ -134,11 +134,8 @@ export function Sidebar() {
             </span>
           </div>
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
-            <span>Balance</span>
-            <span className="text-[var(--zcash-gold)] font-semibold font-mono">14.50 TAZ</span>
-          </div>
-          <div className="w-full bg-[var(--border-subtle)] h-1.5 rounded-full overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full w-2/3 rounded-full" />
+            <span>Network</span>
+            <span className="text-[var(--zcash-gold)] font-semibold font-mono">Testnet</span>
           </div>
         </div>
       </div>

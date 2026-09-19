@@ -5,7 +5,13 @@ edition = "2021"
 description = "FROST wrapper types and DKG orchestration for Quorum"
 
 [dependencies]
+# Ciphersuite — RedPallas. See the workspace Cargo.toml for why the
+# `frost` feature and the direct frost-rerandomized dependency are both
+# required, and why frost-ed25519 must never appear here.
+reddsa.workspace = true
+frost-rerandomized.workspace = true
 frost-core.workspace = true
+
 serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

@@ -132,7 +132,7 @@ Two details that are easy to get wrong:
 | Key share | Participant device only | Encrypted at rest with a passphrase the participant sets. Never transmitted, never backed up by us. |
 | Vault metadata, participants, threshold | Postgres | |
 | Approval requests, signer state, events | Postgres | Application event log — supporting evidence, not proof. |
-| Viewing key | Postgres, **opt-in per vault** | Enables audit export. Grants visibility, never spend authority. Must be an explicit, explained choice in the UI, not a default. |
+| Viewing key | Postgres, **opt-in per vault**, **encrypted at rest** | Enables audit export. Grants visibility, never spend authority — but a full viewing key reveals the vault's entire transaction history, so plaintext storage would be a privacy breach. AES-256-GCM envelope encryption via `apps/web/src/lib/viewing-key-crypto.ts`, key from `VIEWING_KEY_ENCRYPTION_KEY`. This protects a leaked dump or backup; it does **not** protect an attacker holding both the database and the environment. Must be an explicit, explained choice in the UI, not a default. |
 | Transaction history for audit | Derived on demand from viewing key via Zaino | The authoritative record. Never reconstructed from the event log. |
 
 ## 5. Stack

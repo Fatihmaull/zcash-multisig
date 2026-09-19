@@ -12,7 +12,8 @@
 
 // ── Network & Enums ──────────────────────────────────────────
 
-export type ZcashNetwork = "testnet" | "mainnet";
+// Testnet only — constraint C9. See docs/04-technical-constraints.md §C9.
+export type ZcashNetwork = "testnet";
 
 export type VaultStatus = "PENDING_DKG" | "ACTIVE" | "ARCHIVED";
 
