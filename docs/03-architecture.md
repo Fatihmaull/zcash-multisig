@@ -80,9 +80,24 @@ no "temporarily for convenience", no "encrypted at rest so it's fine."
 | **DKG** | Authenticated **and confidential** | Round-1 packages carry material that leaks secrets if observed, and an unauthenticated channel permits a man-in-the-middle who ends up in the vault. Getting this wrong at key generation silently poisons every signature afterwards. |
 | **Signing** | Authenticated only | Commitments and signature shares are not secret, but a substituted share breaks the round or, worse, is attributed to the wrong participant. |
 
-`frostd` provides the transport. **Verify what it actually guarantees during spike S1** rather
-than assuming — confirm TLS, confirm how participants are authenticated to each other and not
-merely to the server, and write the answer into this document.
+### What `frostd` actually guarantees — verified in spike S1, 19 Sep 2026
+
+Two independent layers:
+
+| Layer | Mechanism | Protects |
+|---|---|---|
+| Client ↔ server | **TLS** (rustls). A `--no-tls-very-insecure` flag exists — never use it. | Traffic to `frostd` |
+| Participant ↔ participant | **Noise `Noise_K_25519_ChaChaPoly_BLAKE2s`** (`frost-client/src/cipher.rs`) | Payloads, end to end. The server cannot read them. |
+
+The `_K_` pattern means both parties' static public keys are known before the handshake, giving
+mutual authentication and confidentiality between participants **independent of the server**.
+That satisfies C5 for DKG.
+
+**The residual risk is the bootstrap.** `Noise_K` presupposes participants already hold each
+other's public keys, so the out-of-band contact exchange is the real man-in-the-middle surface.
+Compromise it and an attacker is inside the vault from key generation onward, undetectably.
+F1 must therefore treat contact verification as a security step the user performs deliberately —
+not setup chrome. See [12-spike-s1-report.md](12-spike-s1-report.md) §5.
 
 ## 3. Signing round — data flow
 
