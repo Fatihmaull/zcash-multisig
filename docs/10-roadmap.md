@@ -146,7 +146,7 @@ This is a decision point, not a reason to spend Phase 3 on the same wall.
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P2-B1** | ⬜ **REMAINING — blocks P1-A1.** Contract was written by one developer; P2-B1 called for it to be joint. Seven gaps and an agenda in [11-contract-review.md](11-contract-review.md). **Do this before 22 Sep.** | sisa | — |
+| **P2-B1** | 🟡 **5 of 7 CLOSED.** Timestamps are ISO strings, randomizer seed carried, duplicate `culprit` removed, `ANCHOR_STALE` given a real trigger, poll-only limit documented. **Two architectural gaps remain for a joint decision** — signing modelled as one round when FROST has two, and no separation between the browser and the signer surface. Concrete proposed diffs in [11-contract-review.md](11-contract-review.md) §1–§2. **Decide before P1-A1.** | sisa | — |
 | ~~**P2-B2**~~ | ✅ **DONE** (PR #1). Next.js + Tailwind scaffold, layout, navigation. | — | — |
 | **P2-B3** | 🟡 **PARTIAL** (PR #1). `schema.prisma` and `seed.ts` exist. **No `migrations/` directory** — the schema has never been applied to a database. | sisa | — |
 | ~~**P2-B4**~~ | ✅ **DONE** (PR #1). `src/lib/mock-coordinator.ts`, clearly labelled, implements `CoordinatorService`. | — | — |
