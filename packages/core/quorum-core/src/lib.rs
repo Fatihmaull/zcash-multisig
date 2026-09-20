@@ -9,6 +9,8 @@
 // writes signing code and discovers their signatures authorize nothing
 // on Zcash. See docs/04-technical-constraints.md §C4.
 
+pub mod vault_key;
+
 /// The Zcash-compatible ciphersuite: RedDSA over the Pallas curve.
 ///
 /// Selecting RedPallas is what makes FROST signatures valid as Zcash

@@ -15,7 +15,7 @@ copied. See [12-spike-s1-report.md](12-spike-s1-report.md).
 |---|---|---|---|
 | 1 | ~~`P2-B1` §1–§2 contract decisions~~ | — | ✅ **Closed 20 Sep.** Contract now has two interfaces and a two-round, per-action signing surface. See [11-contract-review.md](11-contract-review.md). |
 | 2 | **`P0-B3` funded source wallet** | Dev B | Not the vault — the vault does not exist until P1-A1 produces its address. Fund a *source* wallet now, transfer into the vault on day 3. |
-| 3 | **§7 FVK derivation** | Dev B (asked ZF) | On the critical path, not a footnote — see below. |
+| 3 | ~~§7 FVK derivation~~ | — | ✅ **Unblocked 20 Sep.** Forked orchard patched in, derivation implemented and tested. The ZF answer now only affects what we *claim*, not whether we can build. |
 
 ### The FVK problem is a day-1 decision, not a later one
 
@@ -103,6 +103,34 @@ spends found" must be treated as a **failure**, never as "nothing to do". Assert
 result.
 
 ---
+
+## Settled overnight, 20 Sep
+
+Three questions the plan listed as risks are now answered empirically, before Phase 1 starts.
+
+**A FROST signature is a valid Orchard spend authorization — proven.**
+`quorum-core/tests/zcash_spend_auth.rs` builds a 2-of-3 threshold signature and verifies it
+against `rk = ak.randomize(alpha)` using **Orchard's own verifier**, which is what a Zcash
+validator checks. No funds, no node, no network. The negative case is covered too: a signature
+made under the wrong alpha satisfies FROST and is rejected by Zcash — the failure that would
+otherwise only appear as a node rejecting the transaction, with nothing local to explain it.
+
+**The group key is always a usable `ak`.** The worry was that Orchard rejects a negative
+y-sign and roughly half of DKG runs would fail. Measured over 200 ceremonies: **0 rejected** —
+`reddsa` normalises. No retry loop needed. `vault_key_derivation.rs` keeps measuring it as a
+regression guard.
+
+**We must use the deprecated `sign()`, and cannot fix it.** Its replacement,
+`sign_with_randomizer_seed()`, *derives* the randomizer from a seed plus commitments — there is
+no way to make it produce a transaction-supplied alpha. The only public API taking an explicit
+randomizer is the deprecated one, because `KeyPackage::randomize` is private to
+`frost-rerandomized` (the `Randomize` trait is unexported). So `#[allow(deprecated)]` stays,
+with the reason written at the call site. **Worth raising with ZF as an API gap** — the v3
+deprecation pushes Zcash integrators toward a function that cannot express their requirement.
+
+The vault identity chain — group key → `SpendValidatingKey` → `FullViewingKey` → address — is
+implemented in `quorum-core/src/vault_key.rs`, with the quantum-recoverability caveat recorded
+at the top of the module.
 
 ## Tasks
 
