@@ -214,8 +214,11 @@ export class MockCoordinator implements CoordinatorService {
     await delay(this.latencyMs);
 
     const id = generateId();
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24h
+    const nowDate = new Date();
+    const now = nowDate.toISOString();
+    const expiresAt = new Date(
+      nowDate.getTime() + 24 * 60 * 60 * 1000,
+    ).toISOString(); // 24h
 
     const signerStatuses: SignerStatus[] = DEMO_PARTICIPANTS.map((p) => ({
       participantId: p.identifier,
@@ -276,7 +279,7 @@ export class MockCoordinator implements CoordinatorService {
       throw new Error(`Participant not found: ${participantId}`);
     }
 
-    const now = new Date();
+    const now = new Date().toISOString();
 
     // ── Scenario: Malicious share ─────────────────────────────
     if (
@@ -285,7 +288,6 @@ export class MockCoordinator implements CoordinatorService {
     ) {
       const error: CoordinatorError = {
         code: "INVALID_SHARE",
-        culprit: participant.label,
         culprits: [participant.label],
         recoverable: true,
         message: `Signature share rejected — ${participant.label}. The share returned does not verify against the commitment made in round 1. This vault has not been charged and no funds moved. Re-run the round without this signer, or investigate the device.`,
@@ -337,7 +339,7 @@ export class MockCoordinator implements CoordinatorService {
 
       const error: CoordinatorError = {
         code: "TIMEOUT",
-        culprit: participant.label,
+        culprits: [participant.label],
         recoverable: true,
         message: `${participant.label} did not respond within the signing deadline. This is normal — they may be offline or unavailable. The round can proceed if threshold is met with other signers.`,
       };
@@ -403,7 +405,7 @@ export class MockCoordinator implements CoordinatorService {
       roundType: "SIGNATURE_SHARE",
       status: "RECEIVED",
       culpritDetected: false,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
     session.state.events.push(shareEvent);
 
@@ -415,7 +417,7 @@ export class MockCoordinator implements CoordinatorService {
       session.state.signerStatuses[signerIdx] = {
         ...session.state.signerStatuses[signerIdx],
         status: "APPROVED",
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       };
     }
 
@@ -429,7 +431,9 @@ export class MockCoordinator implements CoordinatorService {
       await delay(this.latencyMs);
       session.state.status = "BROADCASTED";
       session.state.txid = generateFakeTxid();
-      session.state.anchorBlock = 3_500_000 + Math.floor(Math.random() * 1000);
+      // Testnet Ironwood range. Mainnet heights in a testnet-only build are
+      // the kind of detail that ends up in a screenshot. See constraint C9.
+      session.state.anchorBlock = 4_360_000 + Math.floor(Math.random() * 1000);
     }
 
     return {
@@ -455,7 +459,7 @@ export class MockCoordinator implements CoordinatorService {
       (p) => p.identifier === participantId
     );
 
-    const now = new Date();
+    const now = new Date().toISOString();
 
     const signerIdx = session.state.signerStatuses.findIndex(
       (s) => s.participantId === participantId

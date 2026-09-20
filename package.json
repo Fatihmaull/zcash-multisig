@@ -1,0 +1,17 @@
+{
+  "name": "quorum",
+  "private": true,
+  "description": "Shared custody for Zcash shielded funds — threshold signing over re-randomized FROST",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint",
+    "typecheck": "pnpm --filter web exec tsc --noEmit",
+    "db:generate": "pnpm --filter web exec prisma generate",
+    "db:seed": "pnpm --filter web exec prisma db seed"
+  }
+}

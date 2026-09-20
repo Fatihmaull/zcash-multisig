@@ -1,0 +1,117 @@
+name: CI
+
+# Two latent dependency bugs reached main in the first two days of this
+# project — a forbidden ciphersuite and an unresolvable crate version. Both
+# were invisible to a local `cargo check` because nothing imported the crates
+# yet. This workflow exists to catch the next one before it lands.
+#
+# See docs/12-spike-s1-report.md §2.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust:
+    name: Rust — check, clippy, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/core
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/core
+
+      # Cargo.lock is committed (constraint C7). If a dependency moved, that
+      # is a decision someone makes deliberately, not something CI absorbs.
+      - name: Verify Cargo.lock is up to date
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
+      - name: Check
+        run: cargo check --locked --all-targets
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Format
+        run: cargo fmt --check
+
+      # Includes the RedPallas smoke tests, which assert the ciphersuite is
+      # rerandomization-capable and that a bad share is attributed to its
+      # signer. If either regresses, the build fails rather than the product
+      # quietly lying.
+      - name: Test
+        run: cargo test --locked
+
+  ciphersuite-guard:
+    name: Ciphersuite guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Constraint C4. A default ciphersuite such as Ed25519 produces
+      # signatures that verify against their own scheme and authorize nothing
+      # on Zcash — a failure that is invisible until funds do not move.
+      # frost-ed25519 was pinned once already; this makes a repeat loud.
+      - name: Reject non-RedPallas FROST ciphersuites
+        run: |
+          if grep -rnE '^\s*frost-(ed25519|ed448|p256|ristretto255|secp256k1)\s*=' \
+               packages/core --include=Cargo.toml; then
+            echo "::error::Forbidden FROST ciphersuite found. Quorum uses RedPallas only — see docs/04-technical-constraints.md C4."
+            exit 1
+          fi
+          echo "No forbidden ciphersuite crates. OK."
+
+      # Constraint C9. Testnet only, for the entire build.
+      - name: Reject mainnet references
+        run: |
+          if grep -rnE '\bMAINNET\b|"mainnet"' \
+               apps/web/src apps/web/prisma packages/core 2>/dev/null; then
+            echo "::error::Mainnet reference found. This build is testnet-only — see docs/04-technical-constraints.md C9."
+            exit 1
+          fi
+          echo "No mainnet references. OK."
+
+  web:
+    name: Web — typecheck and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The Prisma client is generated, not committed. tsc cannot resolve
+      # @prisma/client without this step.
+      - name: Generate Prisma client
+        run: pnpm --filter web exec prisma generate
+
+      - name: Typecheck
+        run: pnpm --filter web exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm --filter web run lint

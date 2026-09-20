@@ -41,6 +41,37 @@ This is why it starts in week 1 and why it is a named person's job.
 | **ZecHub / community educators** | Distribution and credibility. Low cost to them. | Would this be worth documenting for organisations holding ZEC? |
 | **Zcash Community Forum** | Public build thread — visible to judges, and generates feedback that doubles as evidence | Post the problem framing and the v6 anchor insight; invite critique |
 
+## Priority first contact — the Zcash Foundation, today
+
+Spike S1 produced a question only ZF can answer, and it is close to an ideal opening: specific,
+informed, and about work they own. It advances the build **and** opens the relationship.
+
+> Subject: FROST vault FVK derivation under Ironwood — intended path?
+>
+> Hi,
+>
+> I'm building a shared-custody layer over re-randomized FROST for the Crypto World's Fair
+> Zcash track, targeting the Ironwood pool.
+>
+> Working through `zcash-sign`, I see the vault's Orchard full viewing key is derived with
+> `FullViewingKey::from_sk_ak_incompatible_with_quantum_recoverability_and_will_be_removed()`,
+> which lives in the fork behind zcash/orchard#475 rather than the published crate.
+>
+> Two questions:
+>
+> 1. Now that constructor is marked for removal, what is the intended FVK derivation for a
+>    FROST-controlled vault?
+> 2. Does using it forfeit Ironwood's quantum recoverability for funds in that vault, or does
+>    it only affect key recovery while spend authorization is unaffected?
+>
+> I'd rather ask than guess — it's a custody tool, and I don't want to overstate what it
+> guarantees.
+>
+> [name]
+
+Asking rather than guessing is the point, and it is worth saying out loud: it signals the kind
+of team worth funding. Full context in [12-spike-s1-report.md](12-spike-s1-report.md) §7.
+
 ## How to ask
 
 **Ask for a reaction, not a favour.** "Would you use this?" gets a considered answer and

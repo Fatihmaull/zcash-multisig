@@ -43,14 +43,27 @@ export type CoordinatorErrorCode =
   | "TIMEOUT"             // Signer did not respond within deadline
   | "THRESHOLD_NOT_MET"   // Not enough signers approved
   | "NETWORK_ERROR"       // Zebra/Zaino unreachable
-  | "ANCHOR_STALE"        // v6 anchor became invalid (should not happen with deferred anchor)
+  // Deferring the anchor to broadcast (constraint C3) removes the common
+  // cause — an anchor going stale while signers take hours to respond. It
+  // does not remove every cause: the node can still reject the anchor chosen
+  // at broadcast if a reorg lands in between, or if the chosen block has
+  // fallen outside the node's anchor retention window. Rare, recoverable by
+  // re-anchoring and re-broadcasting; the collected signatures stay valid.
+  | "ANCHOR_STALE"
   | "DKG_CHANNEL_ERROR"   // Authenticated+confidential channel failure during DKG
   | "ROUND_ABORTED";      // Round explicitly aborted by coordinator
 
 export interface CoordinatorError {
   code: CoordinatorErrorCode;
-  /** Participant identifier(s) responsible, if identifiable */
-  culprit?: string;
+  /**
+   * Participants responsible, if identifiable. Always a list, never a bare
+   * value: FROST v3 changed `InvalidSignatureShare::culprit` to `culprits`
+   * (a vector) because a single round can implicate more than one signer.
+   * A singular field alongside it would eventually get read instead, and a
+   * second culprit would vanish silently.
+   *
+   * Empty or absent means the failure could not be attributed to anyone.
+   */
   culprits?: string[];
   /** Whether the operation can be retried without a full restart */
   recoverable: boolean;
@@ -125,6 +138,21 @@ export interface ApprovalRequestState {
   txid?: string;
   /** Anchor block height, set at broadcast (v6 deferred anchor) */
   anchorBlock?: number;
+  /**
+   * Hex-encoded randomizer seed for this signing round.
+   *
+   * FROST v3 derives the randomizer from this seed **plus every participating
+   * signer's round-1 commitments**, and each participant regenerates it
+   * locally rather than being handed one — so nobody has to trust the
+   * coordinator's RNG (constraint C6).
+   *
+   * Persisted because it is required to re-derive `RandomizedParams` and
+   * re-verify the round after the fact. Without it the audit trail cannot be
+   * independently checked. Set once round 1 closes; absent before then.
+   *
+   * Not secret, but bound to this round — never reuse across rounds.
+   */
+  randomizerSeedHex?: string;
   /** Threshold required for this vault */
   threshold: number;
   /** Number of valid signatures collected so far */
@@ -133,16 +161,18 @@ export interface ApprovalRequestState {
   signerStatuses: SignerStatus[];
   /** Signing round events */
   events: SigningRoundEvent[];
-  createdAt: Date;
-  expiresAt?: Date;
+  /** ISO 8601. A string, not a Date — see the note on CoordinatorService. */
+  createdAt: string;
+  /** ISO 8601. */
+  expiresAt?: string;
 }
 
 export interface SignerStatus {
   participantId: string;
   participantLabel: string;
   status: "PENDING" | "APPROVED" | "DECLINED" | "TIMEOUT" | "INVALID_SHARE";
-  /** Timestamp of last status change */
-  updatedAt: Date;
+  /** ISO 8601. Timestamp of last status change. */
+  updatedAt: string;
 }
 
 // ── Signing Rounds ───────────────────────────────────────────
@@ -157,7 +187,8 @@ export interface SigningRoundEvent {
   culpritDetected: boolean;
   errorCode?: CoordinatorErrorCode;
   errorDetails?: string;
-  timestamp: Date;
+  /** ISO 8601. */
+  timestamp: string;
 }
 
 export interface SignRoundUpdate {
@@ -181,6 +212,22 @@ export type MockScenario =
 // Both mock and real coordinator implement this.
 // Phase 3 (P3-B1): swap mock for real = type-safe replacement.
 
+/**
+ * Implemented by both the mock (P2-B4) and the real Rust coordinator (P3-A1),
+ * so swapping one for the other is a type-safe replacement rather than a
+ * rewrite.
+ *
+ * **Timestamps are ISO 8601 strings, never `Date` objects.** Over HTTP a
+ * `Date` serialises to a string anyway; typing it as `Date` lets the mock
+ * return real Dates while the real coordinator returns strings, and
+ * TypeScript would not catch the difference. Parse at the boundary if you
+ * need date arithmetic.
+ *
+ * **Status is poll-only.** There is no subscription or long-poll: callers
+ * re-read `getApprovalStatus` / `getDkgStatus`. Adequate for this build and
+ * deliberately not being built now — but do not write UI that would need
+ * rewriting to accept pushed updates later.
+ */
 export interface CoordinatorService {
   // ── DKG ──
   createDkgSession(request: DkgSessionRequest): Promise<DkgSessionState>;

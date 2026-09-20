@@ -42,6 +42,7 @@ shielded funds usable by a treasurer on a Monday morning.
 | [07-demo-script.md](docs/07-demo-script.md) | The three-minute video, beat by beat |
 | [08-prior-art.md](docs/08-prior-art.md) | Exact crates and repos — what to build on, what never to rebuild |
 | [09-traction.md](docs/09-traction.md) | The one judging criterion we cannot earn by coding |
+| [12-spike-s1-report.md](docs/12-spike-s1-report.md) | **Spike S1 findings — what actually works, what was broken, what is still open** |
 | [11-contract-review.md](docs/11-contract-review.md) | Open questions on the coordinator contract — resolve before 22 Sep, then delete |
 
 [CLAUDE.md](CLAUDE.md) is the persistent context for Claude Code sessions. It is loaded
