@@ -13,7 +13,7 @@ copied. See [12-spike-s1-report.md](12-spike-s1-report.md).
 
 | # | Blocker | Owner | Why it blocks |
 |---|---|---|---|
-| 1 | **`P2-B1` §1–§2 contract decisions** | Both | P1-A3 implements the coordinator against this contract. Deciding after it is written means rewriting it. |
+| 1 | ~~`P2-B1` §1–§2 contract decisions~~ | — | ✅ **Closed 20 Sep.** Contract now has two interfaces and a two-round, per-action signing surface. See [11-contract-review.md](11-contract-review.md). |
 | 2 | **`P0-B3` funded source wallet** | Dev B | Not the vault — the vault does not exist until P1-A1 produces its address. Fund a *source* wallet now, transfer into the vault on day 3. |
 | 3 | **§7 FVK derivation** | Dev B (asked ZF) | On the critical path, not a footnote — see below. |
 

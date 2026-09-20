@@ -10,8 +10,18 @@
 //   dkg/complete   — Complete DKG and generate vault
 //   approval/submit  — Submit a new approval request
 //   approval/status  — Get approval request status
-//   approval/sign    — Sign an approval request
-//   approval/reject  — Reject an approval request
+//
+// Signer actions (SignerService). In production these are NOT reachable
+// from the browser: they belong to the signer binary talking to the
+// coordinator over frostd, authenticated as the participant. They are
+// exposed here only because the mock has no signer process yet.
+// See docs/11-contract-review.md §2.
+//
+//   signer/pending   — Requests awaiting this participant
+//   signer/commit    — Round 1: submit commitments
+//   signer/packages  — Signing packages + per-action randomizers
+//   signer/shares    — Round 2: submit signature shares
+//   signer/decline   — Refuse to sign
 // ──────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
@@ -58,16 +68,42 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(serializeBigInt(result));
       }
 
-      case "approval/sign": {
-        const result = await coordinator.signApproval(
+      // ── Signer (mock only — see the header note) ─────────
+      case "signer/pending": {
+        const result = await coordinator.fetchPendingRequests(
+          params.participantId
+        );
+        return NextResponse.json(serializeBigInt(result));
+      }
+
+      case "signer/commit": {
+        const result = await coordinator.submitCommitments(
+          params.approvalId,
+          params.participantId,
+          params.commitmentsHex ?? []
+        );
+        return NextResponse.json(result);
+      }
+
+      case "signer/packages": {
+        const result = await coordinator.getSigningPackages(
           params.approvalId,
           params.participantId
         );
         return NextResponse.json(result);
       }
 
-      case "approval/reject": {
-        const result = await coordinator.rejectApproval(
+      case "signer/shares": {
+        const result = await coordinator.submitSignatureShares(
+          params.approvalId,
+          params.participantId,
+          params.sharesHex ?? []
+        );
+        return NextResponse.json(result);
+      }
+
+      case "signer/decline": {
+        const result = await coordinator.declineApproval(
           params.approvalId,
           params.participantId
         );

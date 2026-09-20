@@ -16,6 +16,8 @@
 
 import type {
   CoordinatorService,
+  SignerService,
+  SigningPackages,
   CoordinatorError,
   DkgSessionRequest,
   DkgSessionState,
@@ -108,7 +110,7 @@ const DEMO_PARTICIPANTS: ParticipantPublicInfo[] = [
 
 // ── Mock Coordinator ─────────────────────────────────────────
 
-export class MockCoordinator implements CoordinatorService {
+export class MockCoordinator implements CoordinatorService, SignerService {
   private scenario: MockScenario;
   /** Simulated delay in ms to mimic network latency */
   private latencyMs: number;
@@ -259,13 +261,100 @@ export class MockCoordinator implements CoordinatorService {
     return { ...session.state };
   }
 
-  // ── Signing ─────────────────────────────────────────────────
+  // ── Signing (SignerService) ─────────────────────────────────
 
-  async signApproval(
-    approvalId: string,
+  async fetchPendingRequests(
     participantId: string
+  ): Promise<ApprovalRequestState[]> {
+    await delay(this.latencyMs);
+    return [...approvalSessions.values()]
+      .filter(
+        (s) =>
+          s.state.status === "PENDING" &&
+          s.vault.participants.some((p) => p.identifier === participantId)
+      )
+      .map((s) => ({ ...s.state }));
+  }
+
+  /** Round 1. The matching nonces would stay on the signer's machine. */
+  async submitCommitments(
+    approvalId: string,
+    participantId: string,
+    commitmentsHex: string[]
   ): Promise<SignRoundUpdate> {
     await delay(this.latencyMs);
+    const { session, participant } = this.resolve(approvalId, participantId);
+
+    if (commitmentsHex.length === 0) {
+      throw new Error(
+        "No commitments submitted. One per action is required — an empty " +
+          "list usually means the wrong bundle was queried."
+      );
+    }
+
+    session.state.events.push({
+      id: generateId(),
+      approvalRequestId: approvalId,
+      participantId,
+      participantLabel: participant.label,
+      roundType: "COMMITMENT",
+      status: "RECEIVED",
+      culpritDetected: false,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      approvalRequestId: approvalId,
+      participantId,
+      roundType: "COMMITMENT",
+      status: "RECEIVED",
+    };
+  }
+
+  /**
+   * Mock shape only. The real coordinator reads each action's alpha out of
+   * the PCZT; here they are synthetic so the UI has something to render.
+   */
+  async getSigningPackages(
+    approvalId: string,
+    participantId: string
+  ): Promise<SigningPackages> {
+    await delay(this.latencyMs);
+    this.resolve(approvalId, participantId);
+    return {
+      sighashHex: "00".repeat(32),
+      // Gate B is deliberately single-input; see docs/13-phase-1-plan.md.
+      actions: [{ pool: "IRONWOOD", index: 0, alphaHex: "11".repeat(32) }],
+      signingPackagesHex: ["22".repeat(64)],
+    };
+  }
+
+  private resolve(approvalId: string, participantId: string) {
+    const session = approvalSessions.get(approvalId);
+    if (!session) {
+      throw new Error(`Approval request not found: ${approvalId}`);
+    }
+    const participant = session.vault.participants.find(
+      (p) => p.identifier === participantId
+    );
+    if (!participant) {
+      throw new Error(`Participant not found: ${participantId}`);
+    }
+    return { session, participant };
+  }
+
+  /**
+   * Round 2. The scenario logic lives here because both failures it models
+   * surface at share verification. Note the simplification: a genuinely
+   * non-responding signer would fail at round 1, never reaching this call.
+   */
+  async submitSignatureShares(
+    approvalId: string,
+    participantId: string,
+    sharesHex: string[]
+  ): Promise<SignRoundUpdate> {
+    await delay(this.latencyMs);
+    void sharesHex;
 
     const session = approvalSessions.get(approvalId);
     if (!session) {
@@ -381,22 +470,7 @@ export class MockCoordinator implements CoordinatorService {
 
     // ── Happy path: valid signature ───────────────────────────
 
-    // Commitment round
-    const commitEvent: SigningRoundEvent = {
-      id: generateId(),
-      approvalRequestId: approvalId,
-      participantId,
-      participantLabel: participant.label,
-      roundType: "COMMITMENT",
-      status: "RECEIVED",
-      culpritDetected: false,
-      timestamp: now,
-    };
-    session.state.events.push(commitEvent);
-
-    await delay(this.latencyMs / 2);
-
-    // Signature share round
+    // Signature share round (the commitment round is submitCommitments)
     const shareEvent: SigningRoundEvent = {
       id: generateId(),
       approvalRequestId: approvalId,
@@ -444,7 +518,7 @@ export class MockCoordinator implements CoordinatorService {
     };
   }
 
-  async rejectApproval(
+  async declineApproval(
     approvalId: string,
     participantId: string
   ): Promise<ApprovalRequestState> {

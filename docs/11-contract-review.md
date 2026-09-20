@@ -1,131 +1,87 @@
-# 11 — Integration contract review
+# 11 — Integration contract: decision record
 
-**Roadmap task Y3 / P2-B1.** Subject: `apps/web/src/types/coordinator.ts`.
+**P2-B1 / Y3 — closed 20 September 2026.** All seven gaps resolved and applied to
+`apps/web/src/types/coordinator.ts`, the mock, and the API route.
 
-The contract was written by Dev B alone; P2-B1 called for it to be agreed jointly. It is
-structurally sound — structured errors rather than strings, a `CoordinatorService` interface
-both mock and real implement, `culprits` tracked as a vector. Never a rewrite.
-
-**Five of the seven gaps are now closed in code.** Two remain, because they change the shape of
-the system rather than its naming, and imposing them on someone else's design without asking is
-not a decision one developer should make alone. Concrete diffs are proposed below — the meeting
-is now about agreeing to two changes, not discovering seven.
-
-Delete this file once §1 and §2 are decided and applied.
+This was an agenda; it is now a record. Kept so the reasoning survives the diff — delete it
+once rafzhka has read it.
 
 ---
 
-## ✅ Closed — no discussion needed
+## §1 — Signing split into two rounds, per action
 
-| # | Gap | Resolution |
-|---|---|---|
-| 3 | `Date` would not survive the wire | All timestamps are **ISO 8601 strings**. A `Date` serialises to a string over HTTP anyway; typing it as `Date` let the mock return real Dates while the real coordinator returns strings, with TypeScript blind to the difference. Mock updated to match. |
-| 4 | Nothing carried the randomizer | Added `randomizerSeedHex` to `ApprovalRequestState`, documented as bound to one round and required to re-derive `RandomizedParams` for after-the-fact verification. Without it the audit trail cannot be independently checked. |
-| 5 | `culprit` and `culprits` both existed | `culprits: string[]` only. Two fields meant the singular would eventually be read and a second culprit dropped silently. Mock's two call sites updated. |
-| 6 | `ANCHOR_STALE` contradicted its own comment | Kept, with the real trigger written down: deferring the anchor to broadcast removes the *common* cause, not every cause — a reorg between selection and submission, or a block falling outside the node's anchor retention window, still produces it. Recoverable by re-anchoring; collected signatures stay valid. |
-| 7 | Status is poll-only | Documented as a deliberate limit on `CoordinatorService`, with a warning not to write UI that would need rewriting to accept pushed updates. No action this build. |
+**Was:** `signApproval(approvalId, participantId)` — one call.
 
-Also fixed in passing: the mock generated a mainnet-range `anchorBlock` (3.5M) in a testnet-only
-build. Now in the testnet Ironwood range.
+**Now:** `submitCommitments()` → `getSigningPackages()` → `submitSignatureShares()`, each taking
+and returning arrays.
 
----
+Two reasons one call could not work.
 
-## 🔴 1. Signing is modelled as one round; FROST has two
+**The protocol.** Round 2 cannot begin until the coordinator holds threshold commitments from
+*every* participating signer, which have not arrived when the first signer calls. A single
+method would have to block on other people.
 
-```ts
-signApproval(approvalId, participantId): Promise<SignRoundUpdate>
-```
+**The nonces.** Round-1 nonces stay on the signer's machine between rounds and **must never be
+reused** — the same nonce across two signing packages leaks the secret key. One method hides
+where that state lives, and hidden state is the state that leaks.
 
-Round 1 (commitments) and round 2 (signature shares) are separate network trips, and round 2
-cannot begin until the coordinator holds threshold commitments *and* has derived the randomizer
-seed from them. A single call cannot express that ordering, and Dev A hits it on day one of
-P1-A2.
+**Arrays, because one FROST round is needed per spend action.** A transaction with N shielded
+inputs needs N complete rounds, each with its own randomizer, all over the same sighash. This
+was discovered while writing [13-phase-1-plan.md](13-phase-1-plan.md) and is *not* in the
+original review — the first proposal used single values and was wrong.
 
-**Proposed:**
+Added types: `ShieldedPool`, `SigningAction` (pool, index, alphaHex), `SigningPackages`.
 
-```ts
-// Round 1 — the participant commits. Returns once recorded; the round may
-// still be waiting on other signers.
-submitCommitment(
-  approvalId: string,
-  participantId: string,
-  commitmentHex: string,
-): Promise<SignRoundUpdate>;
+Two traps are written into the type docs so they survive:
 
-// Available only once threshold commitments are in. Carries the signing
-// package and the randomizer seed the participant needs to regenerate
-// RandomizedParams locally (constraint C6).
-getSigningPackage(
-  approvalId: string,
-  participantId: string,
-): Promise<{ signingPackageHex: string; randomizerSeedHex: string }>;
+- **The randomizer comes from the PCZT, not FROST.** `RandomizedParams::from_randomizer()`,
+  never `new_from_commitments()` — that guidance is for generic FROST where the signer chooses
+  the randomizer.
+- **An empty action list is a failure, not "nothing to do."** Querying the wrong bundle of a v6
+  transaction returns success with zero spends.
 
-// Round 2.
-submitSignatureShare(
-  approvalId: string,
-  participantId: string,
-  shareHex: string,
-): Promise<SignRoundUpdate>;
-```
+## §2 — `CoordinatorService` split from `SignerService`
 
-Plus a state machine that rejects out-of-order submission rather than accepting it and failing
-at aggregation.
+**Was:** one interface, with `signApproval` reachable from the browser.
 
-**Alternative** if three methods feels heavy: keep one call with an explicit
-`round: 1 | 2` parameter. Cheaper to write, but the payload differs per round, so the types end
-up as a union anyway — and `getSigningPackage` is still needed regardless.
+**Now:** two.
 
-## 🔴 2. The contract does not separate the browser from the signer
+`CoordinatorService` — browser to coordinator. Reads state, creates requests, watches progress.
+**No signing methods at all; the omission is the point.**
 
-`signApproval(approvalId, participantId)` is consumed by the web app and reads as something the
-browser calls. But the share lives in `quorum-signer` on the participant's own machine and
-**never in the browser** ([03-architecture.md](03-architecture.md) §2).
+`SignerService` — signer binary to coordinator over `frostd`, authenticated as the participant.
+The only surface that produces signatures.
 
-If the browser can trigger a signature with nothing but a participant id, then either the share
-is in the browser — violating the core invariant — or the call is a no-op needing a second,
-undocumented channel. Either way the trust boundary has quietly moved, and this is a naming
-problem only on the surface.
+The old shape let a browser call produce a signature from nothing but a participant id. That
+can only mean one of two things: the share is in the browser, violating the core invariant, or
+the call is a lie backed by an undocumented second channel. Splitting the interfaces makes the
+browser *structurally* incapable of signing — enforced by the type system rather than by
+everyone remembering.
 
-**Proposed — two interfaces, not one:**
+**Product consequence, and it is the part worth arguing about.** The approve button in
+`ApprovalDetailView` cannot sign. The participant approves in their own signer application;
+the browser shows status. That reads as worse UX — two surfaces instead of one.
 
-```ts
-/**
- * Web app → coordinator. Reads state, creates requests, watches progress.
- * NEVER signs. Nothing here touches key material.
- */
-export interface CoordinatorService {
-  createDkgSession(request: DkgSessionRequest): Promise<DkgSessionState>;
-  getDkgStatus(sessionId: string): Promise<DkgSessionState>;
-  completeDkg(sessionId: string): Promise<DkgSessionResult>;
-  submitApproval(submission: ApprovalSubmission): Promise<ApprovalRequestState>;
-  getApprovalStatus(approvalId: string): Promise<ApprovalRequestState>;
-}
+**It is the better demo.** A video that cuts from the treasurer's browser to the signer, and
+back to a confirmed transaction, *shows* the zero-custody property rather than asserting it. A
+single seamless screen hides the one thing that distinguishes Quorum from a wallet.
 
-/**
- * Signer binary → coordinator, over frostd. Authenticated as the
- * participant; this is the only surface that produces signatures.
- */
-export interface SignerService {
-  fetchPendingRequests(participantId: string): Promise<ApprovalRequestState[]>;
-  submitCommitment(/* as §1 */): Promise<SignRoundUpdate>;
-  getSigningPackage(/* as §1 */): Promise<{ signingPackageHex: string; randomizerSeedHex: string }>;
-  submitSignatureShare(/* as §1 */): Promise<SignRoundUpdate>;
-  declineApproval(approvalId: string, participantId: string): Promise<ApprovalRequestState>;
-}
-```
+A local loopback endpoint (signer listens on localhost, browser calls it) stays available if
+the UX becomes genuinely obstructive — but it adds attack surface to a custody product, so not
+before it is needed.
 
-The browser can then show a signer's status but is structurally incapable of acting as them —
-enforced by the type system rather than by everyone remembering.
+## §3–§7 — closed earlier
 
-**Consequence for the UI:** the approve button in `ApprovalDetailView` cannot itself sign. It
-either instructs the user to approve in their signer app, or a local signer agent exposes a
-loopback endpoint the browser can poke. That is a product decision, and it belongs in this same
-conversation.
+| # | Resolution |
+|---|---|
+| 3 | Timestamps are **ISO 8601 strings**, never `Date`. A `Date` serialises to a string over HTTP anyway; typing it as `Date` let the mock and the real coordinator diverge invisibly. |
+| 4 | `randomizerSeedHex` added to `ApprovalRequestState` — required to re-derive `RandomizedParams` and re-verify a round afterwards. Without it the audit trail cannot be checked independently. |
+| 5 | Duplicate singular `culprit` removed; `culprits: string[]` only. |
+| 6 | `ANCHOR_STALE` kept with its real trigger: a reorg between anchor selection and submission, or a block outside the node's retention window. Deferring the anchor removes the common cause, not every cause. |
+| 7 | Poll-only status documented as a deliberate limit, with a warning not to write UI that would need rewriting to accept pushed updates. |
 
----
+## Not done, deliberately
 
-## Output
-
-For §1 and §2: a decision, applied to `types/coordinator.ts` and the mock in the same session.
-Then Dev A starts P1-A1 against a contract both developers agreed to, and the mock stays a
-faithful stand-in rather than a divergent one.
+The mock now satisfies `SignerService`, and the API route exposes `signer/*` endpoints **only
+because there is no signer process yet**. In production those endpoints do not exist on the web
+tier at all. The route header says so; do not let it quietly become permanent.
