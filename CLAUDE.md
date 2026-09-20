@@ -141,6 +141,10 @@ It is a decision point, not a reason to push harder on the same path.
 
 **Pre-development.** No application code yet.
 
+**P0-B1 resolved (19 Sep):** node access is the public endpoint `testnet.zec.rocks:443`,
+verified to serve the Ironwood pool. Configured as `LIGHTWALLETD_ENDPOINT`. P0-A4 is
+unblocked — see [docs/03-architecture.md](docs/03-architecture.md) §6.
+
 The next action is spike **S1** — tasks P0-A1 through P0-A5 in
 [docs/10-roadmap.md](docs/10-roadmap.md): read
 `ZcashFoundation/frost` and `ZcashFoundation/frost-zcash-demo`, get the demo running locally

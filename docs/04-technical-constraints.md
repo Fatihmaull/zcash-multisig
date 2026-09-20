@@ -165,7 +165,12 @@ Answer these before writing application code, and record the answers here.
    deferral actually implemented, or still open per #2525?
 4. Does `zcash_client_backend 0.24.0-rc.1` scan the Ironwood pool and select spendable notes?
 5. What exactly does `frostd` guarantee about channel authentication and confidentiality?
-6. Is there a public testnet Zaino/lightwalletd endpoint serving Ironwood, or must we self-host?
-7. What is the testnet Ironwood activation height, and is our node past it?
+6. ~~Is there a public testnet Zaino/lightwalletd endpoint serving Ironwood, or must we
+   self-host?~~ **Answered 19 Sep 2026: yes.** `testnet.zec.rocks:443` serves Ironwood —
+   `CompactTx.ironwoodActions`, `ChainMetadata.ironwoodCommitmentTreeSize`, and
+   `GetTreeState.ironwoodTree` all present. See [03-architecture.md](03-architecture.md) §6.
+7. ~~What is the testnet Ironwood activation height, and is our node past it?~~
+   **Answered 19 Sep 2026: height 4,134,000** (Zebra 6.0.0-rc.0). The chosen endpoint was at
+   4,367,867 when checked, with an Ironwood commitment tree of 307,456 notes.
 8. How does `zcash-sign` (the standalone Zcash Signer in `frost-zcash-tools`) structure
    externally generated signatures? It is the reference pattern for our signer/coordinator split.

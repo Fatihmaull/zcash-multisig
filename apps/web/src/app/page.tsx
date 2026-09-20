@@ -6,9 +6,7 @@ import {
   ArrowUpRight, 
   Lock, 
   Layers, 
-  ChevronRight, 
-  CheckCircle2, 
-  ShieldCheck 
+  ChevronRight 
 } from "lucide-react";
 
 export default function Home() {
@@ -66,22 +64,8 @@ export default function Home() {
           <div className="text-xs text-[var(--text-muted)]">Policy: 2-of-3 threshold</div>
         </div>
 
-        {/* Metric 2: Balance */}
-        <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-muted)]">Shielded Balance</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold font-mono text-[var(--text-primary)]">
-            14.50 <span className="text-xs text-[var(--zcash-gold)]">TAZ</span>
-          </div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>Private (hidden from public view)</span>
-          </div>
-        </div>
+        {/* Balance tile removed — wallet feature, out of scope.
+            See CLAUDE.md "Scope boundary" and docs/02-product-spec.md §5. */}
 
         {/* Metric 3: Pending */}
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">

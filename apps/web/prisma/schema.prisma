@@ -30,9 +30,13 @@ enum VaultStatus {
   ARCHIVED
 }
 
+/// TESTNET only, deliberately. Constraint C9 forbids mainnet funds for
+/// the entire duration of this build, so the schema is not given a way
+/// to express mainnet — a value that exists is a value someone sets.
+/// Re-add it when Phase 5.4 is reached, not before.
+/// See docs/04-technical-constraints.md §C9.
 enum ZcashNetwork {
   TESTNET
-  MAINNET
 }
 
 enum ApprovalStatus {
@@ -178,8 +182,14 @@ model SignatureRoundEvent {
 model ViewingKeyRecord {
   id               String          @id @default(cuid())
   vaultId          String          @map("vault_id")
-  /// Encoded viewing key (full or incoming)
-  encodedViewingKey String         @map("encoded_viewing_key")
+  /// Viewing key, ENCRYPTED AT REST via src/lib/viewing-key-crypto.ts.
+  /// Format: v1:<iv>:<authTag>:<ciphertext>, each part base64.
+  ///
+  /// A full viewing key reveals the vault's entire transaction history.
+  /// It grants no spend authority, but plaintext storage would be a
+  /// privacy breach. Never store a key share or spend key here — those
+  /// must never reach the server at all. See docs/03-architecture.md §4.
+  encryptedViewingKey String       @map("encrypted_viewing_key")
   scope            ViewingKeyScope @default(FULL_VIEWING)
   /// Who added this viewing key (participant label)
   addedBy          String?         @map("added_by")

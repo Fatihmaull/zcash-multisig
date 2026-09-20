@@ -70,7 +70,7 @@ application code.**
 | **P0-A1** | Read the `frost-core` **v3.0.0 changelog** and API docs. Write a one-page internal summary: how `RandomizedParams` is constructed and threaded through both rounds, and what changed from v2. Most tutorial content online predates v3 and will actively mislead. | 1d | — |
 | **P0-A2** | Clone `frost-zcash-demo`. Run `trusted-dealer` → `coordinator` → `participant` with `-C redpallas` over **CLI transport** (copy/paste JSON). Produce one valid aggregated signature. CLI first — it makes the protocol legible before transport hides it. | 1d | P0-A1 |
 | **P0-A3** | Re-run using `dkg` instead of `trusted-dealer`, and over **`frostd`** instead of CLI. Document what `frostd` actually guarantees about channel authentication and confidentiality — specifically whether participants authenticate to *each other* or only to the server. Write the answer into [03-architecture.md](03-architecture.md) §2. | 1d | P0-A2 |
-| **P0-A4** | **PCZT v2 + Ironwood feasibility spike.** Can `pczt 0.8.0-rc.1` build a v6 transaction with an Ironwood bundle? Does `zcash_client_backend 0.24.0-rc.1` scan the Ironwood pool? Is anchor deferral implemented or still open per librustzcash #2525? Produce a written verdict. | 1.5d | P0-B1, P0-B3 |
+| **P0-A4** | **PCZT v2 + Ironwood feasibility spike. UNBLOCKED — start now.** Can `pczt 0.8.0-rc.1` build a v6 transaction with an Ironwood bundle? Does `zcash_client_backend 0.24.0-rc.1` scan the Ironwood pool, and does its proto match the endpoint's `CompactTx` field 9 `ironwoodActions`? Is anchor deferral implemented or still open per librustzcash #2525? Produce a written verdict. | 1.5d | ~~P0-B1~~ ✅, P0-B3 |
 | **P0-A5** | Read `zcash-sign` in `frost-zcash-tools`. Document the externally-generated-signature pattern — it is the reference architecture for our signer/coordinator split. | 0.5d | P0-A2 |
 
 **P0-A4 is the highest-value task in the entire project.** It is the one that tells you whether
@@ -80,7 +80,7 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P0-B1** | **Infrastructure decision — day 1, not later.** Public testnet Zaino/lightwalletd endpoint serving Ironwood, or self-hosted Zebra + Zaino? If self-hosting, start the sync immediately so it runs in the background for the rest of the phase. See [03-architecture.md](03-architecture.md) §6. | 0.5d + bg | — |
+| ~~**P0-B1**~~ | ✅ **DONE 19 Sep.** Public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood. Self-hosted Z3 stack kept as a tested, unstarted fallback. Decision and evidence in [03-architecture.md](03-architecture.md) §6. | — | — |
 | **P0-B2** | Repo scaffolding: Cargo workspace (`quorum-core`, `quorum-signer`, `quorum-coordinator`), Next.js app, `docker-compose` (Postgres + node), CI running `cargo check`, `cargo clippy`, `tsc`. Pin exact crate versions, commit `Cargo.lock`. | 1.5d | — |
 | **P0-B3** | Funded testnet wallet with ZEC **in the Ironwood pool**. Faucet, then shield. Confirm the node is past the testnet Ironwood activation height. Routinely takes longer than expected and blocks P0-A4. | 0.5d | P0-B1 |
 | **P0-B4** | Draft the DB schema: vaults, participants, approval requests, signer state, events, viewing keys. **No key material anywhere in the schema** — see [03-architecture.md](03-architecture.md) §2. | 1d | — |
@@ -91,7 +91,7 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 - [ ] `frost-zcash-demo` runs with `-C redpallas`: DKG, coordinator, and two participants in separate terminals, producing a valid aggregated signature
 - [ ] Written verdict on PCZT v2 + Ironwood feasibility (P0-A4)
 - [ ] `frostd` channel guarantees documented in `03-architecture.md`
-- [ ] Node access working, past testnet Ironwood activation height
+- [x] Node access working, past testnet Ironwood activation height — `testnet.zec.rocks:443`, verified 19 Sep
 - [ ] Funded testnet wallet with Ironwood-pool ZEC
 - [ ] Repo scaffolded, CI green
 - [ ] 10 outreach contacts made, forum thread live
