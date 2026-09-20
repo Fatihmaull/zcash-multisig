@@ -35,6 +35,22 @@ frost-rerandomized = "3.0.0"
 #   cargo tree -i frost-core   (expect exactly one 3.0.0 in the tree)
 frost-core = "3.0.0"
 
+# ── Orchard / Ironwood ────────────────────────────────────
+# `unstable-frost` exposes SpendValidatingKey::{to_bytes,from_bytes}, which
+# is how a FROST group verifying key becomes a Zcash spend validating key.
+#
+# The git patch below is for ONE function the published crate lacks:
+# FullViewingKey::from_sk_ak_...(), needed to derive a vault's viewing key
+# from a group key nobody holds the spending key for. Pending
+# zcash/orchard#475. frost-zcash-demo carries the same patch.
+#
+# CAVEAT, and it must reach the submission text: that constructor is named
+# for being incompatible with quantum recoverability, which is the property
+# Ironwood exists to provide. Whether that costs a vault its future
+# post-quantum recovery is an open question with ZF.
+# See docs/12-spike-s1-report.md §7.
+orchard = { version = "0.15.5", features = ["unstable-frost"] }
+
 # ── Zcash ─────────────────────────────────────────────────────
 # Release candidates. Pinned exactly; see §C7. Ironwood/v6 support and
 # anchor deferrability are still moving upstream (librustzcash #2467, #2525).
@@ -58,3 +74,11 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Dev only — rand 0.8 is the line matching frost-core 3.0.0's rand_core 0.6.
 rand = "0.8"
+# Dev only — the Pallas scalar type, for standing in as a PCZT action alpha.
+# Must match the version orchard pulls.
+pasta_curves = "0.5"
+ff = "0.13"
+
+[patch.crates-io]
+# Remove once zcash/orchard#475 lands. Same rev frost-zcash-demo pins.
+orchard = { git = "https://github.com/conradoplg/orchard.git", rev = "42015f15733b95e179189628d6fa34d92b5b3b8b" }

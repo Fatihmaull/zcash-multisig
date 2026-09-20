@@ -137,6 +137,21 @@ It is a decision point, not a reason to push harder on the same path.
 
 ---
 
+## Phase 1 starts 22 Sep
+
+Execution plan: [docs/13-phase-1-plan.md](docs/13-phase-1-plan.md). Three things in it override
+intuition and will cost a day each if missed:
+
+- **The randomizer comes from the PCZT, per action** — `action.spend().alpha()`. The v3
+  guidance to use `RandomizedParams::new_from_commitments()` is for generic FROST and does
+  **not** apply to Zcash. Use `RandomizedParams::from_randomizer()`. Leave a comment saying why,
+  or someone will "fix" it and silently break spend authorization.
+- **One FROST signing round per spend action**, all over the same sighash. The coordinator's
+  unit of work is an action, not a transaction.
+- **A v6 transaction has two shielded bundles** (Orchard and Ironwood) and asking the wrong one
+  yields zero spends rather than an error. Track `(pool, index, alpha)` and treat an empty
+  result as a failure.
+
 ## Current phase
 
 **Pre-development.** No application code yet.

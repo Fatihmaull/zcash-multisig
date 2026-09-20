@@ -103,6 +103,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 
 ## Phase 1 — Threshold core · 22–27 Sep
 
+> Day-by-day execution detail, the design decisions S1 settled, and the Gate B decision points
+> are in [13-phase-1-plan.md](13-phase-1-plan.md). Read it before starting P1-A1.
+
 **Goal:** a 2-of-3 shielded **Ironwood** spend confirms on testnet. **CLI only — no UI.**
 
 This phase is the whole project. Everything after it is user interface.
@@ -146,7 +149,7 @@ This is a decision point, not a reason to spend Phase 3 on the same wall.
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P2-B1** | 🟡 **5 of 7 CLOSED.** Timestamps are ISO strings, randomizer seed carried, duplicate `culprit` removed, `ANCHOR_STALE` given a real trigger, poll-only limit documented. **Two architectural gaps remain for a joint decision** — signing modelled as one round when FROST has two, and no separation between the browser and the signer surface. Concrete proposed diffs in [11-contract-review.md](11-contract-review.md) §1–§2. **Decide before P1-A1.** | sisa | — |
+| ~~**P2-B1**~~ | ✅ **DONE 20 Sep.** All seven gaps closed. Signing split into two rounds taking per-action arrays; `CoordinatorService` split from `SignerService` so the browser is structurally incapable of signing. Decision record in [11-contract-review.md](11-contract-review.md). | — | — |
 | ~~**P2-B2**~~ | ✅ **DONE** (PR #1). Next.js + Tailwind scaffold, layout, navigation. | — | — |
 | **P2-B3** | 🟡 **PARTIAL** (PR #1). `schema.prisma` and `seed.ts` exist. **No `migrations/` directory** — the schema has never been applied to a database. | sisa | — |
 | ~~**P2-B4**~~ | ✅ **DONE** (PR #1). `src/lib/mock-coordinator.ts`, clearly labelled, implements `CoordinatorService`. | — | — |
