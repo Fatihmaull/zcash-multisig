@@ -103,6 +103,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 
 ## Phase 1 — Threshold core · 22–27 Sep
 
+> Day-by-day execution detail, the design decisions S1 settled, and the Gate B decision points
+> are in [13-phase-1-plan.md](13-phase-1-plan.md). Read it before starting P1-A1.
+
 **Goal:** a 2-of-3 shielded **Ironwood** spend confirms on testnet. **CLI only — no UI.**
 
 This phase is the whole project. Everything after it is user interface.
