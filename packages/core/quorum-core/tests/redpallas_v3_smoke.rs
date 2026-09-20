@@ -46,7 +46,11 @@ fn setup() -> (
         .map(|(id, share)| (id, KeyPackage::try_from(share).expect("key package")))
         .collect();
 
-    let signers: Vec<_> = key_packages.keys().take(MIN_SIGNERS as usize).copied().collect();
+    let signers: Vec<_> = key_packages
+        .keys()
+        .take(MIN_SIGNERS as usize)
+        .copied()
+        .collect();
 
     let mut nonces = BTreeMap::new();
     let mut commitments = BTreeMap::new();
@@ -90,8 +94,8 @@ fn two_of_three_rerandomized_signature_verifies() {
         signature_shares.insert(*id, share);
     }
 
-    let signature = aggregate(&signing_package, &signature_shares, &pubkeys, &params)
-        .expect("aggregate");
+    let signature =
+        aggregate(&signing_package, &signature_shares, &pubkeys, &params).expect("aggregate");
 
     // Crucially, the signature verifies against the RANDOMIZED verifying key,
     // not the group key. That randomized key is what a Zcash spend

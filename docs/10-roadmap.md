@@ -81,7 +81,7 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 | ID | Task | Est | Depends on |
 |---|---|---|---|
 | ~~**P0-B1**~~ | ✅ **DONE 19 Sep.** Public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood. Self-hosted Z3 stack kept as a tested, unstarted fallback. Decision and evidence in [03-architecture.md](03-architecture.md) §6. | — | — |
-| **P0-B2** | 🟡 **MOSTLY DONE** (PR #1). Cargo workspace, Next.js app, docker-compose all in place. **Missing: CI** — no workflow running `cargo check` / `cargo clippy` / `tsc`. | sisa | — |
+| ~~**P0-B2**~~ | ✅ **DONE.** Cargo workspace, Next.js app, docker-compose, and CI (`.github/workflows/ci.yml`): Rust check/clippy/fmt/test, web tsc/lint, plus guard jobs that fail the build on a forbidden ciphersuite (C4) or any mainnet reference (C9). | — | — |
 | **P0-B3** | **⬜ REMAINING — needs a human.** Fund a testnet wallet with ZEC **in the Ironwood pool**. Faucets: [zcashfaucet.jinolabs.xyz](https://zcashfaucet.jinolabs.xyz) (0.1 TAZ, shielded z2z, browser PoW), [Fauzec](https://fauzec.com/) (UA `utest1…` or Sapling `ztestsapling…`; no transparent), [Zeropond](http://zeropond.com/). **Note:** faucets pay into Sapling or a UA — getting funds *into Ironwood* likely needs a self-transfer afterwards. Verify which pool the received note lands in before assuming Gate B is fundable. | 0.5d | — |
 | ~~**P0-B4**~~ | ✅ **DONE** (PR #1). `prisma/schema.prisma` — vaults, participants, approval requests, round events, viewing keys. Zero key material, verified in review. | — | — |
 | **P0-B5** | **Traction kickoff.** Build the list of 10 contacts, draft the outreach email, post the Zcash Community Forum thread. See [09-traction.md](09-traction.md). | 0.5d + ongoing | — |

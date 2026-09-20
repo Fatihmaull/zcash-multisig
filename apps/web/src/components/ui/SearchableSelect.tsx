@@ -60,9 +60,13 @@ export function SearchableSelect<T = string | number>({
     };
   }, [isOpen]);
 
-  // Focus search input when dropdown opens
+  // Focus search input when dropdown opens.
+  // Clearing the query is state reset driven by an open/close transition; the
+  // alternative is remounting via `key`, which would lose the focus handling
+  // below. Scoped suppression rather than a rule-wide exemption.
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
       setSearch("");
       setTimeout(() => {
         searchInputRef.current?.focus();

@@ -15,7 +15,7 @@ import {
   Trash2, 
   RefreshCw
 } from "lucide-react";
-import { SearchableSelect, type SelectOption } from "@/components/ui/SearchableSelect";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 interface Participant {
   name: string;

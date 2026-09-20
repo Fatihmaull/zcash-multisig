@@ -24,20 +24,8 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const [activeScenario, setActiveScenario] = useState<MockScenario>("happy_path");
   const [theme, setThemeState] = useState<ThemeMode>("dark");
 
-  useEffect(() => {
-    // Load persisted theme from localStorage or system preference
-    const stored = localStorage.getItem("quorum-theme") as ThemeMode | null;
-    if (stored === "light" || stored === "dark") {
-      setThemeState(stored);
-      applyThemeClass(stored);
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const initial = prefersDark ? "dark" : "dark"; // Default to dark for cypherpunk feel
-      setThemeState(initial);
-      applyThemeClass(initial);
-    }
-  }, []);
-
+  // Declared before the effect that uses it. Previously defined below,
+  // which tripped react-hooks on access-before-declaration.
   const applyThemeClass = (t: ThemeMode) => {
     if (typeof document !== "undefined") {
       const root = document.documentElement;
@@ -46,6 +34,21 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
       root.setAttribute("data-theme", t);
     }
   };
+
+  useEffect(() => {
+    // Read the persisted theme once on mount. localStorage does not exist
+    // during SSR, so the initial state must be the SSR-safe default and the
+    // real value can only be applied after hydration. That is precisely the
+    // setState-in-effect the rule warns about, and here it is unavoidable
+    // without moving theme resolution into a blocking inline script in the
+    // document head. Revisit if the theme flash becomes noticeable.
+    const stored = localStorage.getItem("quorum-theme") as ThemeMode | null;
+    const initial: ThemeMode =
+      stored === "light" || stored === "dark" ? stored : "dark";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
+    setThemeState(initial);
+    applyThemeClass(initial);
+  }, []);
 
   const setTheme = (t: ThemeMode) => {
     setThemeState(t);
