@@ -53,6 +53,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "argon2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+dependencies = [
+ "base64ct",
+ "blake2",
+ "cpufeatures 0.2.17",
+ "password-hash",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1271,6 +1283,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "password-hash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+dependencies = [
+ "base64ct",
+ "rand_core 0.6.4",
+ "subtle",
+]
+
+[[package]]
 name = "pasta_curves"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1431,8 +1454,16 @@ name = "quorum-coordinator"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ff",
  "frost-core",
+ "frost-rerandomized",
+ "hex",
+ "orchard",
+ "pasta_curves",
  "quorum-core",
+ "quorum-signer",
+ "rand 0.8.8",
+ "reddsa",
  "serde",
  "serde_json",
  "thiserror",
@@ -1470,12 +1501,23 @@ name = "quorum-signer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "argon2",
+ "chacha20poly1305",
+ "ff",
  "frost-core",
+ "frost-rerandomized",
+ "hex",
+ "pasta_curves",
  "quorum-core",
+ "rand 0.8.8",
+ "rand_core 0.6.4",
+ "reddsa",
  "serde",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "zeroize",
 ]
 
 [[package]]
