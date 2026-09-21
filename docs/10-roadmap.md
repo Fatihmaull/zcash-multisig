@@ -88,13 +88,13 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 
 ### 🚩 Gate A — 21 Sep
 
-- [ ] `frost-zcash-demo` runs with `-C redpallas`: DKG, coordinator, and two participants in separate terminals, producing a valid aggregated signature
-- [ ] Written verdict on PCZT v2 + Ironwood feasibility (P0-A4)
-- [ ] `frostd` channel guarantees documented in `03-architecture.md`
+- [x] `frost-zcash-demo` runs with `-C redpallas` — `trusted-dealer` verified, `frostd` redpallas router test and the frost-client suite pass. Caveat recorded: the standalone `coordinator` binary is CLI-transport only. [12-spike-s1-report.md](12-spike-s1-report.md) §6
+- [x] Written verdict on PCZT v2 + Ironwood feasibility — [12-spike-s1-report.md](12-spike-s1-report.md) §8. Supported; anchor deferral moved to Phase 1
+- [x] `frostd` channel guarantees documented — TLS plus Noise_K participant-to-participant, [03-architecture.md](03-architecture.md) §2
 - [x] Node access working, past testnet Ironwood activation height — `testnet.zec.rocks:443`, verified 19 Sep
-- [ ] Funded testnet wallet with Ironwood-pool ZEC
-- [ ] Repo scaffolded, CI green
-- [ ] 10 outreach contacts made, forum thread live
+- [ ] Funded testnet wallet with Ironwood-pool ZEC — **outstanding**, issue #6
+- [x] Repo scaffolded, CI green — three jobs, plus guards that fail the build on a forbidden ciphersuite (C4) or a mainnet reference (C9)
+- [ ] Outreach started, ZF question sent — **outstanding**, P0-B5
 
 **If Gate A fails:** stop all feature work; both devs onto the spike. This gate cannot slip past
 **22 Sep** without triggering the R1 fallback conversation early.

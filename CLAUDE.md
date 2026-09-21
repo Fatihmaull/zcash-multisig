@@ -38,10 +38,12 @@ a legal one.
   Overstating the security posture of a custody product is the worst possible failure mode.
 - **Flag scope creep immediately.** No extension exists. If a feature threatens the end-to-end
   demo, say so before building it.
-- **Be pedagogical about Rust at the protocol-integration level.** Explain the cryptographic
-  reasoning as you go; do not just hand over working code. The team's strength is Next.js,
-  Tailwind, Django, Laravel, plus a security-audit and GRC background. Rust protocol
-  integration is the weak spot and the place to slow down.
+- **Explain the cryptographic reasoning, not the Rust.** Rust fluency is no longer the
+  constraint (updated 20 Sep) — work at full speed and skip the language hand-holding. What
+  still needs spelling out is the *protocol*: why a randomizer comes from the transaction, why
+  a nonce must never be reused, what a given API actually guarantees. The team also brings a
+  security-audit and GRC background, so precision about trust boundaries lands and is worth
+  the words.
 - **Guard the demo deadline.** If recording has not started by **5 October**, say so
   unprompted, every session.
 

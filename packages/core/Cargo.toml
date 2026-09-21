@@ -63,6 +63,30 @@ zcash_client_backend = "=0.24.0-rc.1"
 zcash_keys = "0.15"
 zcash_address = "0.13"
 
+# ── frostd transport ──────────────────────────────────────
+# We implement our own frostd client. The upstream `frost-client` is not
+# published to crates.io and is pinned to frost-core 2.2.0 — depending on it
+# would drag a second, incompatible FROST into the tree. frostd itself relays
+# opaque bytes, so our v3 types travel over it untouched.
+# See docs/13-phase-1-plan.md.
+snow = "0.9"        # Noise_K_25519_ChaChaPoly_BLAKE2s, same as frost-client
+# Pinned exactly. 1.1.0 moved to rand_core 0.10, which would sit alongside
+# the 0.6 frost-core pulls — two RNG traits in one tree, and the signing call
+# stops compiling. 1.0.2 is also what frostd's own client uses, so challenge
+# signatures are compatible by construction rather than by assumption.
+xeddsa = "=1.0.2"
+uuid = { version = "1", features = ["serde", "v4"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+hex = "0.4"
+
+# ── Share storage at rest ─────────────────────────────────
+# A key share on a participant's laptop. Argon2id because the only secret
+# protecting it is a human-chosen passphrase, and a fast KDF would make that
+# passphrase worth guessing.
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+zeroize = { version = "1", features = ["derive"] }
+
 # ── General ───────────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
