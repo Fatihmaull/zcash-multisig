@@ -8,15 +8,22 @@ import {
   FileCheck, 
   KeyRound, 
   X,
-  Lock
+  Lock,
+  Globe
 } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import { Logo } from "@/components/ui/Logo";
 
 const navItems = [
   {
-    label: "Dashboard",
+    label: "Landing Page",
     href: "/",
+    icon: Globe,
+    badge: null,
+  },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
     icon: LayoutDashboard,
     badge: null,
   },
