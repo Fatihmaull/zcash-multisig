@@ -60,7 +60,7 @@ zcash_client_backend = "=0.24.0-rc.1"
 # did not resolve at all: zcash_address 0.7 depends on core2 0.3.x, every
 # version of which is yanked. These are the versions frost-zcash-demo uses and
 # that resolve cleanly with pczt 0.8.0-rc.1.
-zcash_keys = "0.15"
+zcash_keys = { version = "0.15", features = ["orchard", "sapling"] }
 zcash_address = "0.13"
 
 # ── frostd transport ──────────────────────────────────────
