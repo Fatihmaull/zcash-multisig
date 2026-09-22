@@ -1,213 +1,140 @@
+"use client";
+
 import Link from "next/link";
-import { 
-  Shield, 
-  KeyRound, 
-  FileCheck2, 
-  ArrowUpRight, 
-  Lock, 
-  Layers, 
-  ChevronRight 
-} from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, FileCheck2 } from "lucide-react";
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
-      {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 sm:p-8 lg:p-10 shadow-xs">
-        {/* Glow ambient background element */}
-        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+    <div className="relative h-screen w-full overflow-hidden bg-[#030712] text-white flex flex-col justify-between font-sans select-none">
+      {/* ── Background Video Container ─────────────────────────────────── */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Responsive YouTube Embed Background */}
+        <div className="absolute inset-0 w-full h-full scale-125 lg:scale-110 transform origin-center filter brightness-[0.4] contrast-125 opacity-70">
+          <iframe
+            className="w-full h-full object-cover pointer-events-none"
+            src="https://www.youtube.com/embed/8qSA29vWWds?autoplay=1&mute=1&loop=1&playlist=8qSA29vWWds&start=345&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+            title="Quorum Cinematic Background"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            style={{ 
+              width: "100vw", 
+              height: "56.25vw", 
+              minHeight: "100vh", 
+              minWidth: "177.77vh", 
+              position: "absolute", 
+              top: "50%", 
+              left: "50%", 
+              transform: "translate(-50%, -50%)" 
+            }}
+          />
+        </div>
 
-        <div className="relative z-10 max-w-2xl space-y-3.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-600 dark:text-amber-300 font-medium">
-            <Shield className="w-3.5 h-3.5" />
-            <span>Zcash Shielded Multisig • Zero Custody</span>
+        {/* Ambient Dark Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#030712]/40 to-[#030712]/70" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/90 via-transparent to-[#030712]/60" />
+      </div>
+
+      {/* ── Top Header Navigation (Identical clean layout to reference) ── */}
+      <header className="relative z-20 w-full max-w-7xl mx-auto px-6 lg:px-12 pt-6 sm:pt-8 flex items-center justify-between">
+        {/* Brand Logo */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative w-18 h-18 sm:w-11 sm:h-11 rounded-2xl p-1.5 shadow-lg shadow-black/40 group-hover:scale-105 transition-all">
+            <Image
+              src="/favicon.png"
+              alt="Quorum Fi Logo"
+              width={160}
+              height={160}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white font-sans flex items-center gap-1">
+              Quorum <span className="text-[#E2B16B]">Fi</span>
+            </span>
+            <span className="text-[10px] tracking-wider text-slate-400 uppercase font-mono hidden sm:inline">
+              Shielded Multisig
+            </span>
+          </div>
+        </Link>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--text-primary)] leading-snug">
-            Manage Shared Funds Privately &amp; Securely
+        {/* Center Nav Links */}
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+          <Link href="/vaults" className="hover:text-white transition">
+            Services
+          </Link>
+          <Link href="/approvals" className="hover:text-white transition">
+            Projects
+          </Link>
+          <Link href="/vaults/vault-demo-001/ceremony" className="hover:text-white transition text-slate-300 hover:text-amber-300">
+            About
+          </Link>
+        </nav>
+
+        {/* Right Action Button (Like "Start Your Project") */}
+        <Link
+          href="/vaults"
+          className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-white hover:bg-slate-100 text-slate-950 text-xs sm:text-sm font-bold tracking-tight shadow-xl hover:shadow-2xl transition active:scale-95 cursor-pointer"
+        >
+          <span>Start Your Project</span>
+          <ArrowRight className="w-4 h-4 text-slate-950" />
+        </Link>
+      </header>
+
+      {/* ── Single-Screen Hero (Clean & Focused, NO SCROLL) ─────────── */}
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 my-auto flex flex-col justify-center">
+        <div className="max-w-3xl space-y-4 sm:space-y-6">
+          {/* Main Title with under-glow stripe */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.08]">
+            <span className="relative inline-block">
+              Elevating brand value
+              {/* Highlight bar accent matching reference image */}
+              <span className="absolute left-0 -bottom-1 sm:-bottom-2 w-full h-1.5 sm:h-2 bg-gradient-to-r from-amber-500 via-rose-500 to-cyan-400 rounded-full" />
+            </span>
+            <br />
+            with design strategy
           </h1>
 
-          <p className="text-[var(--text-secondary)] text-sm sm:text-base leading-relaxed">
-            A collaborative treasury vault where transfers require cryptographic consensus from at least <strong>2 of 3 signers</strong>. Your private keys stay safely on your devices — never stored on a server.
+          {/* Subtitle description */}
+          <p className="text-sm sm:text-lg text-slate-300 max-w-xl font-normal leading-relaxed pt-1 sm:pt-2">
+            Zcash shielded custody and decentralized threshold security. With our strategy-first architecture we amplify privacy into a force.
           </p>
 
-          <div className="pt-2 flex flex-wrap gap-3">
-            <Link
-              href="/vaults/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs sm:text-sm font-semibold transition shadow-md shadow-amber-500/20 active:scale-98"
-            >
-              <KeyRound className="w-4 h-4" />
-              <span>Create New Vault</span>
-            </Link>
-            <Link
-              href="/approvals"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] text-xs sm:text-sm font-medium transition shadow-xs"
-            >
-              <FileCheck2 className="w-4 h-4 text-amber-500" />
-              <span>Pending Approvals (1)</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Metrics Row: 4 Clean & Adaptive Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Vaults */}
-        <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-muted)]">Active Vaults</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 dark:text-amber-400">
-              <Lock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold font-mono text-[var(--text-primary)]">1 Vault</div>
-          <div className="text-xs text-[var(--text-muted)]">Policy: 2-of-3 threshold</div>
-        </div>
-
-        {/* Balance tile removed — wallet feature, out of scope.
-            See CLAUDE.md "Scope boundary" and docs/02-product-spec.md §5. */}
-
-        {/* Metric 3: Pending */}
-        <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-muted)]">Awaiting Signature</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 dark:text-amber-400">
-              <FileCheck2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold font-mono text-[var(--text-primary)]">1 Proposal</div>
-          <div className="text-xs text-amber-600 dark:text-amber-400">1 of 2 signatures collected</div>
-        </div>
-
-        {/* Metric 4: Security */}
-        <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-muted)]">Security State</span>
-            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-              <Shield className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">Optimal</div>
-          <div className="text-xs text-[var(--text-muted)]">All signer devices verified</div>
-        </div>
-      </div>
-
-      {/* Main Grid: Pending Proposals & Vault Profile */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Active Proposal */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2 font-sans">
-              <FileCheck2 className="w-4 h-4 text-[var(--zcash-gold)]" />
-              <span>Pending Spend Proposals</span>
-            </h2>
-            <Link
-              href="/approvals"
-              className="text-xs text-[var(--zcash-gold)] hover:underline inline-flex items-center gap-1 transition"
-            >
-              <span>View all</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="p-5 sm:p-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-4 hover:border-[var(--zcash-gold-border)] transition">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
-                    Awaiting 1 More Signer
-                  </span>
-                  <span className="text-xs text-[var(--text-muted)] font-mono">ID: req-demo-001</span>
-                </div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">
-                  Send 2.50000000 TAZ for Security Audit Fee
-                </h3>
-              </div>
-
-              <div className="text-left sm:text-right">
-                <div className="text-xs font-semibold text-[var(--text-primary)]">Progress: 1 of 2 Signers</div>
-                <div className="text-[11px] text-amber-600 dark:text-amber-400">Alice approved • Waiting for Bob</div>
-              </div>
-            </div>
-
-            {/* Recipient Address */}
-            <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)] truncate">
-              Recipient: utest1z67w88a9c8e104f7623d9b4009e817a02c3d4e5f6... (Shielded Address)
-            </div>
-
-            {/* Action */}
-            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[var(--border-subtle)]">
-              <span className="text-xs text-[var(--text-muted)]">
-                Approval deadline: 22 hours remaining
-              </span>
-
-              <Link
-                href="/approvals/req-demo-001"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold transition shadow-md shadow-amber-500/20 active:scale-95"
-              >
-                <span>Review &amp; Sign</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Right 1 Col: Vault Profile */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2 font-sans">
-              <Layers className="w-4 h-4 text-[var(--zcash-gold)]" />
-              <span>Team Vault Profile</span>
-            </h2>
+          {/* Action Link like "See how" in reference */}
+          <div className="pt-2 sm:pt-3">
             <Link
               href="/vaults"
-              className="text-xs text-[var(--zcash-gold)] hover:underline inline-flex items-center gap-1 transition"
+              className="inline-flex items-center gap-1.5 text-sm sm:text-base font-semibold text-white hover:text-amber-400 underline underline-offset-4 decoration-amber-500 transition cursor-pointer"
             >
-              <span>Details</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold text-[var(--text-primary)]">Dev Treasury</div>
-                <div className="text-xs text-[var(--text-muted)]">2-of-3 threshold policy</div>
-              </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-                ACTIVE
-              </span>
-            </div>
-
-            <div className="space-y-2.5 pt-3 border-t border-[var(--border-subtle)] text-xs">
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Key Holders:</span>
-                <span className="text-[var(--text-primary)] font-medium">3 Signers (Alice, Bob, Carol)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Spend Policy:</span>
-                <span className="text-[var(--zcash-gold)] font-semibold">At least 2 signers approve</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Network:</span>
-                <span className="text-[var(--text-primary)]">Zcash Testnet (Shielded)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Key Custody:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">100% On-Device</span>
-              </div>
-            </div>
-
-            <Link
-              href="/vaults/vault-demo-001/ceremony"
-              className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] bg-[var(--bg-secondary)] hover:bg-[var(--zcash-gold-dim)] text-xs text-[var(--text-secondary)] hover:text-[var(--zcash-gold)] transition"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Simulate Key Ceremony</span>
+              <span>See how</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* ── Minimalist Clean Bottom Bar ─────────────────────────────── */}
+      <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 pb-6 sm:pb-8 flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center gap-2">
+          <span>Quorum Fi © 2026</span>
+          <span className="hidden sm:inline">•</span>
+          <span className="hidden sm:inline">Zcash Shielded Custody</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-mono text-[11px]">
+            Testnet Activated
+          </span>
+        </div>
+      </footer>
+
+      {/* Floating Orange Action Button in bottom-right (exact match to reference) */}
+      <Link
+        href="/approvals"
+        aria-label="View Proposals"
+        className="fixed bottom-6 right-6 z-30 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 hover:scale-110 active:scale-95 text-slate-950 flex items-center justify-center shadow-2xl shadow-orange-500/50 transition-all cursor-pointer group"
+      >
+        <FileCheck2 className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 group-hover:rotate-12 transition-transform" />
+      </Link>
     </div>
   );
 }

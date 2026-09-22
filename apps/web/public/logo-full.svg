@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" fill="none">
+  <defs>
+    <linearGradient id="fiGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4A359"/>
+      <stop offset="100%" stop-color="#A3702C"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .q-text {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      font-weight: 400;
+    }
+    .dark-mode-text {
+      fill: #0F172A;
+    }
+    @media (prefers-color-scheme: dark) {
+      .dark-mode-text {
+        fill: #F8FAFC;
+      }
+    }
+  </style>
+
+  <!-- Q Letterform -->
+  <g class="dark-mode-text">
+    <!-- Main Q circle -->
+    <circle cx="42" cy="60" r="26" fill="none" stroke="currentColor" stroke-width="4" />
+    <!-- Q curved tail hook -->
+    <path d="M48 76 C 50 84, 43 90, 36 88" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+
+    <!-- 'uorum' letters -->
+    <text x="82" y="72" font-size="42" class="q-text" fill="currentColor" letter-spacing="-0.5">uorum</text>
+  </g>
+
+  <!-- 'Fi' in Gold -->
+  <text x="262" y="72" font-size="42" class="q-text" font-weight="500" fill="url(#fiGold)" letter-spacing="-0.5">Fi</text>
+</svg>

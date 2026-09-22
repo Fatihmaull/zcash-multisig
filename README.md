@@ -1,6 +1,8 @@
 # Quorum
 
-**Shared custody for Zcash shielded funds.**
+**Shared custody for Zcash shielded funds (Private Multisig).**
+
+Language: **English** | [Bahasa Indonesia](README.id.md)
 
 Zcash shielded pools have no multisig opcode. An organisation holding ZEC today must either use a
 transparent address — losing the entire reason to use Zcash — or let one person hold the seed.
@@ -10,6 +12,41 @@ shielded funds usable by a treasurer on a Monday morning.
 > **We are not building cryptography.** `frost-core` v3.0.0 is audited and stable. The
 > transport (`frostd`) exists. The gap is everything between the library and an organisation
 > that has to pass a controls audit. That is what we build, and that is why 26 days is realistic.
+
+---
+
+## Quickstart & System Usage Guide
+
+### 1. How Quorum Works (The Mental Model)
+- **Zero Custody:** The coordinator server never sees or stores key shares.
+- **FROST Threshold Scheme (2-of-3):** 3 participants (Alice, Bob, Carol) hold device-isolated key shares. Any transfer requires consensus from at least 2 signers.
+- **Viewing-Key Audit Trail:** Transactions are verified on-chain via Zcash Viewing Keys, providing cryptographically verifiable reports for auditors without granting spending authority.
+
+### 2. Running the Application Locally
+
+```bash
+# 1. Start the local PostgreSQL service
+docker compose up -d postgres
+
+# 2. Push Prisma database schema & run seed
+pnpm --filter web exec prisma db push
+pnpm db:seed
+
+# 3. Start the Next.js development server
+pnpm dev
+```
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+### 3. Exploring the System via Web UI
+- **Dashboard (`/`):** View your 2-of-3 threshold vault metrics and active spend proposals.
+- **Pending Approvals (`/approvals` & `/approvals/req-demo-001`):**
+  - View the proposal requiring 2-of-3 consensus (Alice has already approved).
+  - Click **"Sign as Bob"** to collect the 2nd signature and observe the shielded transaction broadcast to Zcash Testnet.
+- **Interactive Edge-Case Sandbox (Bottom-Right Panel):**
+  - **Normal Flow:** 2 signers collaborate smoothly.
+  - **Bob Offline / Timeout:** Demonstrates switching to **Carol (Standby Signer)** when Bob is unavailable.
+  - **Corrupt Share (F4 Culprit Detection):** Demonstrates automatic rejection and mathematical identification of a compromised device without risking treasury funds.
+- **Key Ceremony Simulation (`/vaults/.../ceremony`):** Step through the distributed key generation (DKG) process.
 
 ---
 

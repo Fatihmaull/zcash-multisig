@@ -165,10 +165,12 @@ body {
 .bg-cypher-pattern {
   background-color: var(--bg-primary);
   background-image: 
+    radial-gradient(circle at 15% -10%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(192, 132, 252, 0.08) 0%, transparent 45%),
     radial-gradient(circle at 50% 0%, var(--zcash-gold-dim) 0%, transparent 60%),
     linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
     linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
 }
 
 /* ── Adaptive Glass & Cards ─────────────────────────────────── */
