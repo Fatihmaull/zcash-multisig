@@ -137,7 +137,7 @@ INSERT INTO "approval_requests" ("id", "vault_id", "recipient_address", "amount_
 VALUES (
     'req-demo-001',
     'vault-demo-001',
-    'utest1z67w88a9c8e104f7623d9b4009e817a02c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c',
+    'utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6',
     250000000, -- 2.5 ZEC
     'Grant disbursement: Q3 2026 Core Infrastructure Audit',
     'PENDING'
