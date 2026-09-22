@@ -79,15 +79,42 @@ export function KeyCeremonyView() {
     setIsProcessing(false);
   };
 
+  const [createdVaultId, setCreatedVaultId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleRunDkg = async () => {
     setStep(3);
     setIsProcessing(true);
-    setDkgProgress(30);
+    setDkgProgress(25);
+    setSaveError(null);
 
-    await new Promise((r) => setTimeout(r, 700));
-    setDkgProgress(70);
+    await new Promise((r) => setTimeout(r, 600));
+    setDkgProgress(60);
 
-    await new Promise((r) => setTimeout(r, 800));
+    // Call /api/vaults/create to save into PostgreSQL and Supabase
+    try {
+      const res = await fetch("/api/vaults/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: vaultName,
+          threshold,
+          totalParticipants: participants.length,
+          shieldedAddress: generatedAddress,
+          participants,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.vault) {
+        setCreatedVaultId(data.vault.id);
+      }
+    } catch (err) {
+      console.error("Failed to save vault:", err);
+      setSaveError("Vault generated locally. Remote sync will retry.");
+    }
+
+    setDkgProgress(90);
+    await new Promise((r) => setTimeout(r, 500));
     setDkgProgress(100);
 
     setParticipants((prev) =>
@@ -102,7 +129,8 @@ export function KeyCeremonyView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const generatedAddress = "utest1z9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx";
+  const generatedAddress =
+    "utest1quqhwz3035hsf3z2pv4v24qce5r42qalfeqgzxslfjrys660kfg5m6spw4fahvcpw02y4x38t4j3ykh44lnvmvct3zkjuuugggr2k772lh6gvs52t62yv94m2gngu7n7t0yk0whue3rtk5y73w9xj2hssm4p46wvsw5n8rqctm6c63vwdl3df2t6t9aqpr42qgs90cpyup7zghh8482";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
@@ -418,10 +446,10 @@ export function KeyCeremonyView() {
 
                 {/* Return button */}
                 <Link
-                  href="/vaults"
+                  href={createdVaultId ? `/vaults/${createdVaultId}` : "/vaults"}
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Finish &amp; Open Vaults</span>
+                  <span>{createdVaultId ? "Open Newly Created Vault" : "Finish & Open Vaults"}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

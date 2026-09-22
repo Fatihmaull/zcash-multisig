@@ -17,6 +17,9 @@
     "db:deploy": "pnpm --filter web exec prisma migrate deploy",
     "db:seed": "pnpm --filter web exec prisma db seed",
     "fixture:reset": "pnpm --filter web exec tsx scripts/reset-fixture.ts",
-    "node:verify": "pnpm --filter web exec tsx scripts/verify-endpoint.ts"
+    "node:verify": "pnpm --filter web exec tsx scripts/verify-endpoint.ts",
+    "wallet:sync": "sh -c '. \"$HOME/.cargo/env\" && ./tools/zcash-devtool/target/release/zcash-devtool wallet -w ./tools/zcash-devtool/wallet-data/dev.wallet sync'",
+    "wallet:balance": "sh -c '. \"$HOME/.cargo/env\" && ./tools/zcash-devtool/target/release/zcash-devtool wallet -w ./tools/zcash-devtool/wallet-data/dev.wallet balance'",
+    "wallet:shield": "sh -c '. \"$HOME/.cargo/env\" && ./tools/zcash-devtool/target/release/zcash-devtool wallet -w ./tools/zcash-devtool/wallet-data/dev.wallet shield'"
   }
 }

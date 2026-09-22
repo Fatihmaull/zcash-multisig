@@ -3,13 +3,27 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { LandingBackground } from "@/components/landing/LandingBackground";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLandingPage = pathname === "/";
+  const isLandingPage =
+    pathname === "/" ||
+    pathname === "/services" ||
+    pathname === "/project" ||
+    pathname === "/projects" ||
+    pathname === "/about";
 
   if (isLandingPage) {
-    return <div className="min-h-screen w-full bg-[#03060a] text-white selection:bg-amber-500 selection:text-black">{children}</div>;
+    return (
+      <div className="relative min-h-screen w-full bg-[#030712] text-white selection:bg-amber-500 selection:text-black">
+        {/* Persistent YouTube Cinematic Background (kept alive across /services, /project, /about, /) */}
+        <LandingBackground />
+        <div className="relative z-10 w-full min-h-screen">
+          {children}
+        </div>
+      </div>
+    );
   }
 
   return (

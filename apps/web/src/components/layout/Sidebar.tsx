@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import { Logo } from "@/components/ui/Logo";
+import { useSplashScreen } from "@/components/ui/SplashScreenProvider";
 
 const navItems = [
   {
@@ -50,6 +51,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { isMobileMenuOpen, closeMobileMenu } = useUI();
+  const { triggerSplashNavigation } = useSplashScreen();
 
   const renderNavContent = () => (
     <div className="flex flex-col h-full bg-[var(--bg-card)] border-r border-[var(--border-subtle)] text-[var(--text-primary)] transition-colors duration-200">
@@ -98,11 +100,19 @@ export function Sidebar() {
             (item.href !== "/" && pathname.startsWith(item.href));
           const Icon = item.icon;
 
+          const handleClick = (e: React.MouseEvent) => {
+            closeMobileMenu();
+            if (item.href === "/dashboard" && pathname !== "/dashboard") {
+              e.preventDefault();
+              triggerSplashNavigation("/dashboard");
+            }
+          };
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              onClick={closeMobileMenu}
+              onClick={handleClick}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                 isActive
                   ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] border border-[var(--zcash-gold-border)] font-semibold shadow-xs"

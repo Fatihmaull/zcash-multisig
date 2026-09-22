@@ -10,6 +10,8 @@ import {
   Sparkles
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
+import { getLiveWalletBalance } from "@/lib/onchain-balance";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +19,9 @@ export default async function DashboardPage() {
   // Query live vaults and pending approvals from database
   let vaultsCount = 0;
   let approvalsCount = 0;
-  let activeVault = null;
-  let latestApproval = null;
+  let activeVault: any = null;
+  let latestApproval: any = null;
+  const onchainBalance = await getLiveWalletBalance();
 
   try {
     const [vaults, approvals] = await Promise.all([
@@ -39,6 +42,55 @@ export default async function DashboardPage() {
     latestApproval = approvals[0] || null;
   } catch (error) {
     console.error("Dashboard DB query error:", error);
+  }
+
+  // Supabase fallback if local DB has 0 vaults
+  if (!activeVault) {
+    try {
+      const [sbVaultsRes, sbApprovalsRes] = await Promise.all([
+        supabase.from("vaults").select("*, participants(*)").order("created_at", { ascending: false }),
+        supabase.from("approval_requests").select("*, vaults(*), signature_round_events(*)").eq("status", "PENDING").order("created_at", { ascending: false }),
+      ]);
+
+      if (sbVaultsRes.data && sbVaultsRes.data.length > 0) {
+        vaultsCount = sbVaultsRes.data.length;
+        const v = sbVaultsRes.data[0];
+        activeVault = {
+          id: v.id,
+          label: v.label,
+          threshold: v.threshold,
+          totalParticipants: v.total_participants,
+          shieldedAddress: v.shielded_address,
+          status: v.status,
+          network: v.network,
+          participants: (v.participants || []).map((p: any) => ({
+            id: p.id,
+            label: p.label,
+            publicKeyIdentifier: p.public_key_identifier,
+            isActive: p.is_active,
+          })),
+        };
+      }
+
+      if (sbApprovalsRes.data && sbApprovalsRes.data.length > 0) {
+        approvalsCount = sbApprovalsRes.data.length;
+        const a = sbApprovalsRes.data[0];
+        latestApproval = {
+          id: a.id,
+          vaultId: a.vault_id,
+          recipientAddress: a.recipient_address,
+          amountZatoshi: BigInt(a.amount_zatoshi || 0),
+          memo: a.memo,
+          status: a.status,
+          expiresAt: a.expires_at ? new Date(a.expires_at) : null,
+          vault: {
+            label: a.vaults?.label || "Foundation Treasury",
+          },
+        };
+      }
+    } catch (sbErr) {
+      console.error("Supabase dashboard fallback error:", sbErr);
+    }
   }
 
   return (
@@ -114,16 +166,20 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Metric 3: Security State */}
+        {/* Metric 3: Live Shielded Balance */}
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--text-muted)]">Security State</span>
-            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-              <Shield className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-[var(--text-muted)]">Shielded Treasury</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live On-Chain" />
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">Optimal</div>
-          <div className="text-xs text-[var(--text-muted)]">FROST RedPallas Active</div>
+          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1.5">
+            <span>{onchainBalance.ironwood}</span>
+            <span className="text-xs font-bold text-[var(--zcash-gold)]">TAZ</span>
+          </div>
+          <div className="text-xs text-[var(--text-muted)] flex items-center justify-between">
+            <span>Pool: {onchainBalance.pool}</span>
+            <span className="font-mono text-[10px]">#{onchainBalance.height}</span>
+          </div>
         </div>
 
         {/* Metric 4: Network */}
@@ -249,7 +305,7 @@ export default async function DashboardPage() {
                   <span className="text-[var(--text-muted)]">Key Holders:</span>
                   <span className="text-[var(--text-primary)] font-medium">
                     {activeVault.participants.length > 0 
-                      ? activeVault.participants.map(p => p.label.split(" ")[0]).join(", ")
+                      ? activeVault.participants.map((p: { label: string }) => p.label.split(" ")[0]).join(", ")
                       : `${activeVault.totalParticipants} Signers`}
                   </span>
                 </div>
