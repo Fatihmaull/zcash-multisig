@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { UIProvider } from "@/context/UIContext";
+import { SplashScreenProvider } from "@/components/ui/SplashScreenProvider";
 
-const inter = Inter({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -41,11 +49,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans min-h-screen antialiased bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200`}>
+      <body className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans min-h-screen antialiased bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200`}>
         <UIProvider>
-          <AppShell>
-            {children}
-          </AppShell>
+          <SplashScreenProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </SplashScreenProvider>
         </UIProvider>
       </body>
     </html>

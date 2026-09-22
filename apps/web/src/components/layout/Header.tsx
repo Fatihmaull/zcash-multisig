@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUI } from "@/context/UIContext";
 import { 
@@ -8,7 +9,8 @@ import {
   Sparkles, 
   Sun, 
   Moon,
-  ArrowLeft
+  ArrowLeft,
+  Wallet
 } from "lucide-react";
 import type { MockScenario } from "@/types/coordinator";
 import { SearchableSelect, type SelectOption } from "@/components/ui/SearchableSelect";
@@ -16,6 +18,19 @@ import { Logo } from "@/components/ui/Logo";
 
 export function Header() {
   const { toggleMobileMenu, activeScenario, setActiveScenario, theme, toggleTheme } = useUI();
+  const [balance, setBalance] = useState<string | null>("0.1000");
+
+  useEffect(() => {
+    fetch("/api/wallet/balance")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data?.ironwood) {
+          const formatted = parseFloat(json.data.ironwood).toFixed(4);
+          setBalance(formatted);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const scenarioOptions: SelectOption<MockScenario>[] = [
     { 
@@ -81,6 +96,17 @@ export function Header() {
             dropdownClassName="w-72 sm:w-80"
           />
         </div>
+
+        {/* Live On-Chain Balance Badge */}
+        <Link
+          href="/vaults/vault-demo-001"
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 text-xs font-medium transition cursor-pointer"
+          title="Live On-Chain Balance (Ironwood)"
+        >
+          <Wallet className="w-3.5 h-3.5 text-amber-500" />
+          <span className="font-mono font-bold text-[var(--text-primary)]">{balance ?? "0.1000"}</span>
+          <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
+        </Link>
 
         {/* Theme Toggle Button (Light / Dark) */}
         <button

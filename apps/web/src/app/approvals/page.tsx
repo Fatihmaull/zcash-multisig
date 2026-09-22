@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowUpRight, Clock, FileCheck2 } from "lucide-react";
+import { ArrowUpRight, Clock, FileCheck2, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,39 @@ type ApprovalRequestWithRelations = Prisma.ApprovalRequestGetPayload<{
     signatureRoundEvents: true;
   };
 }>;
+
+interface SbSignatureEvent {
+  id: string;
+  participant_id: string;
+  round_type: "COMMITMENT" | "SIGNATURE_SHARE";
+  status: "PENDING" | "RECEIVED" | "TIMEOUT" | "INVALID";
+}
+
+interface SbVault {
+  id?: string;
+  label?: string;
+  threshold?: number;
+  total_participants?: number;
+  shielded_address?: string;
+  status?: "PENDING_DKG" | "ACTIVE" | "ARCHIVED";
+  network?: "TESTNET";
+}
+
+interface SbApprovalRequest {
+  id: string;
+  vault_id: string;
+  recipient_address: string;
+  amount_zatoshi?: number | string;
+  memo: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "BROADCASTED";
+  txid: string | null;
+  anchor_block: number | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  vaults?: SbVault | null;
+  signature_round_events?: SbSignatureEvent[] | null;
+}
 
 export default async function ApprovalsPage() {
   let requests: ApprovalRequestWithRelations[] = [];
@@ -29,6 +63,57 @@ export default async function ApprovalsPage() {
     console.error("Failed to fetch approvals from DB:", error);
   }
 
+  // Supabase fallback if local DB has fewer records
+  if (requests.length === 0) {
+    try {
+      const { data: sbRequests } = await supabase
+        .from("approval_requests")
+        .select("*, vaults(*), signature_round_events(*)")
+        .order("created_at", { ascending: false });
+
+      if (sbRequests && sbRequests.length > 0) {
+        requests = (sbRequests as unknown as SbApprovalRequest[]).map((r) => ({
+          id: r.id,
+          vaultId: r.vault_id,
+          recipientAddress: r.recipient_address,
+          amountZatoshi: BigInt(r.amount_zatoshi || 0),
+          memo: r.memo,
+          status: r.status,
+          txid: r.txid,
+          anchorBlock: r.anchor_block,
+          expiresAt: r.expires_at ? new Date(r.expires_at) : null,
+          createdAt: new Date(r.created_at),
+          updatedAt: new Date(r.updated_at),
+          vault: {
+            id: r.vaults?.id || "vault-demo-001",
+            label: r.vaults?.label || "Foundation Treasury",
+            threshold: r.vaults?.threshold || 2,
+            totalParticipants: r.vaults?.total_participants || 3,
+            shieldedAddress: r.vaults?.shielded_address || "",
+            status: r.vaults?.status || "ACTIVE",
+            network: r.vaults?.network || "TESTNET",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            participants: [],
+          },
+          signatureRoundEvents: (r.signature_round_events || []).map((e) => ({
+            id: e.id,
+            approvalRequestId: r.id,
+            participantId: e.participant_id,
+            roundType: e.round_type,
+            status: e.status,
+            culpritDetected: false,
+            errorCode: null,
+            errorDetails: null,
+            timestamp: new Date(),
+          })),
+        }));
+      }
+    } catch (sbErr) {
+      console.error("Supabase approvals query error:", sbErr);
+    }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -40,6 +125,14 @@ export default async function ApprovalsPage() {
             Outgoing transfers requiring threshold cryptographic signatures before shielded funds can be spent.
           </p>
         </div>
+
+        <Link
+          href="/approvals/new"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs sm:text-sm font-semibold transition shadow-md shadow-amber-500/20 active:scale-98 self-start sm:self-auto cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Propose Transfer</span>
+        </Link>
       </div>
 
       <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs overflow-hidden divide-y divide-[var(--border-subtle)]">

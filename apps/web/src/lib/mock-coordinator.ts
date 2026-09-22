@@ -89,7 +89,7 @@ const dkgSessions = new Map<string, DkgSession>();
 const approvalSessions = new Map<string, ApprovalSession>();
 
 // ── Default demo vault for quick testing ─────────────────────
-const DEMO_VAULT_ID = "vault_demo_2of3";
+export const DEMO_VAULT_ID = "vault_demo_2of3";
 const DEMO_PARTICIPANTS: ParticipantPublicInfo[] = [
   {
     label: "Alice (Treasurer)",

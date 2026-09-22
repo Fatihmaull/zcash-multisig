@@ -8,7 +8,9 @@ import {
   Copy, 
   Check, 
   CheckCircle2, 
-  Sparkles
+  Sparkles,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { QuorumIndicator } from "./QuorumIndicator";
 import { MisbehaviorAlert } from "./MisbehaviorAlert";
@@ -22,18 +24,23 @@ interface ApprovalInitialData {
   recipientAddress: string;
   status: string;
   txid?: string | null;
+  threshold?: number;
+  participants?: unknown[];
+  signatureRoundEvents?: unknown[];
 }
 
 interface ApprovalDetailViewProps {
   requestId?: string;
   showMisbehavior?: boolean;
   initialData?: ApprovalInitialData;
+  liveBalance?: string;
 }
 
 export function ApprovalDetailView({
   requestId = "req-demo-001",
   showMisbehavior: propShowMisbehavior,
   initialData,
+  liveBalance = "0.10000000",
 }: ApprovalDetailViewProps) {
   const { activeScenario, setActiveScenario } = useUI();
   
@@ -46,13 +53,39 @@ export function ApprovalDetailView({
   const [bobSigned, setBobSigned] = useState(false);
   const [carolSigned, setCarolSigned] = useState(false);
   const [excludedCulprit, setExcludedCulprit] = useState(false);
-  const [broadcastTxid, setBroadcastTxid] = useState<string | null>(null);
+  const [broadcastTxid, setBroadcastTxid] = useState<string | null>(initialData?.txid || null);
+  const [toastMessage, setToastMessage] = useState<{ title: string; desc: string } | null>(null);
+  const [toastHiding, setToastHiding] = useState(false);
+
+  const showToast = (title: string, desc: string) => {
+    setToastHiding(false);
+    setToastMessage({ title, desc });
+    setTimeout(() => {
+      setToastHiding(true);
+      setTimeout(() => {
+        setToastMessage(null);
+        setToastHiding(false);
+      }, 400);
+    }, 4500);
+  };
+
+  const closeToast = () => {
+    setToastHiding(true);
+    setTimeout(() => {
+      setToastMessage(null);
+      setToastHiding(false);
+    }, 300);
+  };
+
+  const proposalAmount = parseFloat(initialData?.amountZec || "2.50000000");
+  const availableBalance = parseFloat(liveBalance || "0.10000000");
+  const isInsufficient = availableBalance < proposalAmount;
 
   // Compute quorum counts
   let collectedSignatures = 1; // Alice signed
   if (bobSigned && !isMalicious) collectedSignatures++;
   if (carolSigned) collectedSignatures++;
-  const threshold = 2;
+  const threshold = initialData?.threshold || 2;
   const isQuorumMet = collectedSignatures >= threshold;
 
   const copyToClipboard = (text: string) => {
@@ -62,21 +95,65 @@ export function ApprovalDetailView({
   };
 
   const handleSimulateBobSigning = async () => {
+    // Insufficient balance validation check
+    if (isInsufficient) {
+      showToast(
+        "Persetujuan Gagal — Saldo Tidak Mencukupi",
+        `Saldo shielded vault saat ini (${availableBalance.toFixed(8)} TAZ) tidak mencukupi untuk transfer sebesar ${proposalAmount.toFixed(8)} TAZ.`
+      );
+      return;
+    }
+
     setIsSigning(true);
-    await new Promise((r) => setTimeout(r, 900));
+    const txid = !isMalicious ? "4a7f92b8812c85e33d45f92160d5c8290f91a27b876e5117462fa112d8a4e320" : undefined;
+    try {
+      await fetch(`/api/approvals/${requestId}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signer: "Bob",
+          status: isMalicious ? "REJECTED" : "APPROVED",
+          txid,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to sign via API:", err);
+    }
     setIsSigning(false);
     setBobSigned(true);
-    if (!isMalicious) {
-      setBroadcastTxid("4a7f92b8812c85e33d45f92160d5c8290f91a27b876e5117462fa112d8a4e320");
+    if (!isMalicious && txid) {
+      setBroadcastTxid(txid);
     }
   };
 
   const handleSimulateCarolSigning = async () => {
+    // Insufficient balance validation check
+    if (isInsufficient) {
+      showToast(
+        "Persetujuan Gagal — Saldo Tidak Mencukupi",
+        `Saldo shielded vault saat ini (${availableBalance.toFixed(8)} TAZ) tidak mencukupi untuk transfer sebesar ${proposalAmount.toFixed(8)} TAZ.`
+      );
+      return;
+    }
+
     setIsSigning(true);
-    await new Promise((r) => setTimeout(r, 900));
+    const txid = "8b1e42a9923d74f22e34a81050c4b7180e80b16a765d4006351eb001c7b3d219";
+    try {
+      await fetch(`/api/approvals/${requestId}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signer: "Carol",
+          status: "APPROVED",
+          txid,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to sign via API:", err);
+    }
     setIsSigning(false);
     setCarolSigned(true);
-    setBroadcastTxid("8b1e42a9923d74f22e34a81050c4b7180e80b16a765d4006351eb001c7b3d219");
+    setBroadcastTxid(txid);
   };
 
   const handleExcludeCulprit = () => {
@@ -85,7 +162,37 @@ export function ApprovalDetailView({
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in relative">
+      {/* Toast Notification for Insufficient Balance or Errors */}
+      {toastMessage && (
+        <div 
+          className={`fixed top-20 right-6 z-50 max-w-md p-4 rounded-2xl bg-rose-950/95 border border-rose-500/50 text-white shadow-2xl backdrop-blur-xl flex items-start gap-3 transition-all duration-300 ease-out transform ${
+            toastHiding 
+              ? "opacity-0 translate-y-[-12px] scale-95 pointer-events-none" 
+              : "opacity-100 translate-y-0 scale-100"
+          }`}
+        >
+          <div className="w-8 h-8 rounded-xl bg-rose-500/25 text-rose-400 flex items-center justify-center shrink-0 shadow-inner">
+            <AlertTriangle className="w-5 h-5 text-rose-400 animate-pulse" />
+          </div>
+          <div className="space-y-1 flex-1 pr-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-rose-300 font-mono">
+              {toastMessage.title}
+            </h4>
+            <p className="text-xs text-rose-100/90 leading-relaxed font-sans">
+              {toastMessage.desc}
+            </p>
+          </div>
+          <button
+            onClick={closeToast}
+            className="p-1.5 rounded-lg text-rose-300 hover:text-white hover:bg-rose-500/25 transition cursor-pointer"
+            aria-label="Close notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Back link & Top Meta */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -125,6 +232,21 @@ export function ApprovalDetailView({
         </div>
       </div>
 
+      {/* Insufficient Balance Warning Banner */}
+      {isInsufficient && (
+        <div className="p-4 rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-medium">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>
+              Peringatan Saldo: Proposal memerlukan <strong>{proposalAmount.toFixed(8)} TAZ</strong>, tetapi saldo live di Ironwood vault hanya <strong>{availableBalance.toFixed(8)} TAZ</strong>.
+            </span>
+          </div>
+          <span className="font-mono text-[10px] uppercase font-bold text-rose-500 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 shrink-0">
+            Defisit On-Chain
+          </span>
+        </div>
+      )}
+
       {/* Misbehavior Alert Banner */}
       {isMalicious && !excludedCulprit && (
         <MisbehaviorAlert
@@ -141,7 +263,7 @@ export function ApprovalDetailView({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Threshold Reached (2-of-2) — Shielded Transaction Broadcast!</span>
+              <span>Threshold Reached ({threshold}-of-{threshold}) — Shielded Transaction Broadcast!</span>
             </div>
             <p className="text-xs text-[var(--text-secondary)] font-mono break-all">
               Broadcast TxID: {broadcastTxid}
@@ -167,13 +289,19 @@ export function ApprovalDetailView({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] space-y-1">
                 <span className="text-[var(--text-muted)]">Source Vault</span>
-                <p className="text-[var(--text-primary)] font-semibold text-sm">Dev Treasury</p>
-                <span className="text-[11px] text-[var(--zcash-gold)] font-medium">2-of-3 Threshold Policy</span>
+                <p className="text-[var(--text-primary)] font-semibold text-sm">
+                  {initialData?.vaultName || "Foundation Treasury"}
+                </p>
+                <span className="text-[11px] text-[var(--zcash-gold)] font-medium">
+                  {threshold}-of-3 Threshold Policy
+                </span>
               </div>
 
               <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] space-y-1">
                 <span className="text-[var(--text-muted)]">Transfer Amount</span>
-                <p className="text-[var(--text-primary)] font-semibold text-sm font-mono">2.50000000 TAZ</p>
+                <p className="text-[var(--text-primary)] font-semibold text-sm font-mono">
+                  {initialData?.amountZec || "2.50000000"} TAZ
+                </p>
               </div>
             </div>
 

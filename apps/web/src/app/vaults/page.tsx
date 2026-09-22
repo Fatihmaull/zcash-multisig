@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Shield, KeyRound, ArrowUpRight, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import type { Prisma } from "@prisma/client";
+import { getLiveWalletBalance } from "@/lib/onchain-balance";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,7 @@ type VaultWithRelations = Prisma.VaultGetPayload<{
 
 export default async function VaultsPage() {
   let vaults: VaultWithRelations[] = [];
+  const onchainBalance = await getLiveWalletBalance();
 
   try {
     vaults = await prisma.vault.findMany({
@@ -22,6 +25,90 @@ export default async function VaultsPage() {
     });
   } catch (error) {
     console.error("Failed to load vaults from DB:", error);
+  }
+
+interface SbVaultParticipant {
+  id: string;
+  label: string;
+  public_key_identifier: string | null;
+  is_active: boolean;
+  joined_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface SbVaultApproval {
+  id: string;
+  recipient_address: string;
+  amount_zatoshi?: number | string;
+  memo: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "BROADCASTED";
+  txid: string | null;
+  anchor_block: number | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface SbVaultRecord {
+  id: string;
+  label: string;
+  threshold: number;
+  total_participants: number;
+  shielded_address: string | null;
+  status: "PENDING_DKG" | "ACTIVE" | "ARCHIVED";
+  network: "TESTNET";
+  created_at: string;
+  updated_at: string;
+  participants?: SbVaultParticipant[] | null;
+  approval_requests?: SbVaultApproval[] | null;
+}
+
+  // Supabase fallback if local DB has fewer records
+  if (vaults.length === 0) {
+    try {
+      const { data: sbVaults } = await supabase
+        .from("vaults")
+        .select("*, participants(*), approval_requests(*)")
+        .order("created_at", { ascending: false });
+
+      if (sbVaults && sbVaults.length > 0) {
+        vaults = (sbVaults as unknown as SbVaultRecord[]).map((v) => ({
+          id: v.id,
+          label: v.label,
+          threshold: v.threshold,
+          totalParticipants: v.total_participants,
+          shieldedAddress: v.shielded_address,
+          status: v.status,
+          network: v.network,
+          createdAt: new Date(v.created_at),
+          updatedAt: new Date(v.updated_at),
+          participants: (v.participants || []).map((p) => ({
+            id: p.id,
+            vaultId: v.id,
+            label: p.label,
+            publicKeyIdentifier: p.public_key_identifier,
+            isActive: p.is_active,
+            joinedAt: new Date(p.joined_at || 0),
+            updatedAt: new Date(p.updated_at || 0),
+          })),
+          approvalRequests: (v.approval_requests || []).map((a) => ({
+            id: a.id,
+            vaultId: v.id,
+            recipientAddress: a.recipient_address,
+            amountZatoshi: BigInt(a.amount_zatoshi || 0),
+            memo: a.memo,
+            status: a.status,
+            txid: a.txid,
+            anchorBlock: a.anchor_block,
+            expiresAt: a.expires_at ? new Date(a.expires_at) : null,
+            createdAt: new Date(a.created_at || 0),
+            updatedAt: new Date(a.updated_at || 0),
+          })),
+        }));
+      }
+    } catch (sbErr) {
+      console.error("Supabase vaults query error:", sbErr);
+    }
   }
 
   return (
@@ -75,14 +162,25 @@ export default async function VaultsPage() {
 
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
                 <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] block text-[11px]">Spend Policy</span>
-                  <span className="font-semibold text-[var(--text-primary)]">
-                    {vault.threshold} of {vault.totalParticipants} signers
+                  <span className="text-[var(--text-muted)] block text-[11px]">Shielded Balance</span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="font-bold text-[var(--text-primary)] font-mono text-sm">
+                      {onchainBalance.ironwood}
+                    </span>
+                    <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
+                  </div>
+                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono block mt-0.5">
+                    ● Live Ironwood
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] block text-[11px]">Network</span>
-                  <span className="font-semibold text-[var(--zcash-gold)] font-mono">{vault.network}</span>
+                  <span className="text-[var(--text-muted)] block text-[11px]">Spend Policy</span>
+                  <span className="font-semibold text-[var(--text-primary)] block mt-0.5">
+                    {vault.threshold} of {vault.totalParticipants} signers
+                  </span>
+                  <span className="text-[10px] text-[var(--zcash-gold)] font-mono block mt-0.5">
+                    {vault.network}
+                  </span>
                 </div>
                 <div className="col-span-2 p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
                   <span className="text-[var(--text-muted)] block text-[11px]">Signers ({vault.participants.length})</span>
