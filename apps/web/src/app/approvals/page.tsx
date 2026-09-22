@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Clock, FileCheck2, Send, Plus } from "lucide-react";
+import { ArrowUpRight, Clock, FileCheck2, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import type { Prisma } from "@prisma/client";
@@ -12,6 +12,39 @@ type ApprovalRequestWithRelations = Prisma.ApprovalRequestGetPayload<{
     signatureRoundEvents: true;
   };
 }>;
+
+interface SbSignatureEvent {
+  id: string;
+  participant_id: string;
+  round_type: "COMMITMENT" | "SIGNATURE_SHARE";
+  status: "PENDING" | "RECEIVED" | "TIMEOUT" | "INVALID";
+}
+
+interface SbVault {
+  id?: string;
+  label?: string;
+  threshold?: number;
+  total_participants?: number;
+  shielded_address?: string;
+  status?: "PENDING_DKG" | "ACTIVE" | "ARCHIVED";
+  network?: "TESTNET";
+}
+
+interface SbApprovalRequest {
+  id: string;
+  vault_id: string;
+  recipient_address: string;
+  amount_zatoshi?: number | string;
+  memo: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "BROADCASTED";
+  txid: string | null;
+  anchor_block: number | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  vaults?: SbVault | null;
+  signature_round_events?: SbSignatureEvent[] | null;
+}
 
 export default async function ApprovalsPage() {
   let requests: ApprovalRequestWithRelations[] = [];
@@ -39,7 +72,7 @@ export default async function ApprovalsPage() {
         .order("created_at", { ascending: false });
 
       if (sbRequests && sbRequests.length > 0) {
-        requests = sbRequests.map((r: any) => ({
+        requests = (sbRequests as unknown as SbApprovalRequest[]).map((r) => ({
           id: r.id,
           vaultId: r.vault_id,
           recipientAddress: r.recipient_address,
@@ -63,15 +96,18 @@ export default async function ApprovalsPage() {
             updatedAt: new Date(),
             participants: [],
           },
-          signatureRoundEvents: (r.signature_round_events || []).map((e: any) => ({
+          signatureRoundEvents: (r.signature_round_events || []).map((e) => ({
             id: e.id,
             approvalRequestId: r.id,
             participantId: e.participant_id,
             roundType: e.round_type,
             status: e.status,
-            createdAt: new Date(),
+            culpritDetected: false,
+            errorCode: null,
+            errorDetails: null,
+            timestamp: new Date(),
           })),
-        })) as any;
+        }));
       }
     } catch (sbErr) {
       console.error("Supabase approvals query error:", sbErr);

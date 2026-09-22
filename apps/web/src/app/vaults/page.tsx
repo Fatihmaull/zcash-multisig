@@ -27,6 +27,42 @@ export default async function VaultsPage() {
     console.error("Failed to load vaults from DB:", error);
   }
 
+interface SbVaultParticipant {
+  id: string;
+  label: string;
+  public_key_identifier: string | null;
+  is_active: boolean;
+  joined_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface SbVaultApproval {
+  id: string;
+  recipient_address: string;
+  amount_zatoshi?: number | string;
+  memo: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "BROADCASTED";
+  txid: string | null;
+  anchor_block: number | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface SbVaultRecord {
+  id: string;
+  label: string;
+  threshold: number;
+  total_participants: number;
+  shielded_address: string | null;
+  status: "PENDING_DKG" | "ACTIVE" | "ARCHIVED";
+  network: "TESTNET";
+  created_at: string;
+  updated_at: string;
+  participants?: SbVaultParticipant[] | null;
+  approval_requests?: SbVaultApproval[] | null;
+}
+
   // Supabase fallback if local DB has fewer records
   if (vaults.length === 0) {
     try {
@@ -36,7 +72,7 @@ export default async function VaultsPage() {
         .order("created_at", { ascending: false });
 
       if (sbVaults && sbVaults.length > 0) {
-        vaults = sbVaults.map((v: any) => ({
+        vaults = (sbVaults as unknown as SbVaultRecord[]).map((v) => ({
           id: v.id,
           label: v.label,
           threshold: v.threshold,
@@ -46,16 +82,16 @@ export default async function VaultsPage() {
           network: v.network,
           createdAt: new Date(v.created_at),
           updatedAt: new Date(v.updated_at),
-          participants: (v.participants || []).map((p: any) => ({
+          participants: (v.participants || []).map((p) => ({
             id: p.id,
             vaultId: v.id,
             label: p.label,
             publicKeyIdentifier: p.public_key_identifier,
             isActive: p.is_active,
-            joinedAt: new Date(p.joined_at || Date.now()),
-            updatedAt: new Date(p.updated_at || Date.now()),
+            joinedAt: new Date(p.joined_at || 0),
+            updatedAt: new Date(p.updated_at || 0),
           })),
-          approvalRequests: (v.approval_requests || []).map((a: any) => ({
+          approvalRequests: (v.approval_requests || []).map((a) => ({
             id: a.id,
             vaultId: v.id,
             recipientAddress: a.recipient_address,
@@ -65,10 +101,10 @@ export default async function VaultsPage() {
             txid: a.txid,
             anchorBlock: a.anchor_block,
             expiresAt: a.expires_at ? new Date(a.expires_at) : null,
-            createdAt: new Date(a.created_at || Date.now()),
-            updatedAt: new Date(a.updated_at || Date.now()),
+            createdAt: new Date(a.created_at || 0),
+            updatedAt: new Date(a.updated_at || 0),
           })),
-        })) as any;
+        }));
       }
     } catch (sbErr) {
       console.error("Supabase vaults query error:", sbErr);

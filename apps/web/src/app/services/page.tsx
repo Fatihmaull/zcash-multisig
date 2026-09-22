@@ -4,17 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { 
   ShieldCheck, 
-  Lock, 
   Terminal, 
   Sliders, 
   ArrowRight, 
   KeyRound, 
-  CheckCircle2, 
-  Cpu, 
   FileCode2,
-  Zap,
-  Activity,
-  Layers,
   ChevronRight
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";

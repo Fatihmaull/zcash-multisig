@@ -5,6 +5,21 @@ import { getLiveWalletBalance } from "@/lib/onchain-balance";
 
 export const dynamic = "force-dynamic";
 
+type ApprovalDetailRecord = {
+  id: string;
+  amountZatoshi: bigint;
+  memo: string | null;
+  recipientAddress: string;
+  status: string;
+  txid: string | null;
+  vault?: {
+    label: string;
+    threshold: number;
+    participants?: unknown[];
+  } | null;
+  signatureRoundEvents?: unknown[];
+};
+
 export default async function ApprovalDetailPage({
   params,
 }: {
@@ -13,9 +28,9 @@ export default async function ApprovalDetailPage({
   const { id } = await params;
   const onchainBalance = await getLiveWalletBalance();
 
-  let dbApproval: any = null;
+  let dbApproval: ApprovalDetailRecord | null = null;
   try {
-    dbApproval = await prisma.approvalRequest.findUnique({
+    const res = await prisma.approvalRequest.findUnique({
       where: { id },
       include: {
         vault: {
@@ -24,6 +39,9 @@ export default async function ApprovalDetailPage({
         signatureRoundEvents: true,
       },
     });
+    if (res) {
+      dbApproval = res;
+    }
   } catch (error) {
     console.error("Error fetching approval detail:", error);
   }

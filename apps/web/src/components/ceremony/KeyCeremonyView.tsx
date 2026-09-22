@@ -406,6 +406,11 @@ export function KeyCeremonyView() {
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                       Each participant holds their mathematical key share securely. The vault is ready to receive and spend shielded Zcash.
                     </p>
+                    {saveError && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 font-mono mt-1">
+                        Notice: {saveError}
+                      </p>
+                    )}
                   </div>
                 </div>
 

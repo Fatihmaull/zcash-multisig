@@ -4,11 +4,9 @@ import Link from "next/link";
 import { 
   ShieldCheck, 
   Lock, 
-  Terminal, 
   ArrowRight, 
   EyeOff, 
-  ChevronRight,
-  ExternalLink
+  ChevronRight
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
 

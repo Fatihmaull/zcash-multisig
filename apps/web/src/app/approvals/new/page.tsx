@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Send, Sparkles, Shield, AlertCircle } from "lucide-react";
+import { ArrowLeft, Send, Shield, AlertCircle } from "lucide-react";
 
 export default function NewProposalPage() {
   const router = useRouter();

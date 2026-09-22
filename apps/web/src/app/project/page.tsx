@@ -3,18 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { 
-  Layers, 
   ArrowRight, 
-  ShieldCheck, 
-  Users, 
-  CheckCircle2, 
-  Sliders, 
   ExternalLink,
-  Coins,
-  FileCheck2,
-  ChevronRight,
-  Zap,
-  Activity
+  ChevronRight
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
 

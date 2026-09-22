@@ -1,28 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Radio, CheckCircle2, ShieldCheck, ArrowUpRight } from "lucide-react";
+import { RefreshCw, ShieldCheck } from "lucide-react";
 import type { OnchainWalletBalance } from "@/lib/onchain-balance";
 
 interface LiveBalanceCardProps {
   initialData?: OnchainWalletBalance;
 }
 
+const DEFAULT_WALLET_BALANCE: OnchainWalletBalance = {
+  total: "0.10000000",
+  ironwood: "0.10000000",
+  sapling: "0.00000000",
+  orchard: "0.00000000",
+  unshielded: "0.00000000",
+  height: 4379870,
+  pool: "Ironwood",
+  address:
+    "utest1quqhwz3035hsf3z2pv4v24qce5r42qalfeqgzxslfjrys660kfg5m6spw4fahvcpw02y4x38t4j3ykh44lnvmvct3zkjuuugggr2k772lh6gvs52t62yv94m2gngu7n7t0yk0whue3rtk5y73w9xj2hssm4p46wvsw5n8rqctm6c63vwdl3df2t6t9aqpr42qgs90cpyup7zghh8482",
+  synced: true,
+  timestamp: 0,
+};
+
 export function LiveBalanceCard({ initialData }: LiveBalanceCardProps) {
   const [data, setData] = useState<OnchainWalletBalance>(
-    initialData || {
-      total: "0.10000000",
-      ironwood: "0.10000000",
-      sapling: "0.00000000",
-      orchard: "0.00000000",
-      unshielded: "0.00000000",
-      height: 4379870,
-      pool: "Ironwood",
-      address:
-        "utest1quqhwz3035hsf3z2pv4v24qce5r42qalfeqgzxslfjrys660kfg5m6spw4fahvcpw02y4x38t4j3ykh44lnvmvct3zkjuuugggr2k772lh6gvs52t62yv94m2gngu7n7t0yk0whue3rtk5y73w9xj2hssm4p46wvsw5n8rqctm6c63vwdl3df2t6t9aqpr42qgs90cpyup7zghh8482",
-      synced: true,
-      timestamp: Date.now(),
-    }
+    initialData || DEFAULT_WALLET_BALANCE
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
 

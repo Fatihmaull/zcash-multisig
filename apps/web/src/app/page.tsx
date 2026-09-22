@@ -7,15 +7,11 @@ import {
   ArrowRight, 
   ChevronRight, 
   ShieldCheck, 
-  Lock, 
-  Terminal, 
-  Zap, 
-  Check, 
-  Layers, 
   KeyRound, 
   EyeOff, 
   Activity,
-  Cpu
+  Cpu,
+  type LucideIcon
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
 import { useSplashScreen } from "@/components/ui/SplashScreenProvider";
@@ -280,7 +276,7 @@ const isAuthorized = groupVK.verifySpendAuthorization({
               { id: "halo2", label: "Halo 2", icon: EyeOff },
               { id: "dkg", label: "DKG", icon: Cpu },
               { id: "redpallas", label: "RedPallas", icon: Activity },
-            ] as { id: FrameworkTab; label: string; icon: any }[]
+            ] as { id: FrameworkTab; label: string; icon: LucideIcon }[]
           ).map((item) => {
             const isSelected = activeTab === item.id;
             const Icon = item.icon;

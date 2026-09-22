@@ -7,6 +7,24 @@ import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
+interface ParticipantItem {
+  id: string;
+  label: string;
+  publicKeyIdentifier?: string | null;
+  isActive: boolean;
+}
+
+interface VaultDetailRecord {
+  id: string;
+  label: string;
+  threshold: number;
+  totalParticipants: number;
+  shieldedAddress: string | null;
+  status: string;
+  network: string;
+  participants: ParticipantItem[];
+}
+
 export default async function VaultDetailPage({
   params,
 }: {
@@ -15,12 +33,29 @@ export default async function VaultDetailPage({
   const { id } = await params;
   const onchainBalance = await getLiveWalletBalance();
 
-  let vault = null;
+  let vault: VaultDetailRecord | null = null;
   try {
-    vault = await prisma.vault.findUnique({
+    const res = await prisma.vault.findUnique({
       where: { id },
       include: { participants: true },
     });
+    if (res) {
+      vault = {
+        id: res.id,
+        label: res.label,
+        threshold: res.threshold,
+        totalParticipants: res.totalParticipants,
+        shieldedAddress: res.shieldedAddress,
+        status: res.status,
+        network: res.network,
+        participants: res.participants.map((p) => ({
+          id: p.id,
+          label: p.label,
+          publicKeyIdentifier: p.publicKeyIdentifier,
+          isActive: p.isActive,
+        })),
+      };
+    }
   } catch (err) {
     console.error("Prisma vault query error:", err);
   }
@@ -43,7 +78,12 @@ export default async function VaultDetailPage({
           shieldedAddress: sbVault.shielded_address,
           status: sbVault.status,
           network: sbVault.network,
-          participants: (sbVault.participants || []).map((p: any) => ({
+          participants: (sbVault.participants || []).map((p: {
+            id: string;
+            label: string;
+            public_key_identifier?: string | null;
+            is_active: boolean;
+          }) => ({
             id: p.id,
             label: p.label,
             publicKeyIdentifier: p.public_key_identifier,
@@ -150,7 +190,7 @@ export default async function VaultDetailPage({
         </div>
 
         <div className="divide-y divide-[var(--border-subtle)] text-xs">
-          {vaultParticipants.map((p: any, idx: number) => (
+          {vaultParticipants.map((p: ParticipantItem, idx: number) => (
             <div key={p.id || idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <div className="text-sm font-semibold text-[var(--text-primary)]">{p.label}</div>

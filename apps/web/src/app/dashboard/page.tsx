@@ -15,12 +15,43 @@ import { getLiveWalletBalance } from "@/lib/onchain-balance";
 
 export const dynamic = "force-dynamic";
 
+interface DashboardParticipant {
+  id: string;
+  label: string;
+  publicKeyIdentifier?: string | null;
+  isActive: boolean;
+}
+
+interface DashboardVault {
+  id: string;
+  label: string;
+  threshold: number;
+  totalParticipants: number;
+  shieldedAddress?: string | null;
+  status: string;
+  network: string;
+  participants: DashboardParticipant[];
+}
+
+interface DashboardApproval {
+  id: string;
+  vaultId: string;
+  recipientAddress: string;
+  amountZatoshi: bigint;
+  memo: string | null;
+  status: string;
+  expiresAt: Date | null;
+  vault: {
+    label: string;
+  };
+}
+
 export default async function DashboardPage() {
   // Query live vaults and pending approvals from database
   let vaultsCount = 0;
   let approvalsCount = 0;
-  let activeVault: any = null;
-  let latestApproval: any = null;
+  let activeVault: DashboardVault | null = null;
+  let latestApproval: DashboardApproval | null = null;
   const onchainBalance = await getLiveWalletBalance();
 
   try {
@@ -38,8 +69,37 @@ export default async function DashboardPage() {
 
     vaultsCount = vaults.length;
     approvalsCount = approvals.length;
-    activeVault = vaults[0] || null;
-    latestApproval = approvals[0] || null;
+    if (vaults[0]) {
+      activeVault = {
+        id: vaults[0].id,
+        label: vaults[0].label,
+        threshold: vaults[0].threshold,
+        totalParticipants: vaults[0].totalParticipants,
+        shieldedAddress: vaults[0].shieldedAddress,
+        status: vaults[0].status,
+        network: vaults[0].network,
+        participants: vaults[0].participants.map((p) => ({
+          id: p.id,
+          label: p.label,
+          publicKeyIdentifier: p.publicKeyIdentifier,
+          isActive: p.isActive,
+        })),
+      };
+    }
+    if (approvals[0]) {
+      latestApproval = {
+        id: approvals[0].id,
+        vaultId: approvals[0].vaultId,
+        recipientAddress: approvals[0].recipientAddress,
+        amountZatoshi: approvals[0].amountZatoshi,
+        memo: approvals[0].memo,
+        status: approvals[0].status,
+        expiresAt: approvals[0].expiresAt,
+        vault: {
+          label: approvals[0].vault.label,
+        },
+      };
+    }
   } catch (error) {
     console.error("Dashboard DB query error:", error);
   }
@@ -63,7 +123,12 @@ export default async function DashboardPage() {
           shieldedAddress: v.shielded_address,
           status: v.status,
           network: v.network,
-          participants: (v.participants || []).map((p: any) => ({
+          participants: (v.participants || []).map((p: {
+            id: string;
+            label: string;
+            public_key_identifier?: string | null;
+            is_active: boolean;
+          }) => ({
             id: p.id,
             label: p.label,
             publicKeyIdentifier: p.public_key_identifier,

@@ -25,8 +25,8 @@ interface ApprovalInitialData {
   status: string;
   txid?: string | null;
   threshold?: number;
-  participants?: any[];
-  signatureRoundEvents?: any[];
+  participants?: unknown[];
+  signatureRoundEvents?: unknown[];
 }
 
 interface ApprovalDetailViewProps {
