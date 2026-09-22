@@ -82,9 +82,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 |---|---|---|---|
 | ~~**P0-B1**~~ | ✅ **DONE 19 Sep.** Public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood. Self-hosted Z3 stack kept as a tested, unstarted fallback. Decision and evidence in [03-architecture.md](03-architecture.md) §6. | — | — |
 | ~~**P0-B2**~~ | ✅ **DONE.** Cargo workspace, Next.js app, docker-compose, and CI (`.github/workflows/ci.yml`): Rust check/clippy/fmt/test, web tsc/lint, plus guard jobs that fail the build on a forbidden ciphersuite (C4) or any mainnet reference (C9). | — | — |
-| **P0-B3** | **⬜ REMAINING — needs a human.** Fund a testnet wallet with ZEC **in the Ironwood pool**. Faucets: [zcashfaucet.jinolabs.xyz](https://zcashfaucet.jinolabs.xyz) (0.1 TAZ, shielded z2z, browser PoW), [Fauzec](https://fauzec.com/) (UA `utest1…` or Sapling `ztestsapling…`; no transparent), [Zeropond](http://zeropond.com/). **Note:** faucets pay into Sapling or a UA — getting funds *into Ironwood* likely needs a self-transfer afterwards. Verify which pool the received note lands in before assuming Gate B is fundable. | 0.5d | — |
+| **P0-B3** | 🟡 **HALF — blocks Gate B** (#6). Wallet generator merged (#16), address posted to the issue. **The faucet claim itself needs a human**: all three gate on browser proof-of-work. And a payout lands in Sapling or a UA — reaching Ironwood likely needs a self-transfer, so verify the pool rather than assuming. | sisa | — |
 | ~~**P0-B4**~~ | ✅ **DONE** (PR #1). `prisma/schema.prisma` — vaults, participants, approval requests, round events, viewing keys. Zero key material, verified in review. | — | — |
-| **P0-B5** | **Traction kickoff.** Build the list of 10 contacts, draft the outreach email, post the Zcash Community Forum thread. See [09-traction.md](09-traction.md). | 0.5d + ongoing | — |
+| ~~**P0-B5**~~ | ✅ **DONE 22 Sep** (#13). Sent as [ZcashFoundation/frost#1094](https://github.com/ZcashFoundation/frost/issues/1094) — both the FVK-under-Ironwood question and the v3 deprecation gap, with an offer to open a PR for the latter. | — | — |
 
 ### 🚩 Gate A — 21 Sep
 
@@ -114,9 +114,9 @@ This phase is the whole project. Everything after it is user interface.
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P1-A1** | `quorum-core`: wrap `frost-rerandomized` behind our own types. DKG orchestration over `frostd`, with **authenticated *and* confidential** channels (constraint C5). | 1.5d | Gate A |
-| **P1-A2** | `quorum-signer` binary: holds the share, encrypted at rest with a participant-set passphrase. Performs round 1 (commitments + randomness contribution) and round 2 (signature share). **Never transmits the share** — if a code path would move share material across the process boundary, that path is wrong. | 1.5d | P1-A1 |
-| **P1-A3** | `quorum-coordinator`: drives the FROST coordinator role, aggregates shares, maps `InvalidSignatureShare::culprits` to a typed domain error rather than letting a library error escape. | 1.5d | P1-A1 |
+| ~~**P1-A1**~~ | ✅ **DONE 21 Sep** (#11). DKG as a typestate — Round1→Round2→Finished, so a round cannot run out of order — plus the full `frostd` transport: XEdDSA login, sessions, and Noise_K end-to-end so the relay carries only ciphertext. We had to write the client ourselves: `frost-client` is unpublished and pinned to frost-core 2.2.0. | — | — |
+| ~~**P1-A2**~~ | ✅ **DONE 21 Sep** (#11). `quorum-signer`. `sign()` consumes the session, so round-1 nonces cannot be reused — the one mistake that leaks the signing share is now a compile error. Share at rest behind Argon2id + XChaCha20-Poly1305. | — | — |
+| ~~**P1-A3**~~ | ✅ **DONE 21 Sep** (#11). `quorum-coordinator`. Typestate again; the unit of work is an **action**, not a transaction. Culprit attribution carried into the error type rather than flattened to a message. Holds no key material. | — | — |
 | **P1-A4** | PCZT assembly with an Ironwood bundle. **Defer the anchor to broadcast** (constraint C3) — never bind it at build time for convenience. | 1.5d | P1-B1 |
 
 ### Dev B — Phase 1 share
