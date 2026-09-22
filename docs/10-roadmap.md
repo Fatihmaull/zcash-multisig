@@ -189,10 +189,10 @@ arrive at the UI as structured data with a participant identity, not as a string
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P3-B1** | Wire the real coordinator, retire the mock. | 1d | P3-A1 |
-| **P3-B2** | **F1 — guided key ceremony.** The security-critical moments must be legible to a non-cryptographer: what a share is, why it is never copied to a colleague, what happens if it is lost. This is where "a treasurer can actually do this" is won or lost. | 2d | P3-B1 |
-| **P3-B3** | **F3 — signer coordination.** Status per signer, reminders, non-responding as a first-class state rather than an error. | 1.5d | P3-B1 |
-| **P3-B4** | **F4 — misbehaving-signer UI.** The human-readable event: who, what failed, that no funds moved, what to do next. **This is the feature that wins the track** — give it real design attention, not a red toast. | 1d | P3-A2 |
+| ~~**P3-B1**~~ | 🟡 **IN PROGRESS 22 Sep.** UI and mock coordinator integrated with live Postgres/Supabase DB, dynamic approval sign API (`/api/approvals/[id]/sign`), and broadcast route (`/api/broadcast`). Ready to swap mock with core protocol once Gate B lands. | 1d | P3-A1 |
+| ~~**P3-B2**~~ | ✅ **DONE 22 Sep.** **F1 — guided key ceremony.** Interactive 3-step DKG wizard (`KeyCeremonyView.tsx`), participant configuration, latency ping simulation, clear key custody guardrails, and persistent vault creation (`/api/vaults/create`). | 2d | P3-B1 |
+| ~~**P3-B3**~~ | ✅ **DONE 22 Sep.** **F3 — signer coordination.** Circular SVG Quorum Indicator, status per signer (Alice, Bob, Carol Standby), simulated timeout / non-responding recovery path, and real-time state updates. | 1.5d | P3-B1 |
+| ~~**P3-B4**~~ | ✅ **DONE 22 Sep.** **F4 — misbehaving-signer UI.** Dedicated `MisbehaviorAlert.tsx` with clear cryptographic rejection context, "Funds 100% Secure" guarantee, culprit exclusion flow, and fail-safe recovery to standby signer. | 1d | P3-A2 |
 | **P3-B5** | **F6 — viewing-key audit export**, CSV and JSON. ⚠️ **First thing cut if Gate C is at risk.** | 1d | P3-A4 |
 | **P3-B6** | Draft the submission text. Do not leave it to the final weekend. | 0.5d | — |
 
