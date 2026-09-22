@@ -111,10 +111,29 @@ CREATE INDEX IF NOT EXISTS "approval_requests_vault_id_status_idx" ON "approval_
 CREATE INDEX IF NOT EXISTS "signature_round_events_approval_request_id_idx" ON "signature_round_events"("approval_request_id");
 CREATE INDEX IF NOT EXISTS "signature_round_events_participant_id_idx" ON "signature_round_events"("participant_id");
 
--- 4. Enable Supabase Realtime (Optional for live updates)
+-- 4. Row Level Security (RLS) — Fix for Issue #24
+-- Deny unauthorized mutations from anon key; allow public read-only for transparency
+ALTER TABLE "vaults" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "participants" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "approval_requests" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "signature_round_events" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "viewing_key_records" ENABLE ROW LEVEL SECURITY;
+
+-- Explicit RLS Policies: Public read-only access for demonstration & verification
+CREATE POLICY "Public read-only vaults" ON "vaults" FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public read-only participants" ON "participants" FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public read-only approval_requests" ON "approval_requests" FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public read-only signature_round_events" ON "signature_round_events" FOR SELECT TO anon, authenticated USING (true);
+
+-- viewing_key_records: STRICT DENY FOR ANON (Opt-in viewing keys must never be readable by unauthenticated users)
+CREATE POLICY "Deny anon access to viewing keys" ON "viewing_key_records" FOR ALL TO anon USING (false);
+
+-- Service role bypasses RLS automatically in PostgreSQL / Supabase, ensuring server-side API routes retain necessary sync capabilities.
+
+-- 5. Enable Supabase Realtime (Optional for live updates)
 ALTER PUBLICATION supabase_realtime ADD TABLE "vaults", "approval_requests", "signature_round_events";
 
--- 5. Seed Initial Demo Data (Foundation Treasury, Alice, Bob, Carol)
+-- 6. Seed Initial Demo Data (Foundation Treasury, Alice, Bob, Carol)
 INSERT INTO "vaults" ("id", "label", "threshold", "total_participants", "shielded_address", "status", "network")
 VALUES (
     'vault-demo-001',
@@ -142,3 +161,4 @@ VALUES (
     'Grant disbursement: Q3 2026 Core Infrastructure Audit',
     'PENDING'
 ) ON CONFLICT ("id") DO NOTHING;
+
