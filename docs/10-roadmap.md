@@ -151,7 +151,7 @@ This is a decision point, not a reason to spend Phase 3 on the same wall.
 |---|---|---|---|
 | ~~**P2-B1**~~ | ✅ **DONE 20 Sep.** All seven gaps closed. Signing split into two rounds taking per-action arrays; `CoordinatorService` split from `SignerService` so the browser is structurally incapable of signing. Decision record in [11-contract-review.md](11-contract-review.md). | — | — |
 | ~~**P2-B2**~~ | ✅ **DONE** (PR #1). Next.js + Tailwind scaffold, layout, navigation. | — | — |
-| **P2-B3** | 🟡 **PARTIAL** (PR #1). `schema.prisma` and `seed.ts` exist. **No `migrations/` directory** — the schema has never been applied to a database. | sisa | — |
+| **P2-B3** | ✅ **DONE 22 Sep.** Prisma migrations created (`0_init`), applied and deployed cleanly. `pnpm db:migrate` and `pnpm db:deploy` added. Verified against PostgreSQL with seed execution. | — | — |
 | ~~**P2-B4**~~ | ✅ **DONE** (PR #1). `src/lib/mock-coordinator.ts`, clearly labelled, implements `CoordinatorService`. | — | — |
 | ~~**P2-B5**~~ | ✅ **DONE** (PR #1). Vault creation and list UI. | — | — |
 | ~~**P2-B6**~~ | ✅ **DONE** (PR #1). Approval list and detail UI. | — | — |

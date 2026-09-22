@@ -28,9 +28,11 @@ shielded funds usable by a treasurer on a Monday morning.
 # 1. Start the local PostgreSQL service
 docker compose up -d postgres
 
-# 2. Push Prisma database schema & run seed
-pnpm --filter web exec prisma db push
+# 2. Run Prisma database migrations & seed demo state
+pnpm db:deploy
 pnpm db:seed
+# Or reset everything in one command:
+# pnpm fixture:reset
 
 # 3. Start the Next.js development server
 pnpm dev
