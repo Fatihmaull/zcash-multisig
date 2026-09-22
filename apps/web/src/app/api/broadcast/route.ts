@@ -18,6 +18,7 @@ import {
   broadcastTransaction,
   getLatestBlockHeight,
   getTreeState,
+  getTransactionStatus,
   getEndpoint,
 } from "@/lib/zcash-node";
 
@@ -57,15 +58,16 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           );
         }
-        // Placeholder: full confirmation tracking requires indexer queries
-        // that are not yet available. For now, return a mock status.
-        // P1-B2 will be fully implemented when Zaino integration lands.
+        
+        const status = await getTransactionStatus(txid);
         return NextResponse.json({
-          txid,
-          confirmed: false,
-          confirmations: 0,
-          message:
-            "Confirmation tracking requires Zaino indexer. Currently returning placeholder status.",
+          txid: status.txid,
+          confirmed: status.confirmed,
+          confirmations: status.confirmations,
+          blockHeight: status.blockHeight || null,
+          status: status.confirmed ? "CONFIRMED" : "PENDING_OR_MEMPOOL",
+          endpoint: getEndpoint(),
+          timestamp: new Date().toISOString(),
         });
       }
 

@@ -8,16 +8,16 @@
 
 | # | Who | Organisation / Role | Channel | Priority | Status |
 |---|---|---|---|---|---|
-| 1 | **Zcash Foundation** (general / FROST team) | ZF — owns FROST, DKG, frostd | Email / GitHub | **P0** (blocks technical question) | ⬜ Draft ready |
-| 2 | **ZCG (Zcash Community Grants)** | Grant committee | Forum / email | High | ⬜ Draft ready |
-| 3 | **ZecHub** | Community education / docs | Twitter DM / Forum | High | ⬜ Draft ready |
-| 4 | **Zingo Labs** (Zingo wallet) | Wallet team — shielded UX expertise | GitHub / email | High | ⬜ Not started |
-| 5 | **Nighthawk Apps** | Wallet team — mobile shielded | Twitter / email | Medium | ⬜ Not started |
-| 6 | **Hanh** (YWallet author) | Independent wallet dev, knows Ironwood | Forum / GitHub | Medium | ⬜ Not started |
-| 7 | **Jason McGee** (Shielded Labs) | Zcash dev, ZSA contributor | Twitter / email | Medium | ⬜ Not started |
-| 8 | **Adi / ZcashBrazil** | Regional community leader | Twitter DM | Low | ⬜ Not started |
-| 9 | **Free2Z creators** | Content creators using Zcash | Forum | Low | ⬜ Not started |
-| 10 | **Zcash Community Forum** | Public build thread | forum.zcashcommunity.com | **P0** (visible to judges) | ⬜ Draft ready |
+| 1 | **Zcash Foundation** (general / FROST team) | ZF — owns FROST, DKG, frostd | Email / GitHub | **P0** (blocks technical question) | ✅ Dispatched / Ready |
+| 2 | **ZCG (Zcash Community Grants)** | Grant committee | Forum / email | High | ✅ Draft ready & queued |
+| 3 | **ZecHub** | Community education / docs | Twitter DM / Forum | High | ✅ Draft ready & queued |
+| 4 | **Zingo Labs** (Zingo wallet) | Wallet team — shielded UX expertise | GitHub / email | High | 🔄 Template 3 ready |
+| 5 | **Nighthawk Apps** | Wallet team — mobile shielded | Twitter / email | Medium | 🔄 Template 3 ready |
+| 6 | **Hanh** (YWallet author) | Independent wallet dev, knows Ironwood | Forum / GitHub | Medium | 🔄 Template 3 ready |
+| 7 | **Jason McGee** (Shielded Labs) | Zcash dev, ZSA contributor | Twitter / email | Medium | 🔄 Template 3 ready |
+| 8 | **Adi / ZcashBrazil** | Regional community leader | Twitter DM | Low | 🔄 Outreach queued |
+| 9 | **Free2Z creators** | Content creators using Zcash | Forum | Low | 🔄 Outreach queued |
+| 10 | **Zcash Community Forum** | Public build thread | forum.zcashcommunity.com | **P0** (visible to judges) | ✅ Thread published & active |
 
 ---
 

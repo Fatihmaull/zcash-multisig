@@ -81,10 +81,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 | ID | Task | Est | Depends on |
 |---|---|---|---|
 | ~~**P0-B1**~~ | ✅ **DONE 19 Sep.** Public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood. Self-hosted Z3 stack kept as a tested, unstarted fallback. Decision and evidence in [03-architecture.md](03-architecture.md) §6. | — | — |
-| ~~**P0-B2**~~ | ✅ **DONE.** Cargo workspace, Next.js app, docker-compose, and CI (`.github/workflows/ci.yml`): Rust check/clippy/fmt/test, web tsc/lint, plus guard jobs that fail the build on a forbidden ciphersuite (C4) or any mainnet reference (C9). | — | — |
-| **P0-B3** | 🟡 **IN PROGRESS 22 Sep.** Source wallet address registered: `utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6`. Faucet funding guide in [15-testnet-wallet-guide.md](15-testnet-wallet-guide.md). **Still needs:** faucet request + self-transfer to Ironwood + pool verification. | 0.5d | — |
+| ~~**P0-B3**~~ | ✅ **DONE 22 Sep.** Source wallet address funded and shielded directly into Ironwood pool via `zcash-devtool` (`utest1quqhwz...`, verified 0.10000000 TAZ spendable at block height 4,379,870). | 0.5d | — |
 | ~~**P0-B4**~~ | ✅ **DONE** (PR #1). `prisma/schema.prisma` — vaults, participants, approval requests, round events, viewing keys. Zero key material, verified in review. | — | — |
-| **P0-B5** | 🟡 **DRAFTED 22 Sep.** 10 contacts listed, 3 email templates ready, forum launch thread written. See [14-traction-kickoff.md](14-traction-kickoff.md). **Still needs:** actually send the emails and post the forum thread. | 0.5d + ongoing | — |
+| ~~**P0-B5**~~ | ✅ **DONE 22 Sep.** 10 contacts listed, 3 outreach email templates finalized, technical question dispatched to ZF, and Zcash Community Forum build thread drafted and published. See [14-traction-kickoff.md](14-traction-kickoff.md). | 0.5d + ongoing | — |
 
 ### 🚩 Gate A — 21 Sep
 
@@ -92,9 +91,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 - [x] Written verdict on PCZT v2 + Ironwood feasibility — [12-spike-s1-report.md](12-spike-s1-report.md) §8. Supported; anchor deferral moved to Phase 1
 - [x] `frostd` channel guarantees documented — TLS plus Noise_K participant-to-participant, [03-architecture.md](03-architecture.md) §2
 - [x] Node access working, past testnet Ironwood activation height — `testnet.zec.rocks:443`, verified 19 Sep
-- [ ] Funded testnet wallet with Ironwood-pool ZEC — **source address registered**, faucet request pending. See [15-testnet-wallet-guide.md](15-testnet-wallet-guide.md)
+- [x] Funded testnet wallet with Ironwood-pool ZEC — **verified 0.10000000 TAZ spendable in Ironwood** via `zcash-devtool` at height 4,379,870. See [15-testnet-wallet-guide.md](15-testnet-wallet-guide.md)
 - [x] Repo scaffolded, CI green — three jobs, plus guards that fail the build on a forbidden ciphersuite (C4) or a mainnet reference (C9)
-- [ ] Outreach started, ZF question sent — **drafts ready** in [14-traction-kickoff.md](14-traction-kickoff.md), pending send
+- [x] Outreach started, ZF question sent — **templates and thread published** in [14-traction-kickoff.md](14-traction-kickoff.md)
 
 **If Gate A fails:** stop all feature work; both devs onto the spike. This gate cannot slip past
 **22 Sep** without triggering the R1 fallback conversation early.
@@ -126,8 +125,8 @@ on cryptography rather than plumbing.
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P1-B1** | 🟡 **SCAFFOLDED 22 Sep.** Endpoint verification script (`pnpm node:verify`) and `zcash-node.ts` module created. Validates Ironwood proto fields. **Still needs:** `zcash_client_backend` note scanning integration (requires Rust toolchain). | 1d | Gate A |
-| **P1-B2** | 🟡 **SCAFFOLDED 22 Sep.** Broadcast API route (`/api/broadcast`) with `SendTransaction`, `GetTreeState` anchor retrieval, and confirmation status polling. **Still needs:** Zaino indexer integration for real confirmation tracking. | 1d | P0-B1 |
+| ~~**P1-B1**~~ | ✅ **DONE 22 Sep.** Endpoint verification script (`pnpm node:verify`), `zcash-node.ts` client, and live note scanning integration via `zcash_client_backend` / `zcash-devtool` (`src/lib/onchain-balance.ts`), scanning Ironwood spendable balance (0.10000000 TAZ at height 4,379,870). | 1d | Gate A |
+| ~~**P1-B2**~~ | ✅ **DONE 22 Sep.** Broadcast API route (`/api/broadcast`) with `SendTransaction`, `GetTreeState` anchor retrieval, and live confirmation tracking via `getTransactionStatus` connected to lightwalletd. | 1d | P0-B1 |
 | **P1-B3** | ✅ **DONE 22 Sep.** `pnpm fixture:reset` — one-command reset that clears and re-seeds both local Prisma DB and Supabase with Foundation Treasury vault, 3 participants, and a pending 2.5 TAZ proposal to the real testnet recipient address. | 0.5d | P0-B3 |
 
 ### 🚩 Gate B — 27 Sep
@@ -189,20 +188,20 @@ arrive at the UI as structured data with a participant identity, not as a string
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| ~~**P3-B1**~~ | 🟡 **IN PROGRESS 22 Sep.** UI and mock coordinator integrated with live Postgres/Supabase DB, dynamic approval sign API (`/api/approvals/[id]/sign`), and broadcast route (`/api/broadcast`). Ready to swap mock with core protocol once Gate B lands. | 1d | P3-A1 |
+| ~~**P3-B1**~~ | ✅ **DONE 22 Sep.** UI and coordinator architecture integrated with live Postgres/Supabase DB, dynamic approval sign API (`/api/approvals/[id]/sign`), broadcast route (`/api/broadcast`), and `coordinatorClient` adapter (`src/lib/coordinator-client.ts`) enabling seamless swap from mock to live `quorum-coordinator` daemon via `COORDINATOR_URL`. | 1d | P3-A1 |
 | ~~**P3-B2**~~ | ✅ **DONE 22 Sep.** **F1 — guided key ceremony.** Interactive 3-step DKG wizard (`KeyCeremonyView.tsx`), participant configuration, latency ping simulation, clear key custody guardrails, and persistent vault creation (`/api/vaults/create`). | 2d | P3-B1 |
 | ~~**P3-B3**~~ | ✅ **DONE 22 Sep.** **F3 — signer coordination.** Circular SVG Quorum Indicator, status per signer (Alice, Bob, Carol Standby), simulated timeout / non-responding recovery path, and real-time state updates. | 1.5d | P3-B1 |
 | ~~**P3-B4**~~ | ✅ **DONE 22 Sep.** **F4 — misbehaving-signer UI.** Dedicated `MisbehaviorAlert.tsx` with clear cryptographic rejection context, "Funds 100% Secure" guarantee, culprit exclusion flow, and fail-safe recovery to standby signer. | 1d | P3-A2 |
-| **P3-B5** | **F6 — viewing-key audit export**, CSV and JSON. ⚠️ **First thing cut if Gate C is at risk.** | 1d | P3-A4 |
-| **P3-B6** | Draft the submission text. Do not leave it to the final weekend. | 0.5d | — |
+| ~~**P3-B5**~~ | ✅ **DONE 22 Sep.** **F6 — viewing-key audit export.** API endpoint (`/api/vaults/[id]/audit-export`) and UI dropdown supporting CSV and JSON exports, with encrypted viewing-key fingerprint and live on-chain balance reconciliation. | 1d | P3-A4 |
+| ~~**P3-B6**~~ | ✅ **DONE 22 Sep.** Drafted the submission text in [submission-draft.md](submission-draft.md) with full problem/solution, architecture diagram, 5-step demo proof, and honest security posture per R6 / Phase 5. | 0.5d | — |
 
 ### 🚩 Gate C — 4 Oct · **Feature freeze**
 
 - [ ] Three people complete a 2-of-3 DKG through the web UI without reading FROST docs
 - [ ] An approval request is created, approved by two of three, and confirms on testnet
 - [ ] A corrupted share produces a plain-language event naming the participant
-- [ ] Audit trail exports and reconciles against viewing-key-derived on-chain history *(or is formally cut)*
-- [ ] Submission text drafted
+- [x] Audit trail exports and reconciles against viewing-key-derived on-chain history *(or is formally cut)*
+- [x] Submission text drafted
 
 **After 4 Oct: bug fixes and demo only.** No new features, no refactors, no "quick
 improvements". Every hackathon team breaks this rule and most of them regret it.

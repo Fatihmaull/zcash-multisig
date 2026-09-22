@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KeyRound, ArrowLeft, Users, Send, CheckCircle2 } from "lucide-react";
+import { KeyRound, ArrowLeft, Users, Send, CheckCircle2, FileDown } from "lucide-react";
 import { LiveBalanceCard } from "@/components/vaults/LiveBalanceCard";
 import { getLiveWalletBalance } from "@/lib/onchain-balance";
 import { prisma } from "@/lib/prisma";
@@ -131,6 +131,33 @@ export default async function VaultDetailPage({
             <KeyRound className="w-4 h-4 text-amber-500" />
             <span>Simulate Key Ceremony</span>
           </Link>
+          <div className="relative group inline-block">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
+            >
+              <FileDown className="w-4 h-4 text-emerald-500" />
+              <span>Audit Export</span>
+            </button>
+            <div className="absolute right-0 mt-1 hidden group-hover:flex group-focus-within:flex flex-col w-44 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xl p-1.5 z-20 text-xs">
+              <a
+                href={`/api/vaults/${id}/audit-export?format=json`}
+                download
+                className="px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-between"
+              >
+                <span>Export JSON</span>
+                <span className="font-mono text-[10px] text-[var(--text-muted)]">.json</span>
+              </a>
+              <a
+                href={`/api/vaults/${id}/audit-export?format=csv`}
+                download
+                className="px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-between"
+              >
+                <span>Export CSV</span>
+                <span className="font-mono text-[10px] text-[var(--text-muted)]">.csv</span>
+              </a>
+            </div>
+          </div>
           <Link
             href="/approvals"
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold transition shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"

@@ -253,8 +253,62 @@ export function getIronwoodActivationHeight(): number {
 }
 
 /**
+ * Queries transaction status and confirmation count from lightwalletd or indexer.
+ * P1-B2: Checks whether txid is mined in a block relative to current block height.
+ */
+export async function getTransactionStatus(txid: string): Promise<ConfirmationStatus> {
+  const url = `${LIGHTWALLETD_ENDPOINT}/cash.z.wallet.sdk.rpc.CompactTxStreamer/GetTransaction`;
+
+  try {
+    const [txResponse, latestBlock] = await Promise.all([
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash: txid }),
+      }),
+      getLatestBlockHeight().catch(() => ({ height: 0, hash: "" })),
+    ]);
+
+    if (!txResponse.ok) {
+      return {
+        txid,
+        confirmed: false,
+        confirmations: 0,
+      };
+    }
+
+    const txData = await txResponse.json();
+    const minedHeight = txData.blockHeight || txData.height || null;
+
+    if (minedHeight && minedHeight > 0 && latestBlock.height >= minedHeight) {
+      const confirmations = latestBlock.height - minedHeight + 1;
+      return {
+        txid,
+        confirmed: confirmations > 0,
+        confirmations,
+        blockHeight: minedHeight,
+      };
+    }
+
+    return {
+      txid,
+      confirmed: false,
+      confirmations: 0,
+      blockHeight: minedHeight || undefined,
+    };
+  } catch {
+    return {
+      txid,
+      confirmed: false,
+      confirmations: 0,
+    };
+  }
+}
+
+/**
  * Returns the configured lightwalletd endpoint.
  */
 export function getEndpoint(): string {
   return LIGHTWALLETD_ENDPOINT;
 }
+
