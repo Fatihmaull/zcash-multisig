@@ -251,7 +251,7 @@ const isAuthorized = groupVK.verifySpendAuthorization({
             </button>
 
             {/* Official Powered by Zcash badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#181D2A]/90 border border-amber-500/30 text-xs text-slate-300 shadow-md">
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-xs text-slate-300 shadow-md">
               <span className="text-[11px] text-slate-400">powered by</span>
               <div className="relative w-4 h-4 shrink-0">
                 <Image

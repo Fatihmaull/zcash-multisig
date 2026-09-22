@@ -73,6 +73,105 @@ interface AuditExportPayload {
   };
 }
 
+interface SbAuditParticipant {
+  id: string;
+  label: string;
+  public_key_identifier: string | null;
+  is_active: boolean;
+  joined_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface SbAuditRoundEvent {
+  id: string;
+  approval_request_id: string;
+  participant_id: string;
+  round_type: "COMMITMENT" | "SIGNATURE_SHARE";
+  status: "PENDING" | "RECEIVED" | "TIMEOUT" | "INVALID";
+  culprit_detected?: boolean;
+  error_code?: string | null;
+  error_details?: string | null;
+  timestamp?: string | null;
+}
+
+interface SbAuditApproval {
+  id: string;
+  recipient_address: string;
+  amount_zatoshi?: number | string;
+  memo: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED" | "BROADCASTED";
+  txid: string | null;
+  anchor_block: number | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  signature_round_events?: SbAuditRoundEvent[] | null;
+}
+
+interface SbAuditVault {
+  id: string;
+  label: string;
+  threshold: number;
+  total_participants: number;
+  shielded_address: string | null;
+  status: "PENDING_DKG" | "ACTIVE" | "ARCHIVED";
+  network: "TESTNET";
+  created_at: string;
+  updated_at: string;
+  participants?: SbAuditParticipant[] | null;
+  approval_requests?: SbAuditApproval[] | null;
+}
+
+interface AuditVaultModel {
+  id: string;
+  label: string;
+  threshold: number;
+  totalParticipants: number;
+  shieldedAddress: string | null;
+  status: string;
+  network: string;
+  createdAt: Date;
+  updatedAt: Date;
+  participants: Array<{
+    id: string;
+    vaultId: string;
+    label: string;
+    publicKeyIdentifier: string | null;
+    isActive: boolean;
+    joinedAt: Date;
+    updatedAt: Date;
+  }>;
+  approvalRequests: Array<{
+    id: string;
+    vaultId: string;
+    recipientAddress: string;
+    amountZatoshi: bigint;
+    memo: string | null;
+    status: string;
+    txid: string | null;
+    anchorBlock: number | null;
+    expiresAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    signatureRoundEvents: Array<{
+      id: string;
+      approvalRequestId: string;
+      participantId: string;
+      roundType: string;
+      status: string;
+      culpritDetected: boolean;
+      errorCode: string | null;
+      errorDetails: string | null;
+      timestamp: Date;
+      participant?: { label: string } | null;
+    }>;
+  }>;
+  viewingKeys: Array<{
+    encryptedViewingKey: string;
+    scope: string;
+  }>;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -82,7 +181,7 @@ export async function GET(
 
   try {
     // 1. Fetch vault, participants, approvals, round events, and viewing key from Prisma
-    let vault = await prisma.vault.findUnique({
+    let vault: AuditVaultModel | null = await prisma.vault.findUnique({
       where: { id },
       include: {
         participants: true,
@@ -103,11 +202,13 @@ export async function GET(
 
     // Fallback: If not found in local DB, fetch from Supabase
     if (!vault) {
-      const { data: sbVault } = await supabase
+      const { data: rawSbVault } = await supabase
         .from("vaults")
         .select("*, participants(*), approval_requests(*, signature_round_events(*))")
         .eq("id", id)
         .maybeSingle();
+
+      const sbVault = rawSbVault as unknown as SbAuditVault | null;
 
       if (sbVault) {
         vault = {
@@ -120,7 +221,7 @@ export async function GET(
           network: sbVault.network,
           createdAt: new Date(sbVault.created_at),
           updatedAt: new Date(sbVault.updated_at),
-          participants: (sbVault.participants || []).map((p: any) => ({
+          participants: (sbVault.participants || []).map((p: SbAuditParticipant) => ({
             id: p.id,
             vaultId: sbVault.id,
             label: p.label,
@@ -129,7 +230,7 @@ export async function GET(
             joinedAt: new Date(p.joined_at || 0),
             updatedAt: new Date(p.updated_at || 0),
           })),
-          approvalRequests: (sbVault.approval_requests || []).map((a: any) => ({
+          approvalRequests: (sbVault.approval_requests || []).map((a: SbAuditApproval) => ({
             id: a.id,
             vaultId: sbVault.id,
             recipientAddress: a.recipient_address,
@@ -141,23 +242,23 @@ export async function GET(
             expiresAt: a.expires_at ? new Date(a.expires_at) : null,
             createdAt: new Date(a.created_at || 0),
             updatedAt: new Date(a.updated_at || 0),
-            signatureRoundEvents: (a.signature_round_events || []).map((e: any) => ({
+            signatureRoundEvents: (a.signature_round_events || []).map((e: SbAuditRoundEvent) => ({
               id: e.id,
               approvalRequestId: a.id,
               participantId: e.participant_id,
               roundType: e.round_type,
               status: e.status,
               culpritDetected: e.culprit_detected || false,
-              errorCode: e.error_code,
-              errorDetails: e.error_details,
+              errorCode: e.error_code || null,
+              errorDetails: e.error_details || null,
               timestamp: new Date(e.timestamp || 0),
-              participant: (sbVault.participants || []).find((p: any) => p.id === e.participant_id) || {
+              participant: (sbVault.participants || []).find((p: SbAuditParticipant) => p.id === e.participant_id) || {
                 label: "Unknown Signer",
               },
             })),
           })),
           viewingKeys: [],
-        } as any;
+        };
       }
     }
 
