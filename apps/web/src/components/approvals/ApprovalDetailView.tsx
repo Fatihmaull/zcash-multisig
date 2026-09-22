@@ -325,10 +325,15 @@ export function ApprovalDetailView({
 
           {/* Participant Signatures */}
           <div className="p-5 sm:p-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-semibold">
-                Signer Approvals ({collectedSignatures} of {threshold} Collected)
-              </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-semibold">
+                  Signer Approvals ({collectedSignatures} of {threshold} Collected)
+                </h2>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  Simulated Demo Flow
+                </span>
+              </div>
               <span className="text-xs text-[var(--text-muted)] font-mono">
                 Signing Round 2
               </span>
@@ -390,9 +395,10 @@ export function ApprovalDetailView({
                     <button
                       onClick={handleSimulateBobSigning}
                       disabled={isSigning}
-                      className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                     >
-                      {isSigning ? "Signing..." : "Sign as Bob"}
+                      <span>Sign as Bob</span>
+                      <span className="text-[10px] opacity-75 font-normal">(Simulated)</span>
                     </button>
                   )}
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono ${
@@ -436,9 +442,10 @@ export function ApprovalDetailView({
                     <button
                       onClick={handleSimulateCarolSigning}
                       disabled={isSigning}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                     >
-                      {isSigning ? "Signing..." : "Sign as Carol"}
+                      <span>Sign as Carol</span>
+                      <span className="text-[10px] opacity-75 font-normal">(Simulated)</span>
                     </button>
                   )}
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono ${
