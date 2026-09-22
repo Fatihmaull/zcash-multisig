@@ -48,3 +48,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 yarn-error.log*
+
+# Dev tools
+tools/zcash-devtool/

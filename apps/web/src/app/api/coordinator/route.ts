@@ -25,6 +25,7 @@
 // ──────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
+import { coordinatorClient } from "@/lib/coordinator-client";
 import { getCoordinator } from "@/lib/mock-coordinator";
 import type { MockScenario } from "@/types/coordinator";
 
@@ -33,7 +34,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, scenario, ...params } = body;
 
-    const coordinator = getCoordinator(scenario as MockScenario | undefined);
+    const mockSignerService = getCoordinator(scenario as MockScenario | undefined);
+    if (scenario) {
+      coordinatorClient.setMockScenario(scenario as MockScenario);
+    }
+    const coordinator = coordinatorClient;
 
     switch (action) {
       // ── DKG ──────────────────────────────────────────────
@@ -70,14 +75,14 @@ export async function POST(request: NextRequest) {
 
       // ── Signer (mock only — see the header note) ─────────
       case "signer/pending": {
-        const result = await coordinator.fetchPendingRequests(
+        const result = await mockSignerService.fetchPendingRequests(
           params.participantId
         );
         return NextResponse.json(serializeBigInt(result));
       }
 
       case "signer/commit": {
-        const result = await coordinator.submitCommitments(
+        const result = await mockSignerService.submitCommitments(
           params.approvalId,
           params.participantId,
           params.commitmentsHex ?? []
@@ -86,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "signer/packages": {
-        const result = await coordinator.getSigningPackages(
+        const result = await mockSignerService.getSigningPackages(
           params.approvalId,
           params.participantId
         );
@@ -94,7 +99,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "signer/shares": {
-        const result = await coordinator.submitSignatureShares(
+        const result = await mockSignerService.submitSignatureShares(
           params.approvalId,
           params.participantId,
           params.sharesHex ?? []
@@ -103,7 +108,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "signer/decline": {
-        const result = await coordinator.declineApproval(
+        const result = await mockSignerService.declineApproval(
           params.approvalId,
           params.participantId
         );
