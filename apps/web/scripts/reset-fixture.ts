@@ -6,17 +6,16 @@
 // Run with: pnpm fixture:reset
 //
 // What it does:
-//   1. Resets the local PostgreSQL database (prisma db push --force-reset)
+//   1. Resets the local PostgreSQL database (prisma migrate reset --force or clean tables)
 //   2. Seeds it with the Foundation Treasury vault (2-of-3)
 //   3. Enrolls Alice, Bob, and Carol as participants
 //   4. Creates an active PENDING approval request with the real
 //      testnet recipient address
-//   5. Updates the Supabase remote tables to match
-//
-// Why this exists:
-//   You will run the demo dozens of times. Rebuilding state by hand
-//   each time is a tax paid daily until 10 Oct. This script makes
-//   "reset and go" a 5-second operation.
+//   5. Supports multiple demo scenarios:
+//      --scenario=happy-path (default: Alice signed, waiting for Bob)
+//      --scenario=timeout    (Bob offline, fallback to Carol)
+//      --scenario=culprit    (Bob submit corrupted share, culprit identified)
+//   6. Updates the Supabase remote tables to match (if configured)
 //
 // See docs/10-roadmap.md P1-B3 and docs/13-phase-1-plan.md.
 // ──────────────────────────────────────────────────────────────
@@ -30,10 +29,15 @@ const TESTNET_RECIPIENT_ADDRESS =
 const VAULT_SHIELDED_ADDRESS =
   "utest1q3v4kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx9kx";
 
+// Scenario flag: --scenario=happy-path | timeout | culprit
+const scenarioArg = process.argv.find((arg) => arg.startsWith("--scenario="));
+const scenario = scenarioArg ? scenarioArg.split("=")[1] : "happy-path";
+
 async function main() {
   console.log();
   console.log("  ┌────────────────────────────────────────────┐");
   console.log("  │  Quorum — Fixture Reset (P1-B3)            │");
+  console.log(`  │  Scenario: ${scenario.padEnd(31)} │`);
   console.log("  └────────────────────────────────────────────┘");
   console.log();
 
@@ -55,7 +59,7 @@ async function main() {
       "        ⚠ Database not available (tables may not exist yet)."
     );
     console.log(
-      "          Run: pnpm --filter web exec prisma db push"
+      "          Run: pnpm db:migrate or pnpm --filter web exec prisma migrate deploy"
     );
     console.log(
       `          Error: ${error instanceof Error ? error.message : String(error)}`
@@ -97,7 +101,7 @@ async function main() {
         label: "Bob (Director)",
         publicKeyIdentifier:
           "02b2c3d4e5f6a10718293a4b5c6d7e8f90123456789abcdef0123456789abcdef1",
-        isActive: true,
+        isActive: scenario !== "timeout", // If timeout scenario, Bob might be marked inactive/unresponsive
       },
     });
 
@@ -105,7 +109,7 @@ async function main() {
       data: {
         id: "part-carol",
         vaultId: vault.id,
-        label: "Carol (Auditor)",
+        label: "Carol (Auditor / Standby)",
         publicKeyIdentifier:
           "02c3d4e5f6a1b20718293a4b5c6d7e8f90123456789abcdef0123456789abcdef2",
         isActive: true,
@@ -121,8 +125,8 @@ async function main() {
     );
   }
 
-  // ── Step 3: Create approval request ─────────────────────────
-  console.log("  [3/4] Creating pending approval request...");
+  // ── Step 3: Create approval request according to scenario ───
+  console.log(`  [3/4] Creating approval request (scenario: ${scenario})...`);
 
   try {
     const approval = await prisma.approvalRequest.create({
@@ -137,7 +141,16 @@ async function main() {
       },
     });
 
-    // Add Alice's pre-existing signature event
+    // Alice always signs first (pre-recorded round-1 and round-2)
+    await prisma.signatureRoundEvent.create({
+      data: {
+        approvalRequestId: approval.id,
+        participantId: "part-alice",
+        roundType: "COMMITMENT",
+        status: "RECEIVED",
+      },
+    });
+
     await prisma.signatureRoundEvent.create({
       data: {
         approvalRequestId: approval.id,
@@ -146,6 +159,35 @@ async function main() {
         status: "RECEIVED",
       },
     });
+
+    if (scenario === "timeout") {
+      // Bob timed out
+      await prisma.signatureRoundEvent.create({
+        data: {
+          approvalRequestId: approval.id,
+          participantId: "part-bob",
+          roundType: "COMMITMENT",
+          status: "TIMEOUT",
+          errorCode: "PARTICIPANT_TIMEOUT",
+          errorDetails: "Signer node unreachable after 30s timeout window",
+        },
+      });
+      console.log("        ✓ Bob timeout event recorded (ready for Carol standby)");
+    } else if (scenario === "culprit") {
+      // Bob submitted corrupted share
+      await prisma.signatureRoundEvent.create({
+        data: {
+          approvalRequestId: approval.id,
+          participantId: "part-bob",
+          roundType: "SIGNATURE_SHARE",
+          status: "INVALID",
+          culpritDetected: true,
+          errorCode: "INVALID_SIGNATURE_SHARE",
+          errorDetails: "Signature share failed verification against verifying share. Identified as culprit via InvalidSignatureShare::culprits.",
+        },
+      });
+      console.log("        ✓ Bob culprit event recorded (culprit_detected = true)");
+    }
 
     console.log(
       `        ✓ Approval: ${approval.id} (2.5 TAZ to recipient)`
@@ -203,12 +245,12 @@ async function main() {
             label: "Bob (Director)",
             public_key_identifier:
               "02b2c3d4e5f6a10718293a4b5c6d7e8f90123456789abcdef0123456789abcdef1",
-            is_active: true,
+            is_active: scenario !== "timeout",
           },
           {
             id: "part-carol",
             vault_id: "vault-demo-001",
-            label: "Carol (Auditor)",
+            label: "Carol (Auditor / Standby)",
             public_key_identifier:
               "02c3d4e5f6a1b20718293a4b5c6d7e8f90123456789abcdef0123456789abcdef2",
             is_active: true,

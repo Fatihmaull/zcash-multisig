@@ -105,11 +105,14 @@ docker compose up -d postgres
 ### Langkah 3: Setup Skema Database & Seed Data Demo
 Jalankan migrasi dan data awal demo:
 ```bash
-# Sinkronkan skema prisma
-pnpm --filter web exec prisma db push
+# Jalankan migrasi skema database Prisma
+pnpm db:deploy
 
 # Isi data simulasi awal (Treasury, Signer Alice-Bob-Carol, dsb)
 pnpm db:seed
+
+# Atau gunakan satu perintah reset lengkap:
+# pnpm fixture:reset
 ```
 
 ### Langkah 4: Jalankan Frontend Web App

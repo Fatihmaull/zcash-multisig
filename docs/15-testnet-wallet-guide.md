@@ -55,6 +55,24 @@ If the wallet does not support Ironwood output, the note will land in Sapling
 again. In that case, you need a wallet version that has been updated for NU6.3
 (Ironwood). Check for updates to YWallet, Zashi, or use `zallet` CLI.
 
+### Alternative (Automated via `zcash-devtool` — Issue #19)
+
+As noted in Issue #19, `zcash-devtool` automatically targets Ironwood upon shielding:
+
+```bash
+# 1. Clone & initialize
+git clone https://github.com/zcash/zcash-devtool && cd zcash-devtool
+cargo run --release -- wallet -w ./wallet init -n test
+
+# 2. Get address and request from faucet
+cargo run --release -- wallet -w ./wallet list-addresses
+
+# 3. Sync & shield directly into Ironwood
+cargo run --release -- wallet -w ./wallet sync -s https://testnet.zec.rocks:443
+cargo run --release -- wallet -w ./wallet balance
+cargo run --release -- wallet -w ./wallet shield    # Automatically lands in Ironwood past activation
+```
+
 ### Step 4 — Record the funding transaction
 
 Once confirmed, record:
