@@ -182,7 +182,7 @@ export function ApprovalDetailView({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[var(--text-muted)] font-medium">Recipient Address (Shielded / Private)</span>
                 <button
-                  onClick={() => copyToClipboard("utest1z67w88a9c8e104f7623d9b4009e817a02c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c")}
+                  onClick={() => copyToClipboard(initialData?.recipientAddress || "utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6")}
                   className="inline-flex items-center gap-1 text-xs text-[var(--zcash-gold)] hover:underline transition font-medium cursor-pointer"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -190,7 +190,7 @@ export function ApprovalDetailView({
                 </button>
               </div>
               <p className="font-mono text-xs text-[var(--text-secondary)] break-all bg-[var(--bg-card)] p-2.5 rounded-lg border border-[var(--border-default)] select-all">
-                utest1z67w88a9c8e104f7623d9b4009e817a02c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c
+                {initialData?.recipientAddress || "utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6"}
               </p>
             </div>
           </div>

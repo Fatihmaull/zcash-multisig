@@ -82,9 +82,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 |---|---|---|---|
 | ~~**P0-B1**~~ | ✅ **DONE 19 Sep.** Public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood. Self-hosted Z3 stack kept as a tested, unstarted fallback. Decision and evidence in [03-architecture.md](03-architecture.md) §6. | — | — |
 | ~~**P0-B2**~~ | ✅ **DONE.** Cargo workspace, Next.js app, docker-compose, and CI (`.github/workflows/ci.yml`): Rust check/clippy/fmt/test, web tsc/lint, plus guard jobs that fail the build on a forbidden ciphersuite (C4) or any mainnet reference (C9). | — | — |
-| **P0-B3** | **⬜ REMAINING — needs a human.** Fund a testnet wallet with ZEC **in the Ironwood pool**. Faucets: [zcashfaucet.jinolabs.xyz](https://zcashfaucet.jinolabs.xyz) (0.1 TAZ, shielded z2z, browser PoW), [Fauzec](https://fauzec.com/) (UA `utest1…` or Sapling `ztestsapling…`; no transparent), [Zeropond](http://zeropond.com/). **Note:** faucets pay into Sapling or a UA — getting funds *into Ironwood* likely needs a self-transfer afterwards. Verify which pool the received note lands in before assuming Gate B is fundable. | 0.5d | — |
+| **P0-B3** | 🟡 **IN PROGRESS 22 Sep.** Source wallet address registered: `utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6`. Faucet funding guide in [15-testnet-wallet-guide.md](15-testnet-wallet-guide.md). **Still needs:** faucet request + self-transfer to Ironwood + pool verification. | 0.5d | — |
 | ~~**P0-B4**~~ | ✅ **DONE** (PR #1). `prisma/schema.prisma` — vaults, participants, approval requests, round events, viewing keys. Zero key material, verified in review. | — | — |
-| **P0-B5** | **Traction kickoff.** Build the list of 10 contacts, draft the outreach email, post the Zcash Community Forum thread. See [09-traction.md](09-traction.md). | 0.5d + ongoing | — |
+| **P0-B5** | 🟡 **DRAFTED 22 Sep.** 10 contacts listed, 3 email templates ready, forum launch thread written. See [14-traction-kickoff.md](14-traction-kickoff.md). **Still needs:** actually send the emails and post the forum thread. | 0.5d + ongoing | — |
 
 ### 🚩 Gate A — 21 Sep
 
@@ -92,9 +92,9 @@ Gate B is reachable, and it owns risk R1. Do not let it slip to the end of the p
 - [x] Written verdict on PCZT v2 + Ironwood feasibility — [12-spike-s1-report.md](12-spike-s1-report.md) §8. Supported; anchor deferral moved to Phase 1
 - [x] `frostd` channel guarantees documented — TLS plus Noise_K participant-to-participant, [03-architecture.md](03-architecture.md) §2
 - [x] Node access working, past testnet Ironwood activation height — `testnet.zec.rocks:443`, verified 19 Sep
-- [ ] Funded testnet wallet with Ironwood-pool ZEC — **outstanding**, issue #6
+- [ ] Funded testnet wallet with Ironwood-pool ZEC — **source address registered**, faucet request pending. See [15-testnet-wallet-guide.md](15-testnet-wallet-guide.md)
 - [x] Repo scaffolded, CI green — three jobs, plus guards that fail the build on a forbidden ciphersuite (C4) or a mainnet reference (C9)
-- [ ] Outreach started, ZF question sent — **outstanding**, P0-B5
+- [ ] Outreach started, ZF question sent — **drafts ready** in [14-traction-kickoff.md](14-traction-kickoff.md), pending send
 
 **If Gate A fails:** stop all feature work; both devs onto the spike. This gate cannot slip past
 **22 Sep** without triggering the R1 fallback conversation early.
@@ -126,9 +126,9 @@ on cryptography rather than plumbing.
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P1-B1** | Note scanning and spendable-note selection for the Ironwood pool via `zcash_client_backend`. | 1d | Gate A |
-| **P1-B2** | Broadcast and confirmation tracking via Zaino. | 1d | P0-B1 |
-| **P1-B3** | **Reproducible testnet fixture** — a seeded scenario that can be reset and re-run. You will run the demo dozens of times; hand-rebuilding state each time is a tax you pay every day until the 10th. | 0.5d | P0-B3 |
+| **P1-B1** | 🟡 **SCAFFOLDED 22 Sep.** Endpoint verification script (`pnpm node:verify`) and `zcash-node.ts` module created. Validates Ironwood proto fields. **Still needs:** `zcash_client_backend` note scanning integration (requires Rust toolchain). | 1d | Gate A |
+| **P1-B2** | 🟡 **SCAFFOLDED 22 Sep.** Broadcast API route (`/api/broadcast`) with `SendTransaction`, `GetTreeState` anchor retrieval, and confirmation status polling. **Still needs:** Zaino indexer integration for real confirmation tracking. | 1d | P0-B1 |
+| **P1-B3** | ✅ **DONE 22 Sep.** `pnpm fixture:reset` — one-command reset that clears and re-seeds both local Prisma DB and Supabase with Foundation Treasury vault, 3 participants, and a pending 2.5 TAZ proposal to the real testnet recipient address. | 0.5d | P0-B3 |
 
 ### 🚩 Gate B — 27 Sep
 

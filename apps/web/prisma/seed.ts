@@ -74,7 +74,7 @@ async function main() {
     data: {
       vaultId: vault.id,
       recipientAddress:
-        "utest1recipient0000000000000000000000000000000000000000000000000000",
+        "utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6",
       amountZatoshi: BigInt(250_000_000), // 2.5 ZEC
       memo: "Q3 grant disbursement to ZecHub",
       status: "PENDING",
