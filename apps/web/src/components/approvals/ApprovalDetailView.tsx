@@ -14,14 +14,26 @@ import { QuorumIndicator } from "./QuorumIndicator";
 import { MisbehaviorAlert } from "./MisbehaviorAlert";
 import { useUI } from "@/context/UIContext";
 
+interface ApprovalInitialData {
+  id: string;
+  amountZec: string;
+  purpose: string;
+  vaultName: string;
+  recipientAddress: string;
+  status: string;
+  txid?: string | null;
+}
+
 interface ApprovalDetailViewProps {
   requestId?: string;
   showMisbehavior?: boolean;
+  initialData?: ApprovalInitialData;
 }
 
 export function ApprovalDetailView({
   requestId = "req-demo-001",
   showMisbehavior: propShowMisbehavior,
+  initialData,
 }: ApprovalDetailViewProps) {
   const { activeScenario, setActiveScenario } = useUI();
   
@@ -85,7 +97,8 @@ export function ApprovalDetailView({
           </Link>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] font-mono">
-              2.50000000 <span className="text-[var(--zcash-gold)] text-lg sm:text-xl font-normal">TAZ</span>
+              {initialData?.amountZec || "2.50000000"}{" "}
+              <span className="text-[var(--zcash-gold)] text-lg sm:text-xl font-normal">TAZ</span>
             </h1>
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium font-mono ${
               broadcastTxid 
@@ -102,7 +115,7 @@ export function ApprovalDetailView({
             </span>
           </div>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
-            Purpose: &ldquo;Security audit fee &amp; protocol code review&rdquo;
+            Purpose: &ldquo;{initialData?.purpose || "Security audit fee & protocol code review"}&rdquo;
           </p>
         </div>
 

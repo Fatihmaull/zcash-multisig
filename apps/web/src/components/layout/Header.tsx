@@ -1,15 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useUI } from "@/context/UIContext";
 import { 
   Menu, 
   ShieldCheck, 
-  Sparkles,
-  Sun,
-  Moon
+  Sparkles, 
+  Sun, 
+  Moon,
+  ArrowLeft
 } from "lucide-react";
 import type { MockScenario } from "@/types/coordinator";
 import { SearchableSelect, type SelectOption } from "@/components/ui/SearchableSelect";
+import { Logo } from "@/components/ui/Logo";
 
 export function Header() {
   const { toggleMobileMenu, activeScenario, setActiveScenario, theme, toggleTheme } = useUI();
@@ -44,10 +47,23 @@ export function Header() {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
-          <span className="font-bold text-[var(--text-primary)] font-mono hidden sm:inline tracking-wide">QUORUM</span>
-          <span className="text-[var(--text-muted)] hidden sm:inline">•</span>
-          <span className="text-[var(--text-secondary)] font-sans">Shielded Multisig</span>
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-amber-500 text-xs font-medium text-[var(--text-secondary)] transition shadow-xs cursor-pointer group"
+            title="Back to Landing Page"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="hidden sm:inline">Home</span>
+          </Link>
+          <div className="sm:hidden">
+            <Logo size={28} showText={false} />
+          </div>
+          <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
+            <span className="font-bold text-[var(--text-primary)] font-mono hidden sm:inline tracking-wide">QUORUM</span>
+            <span className="text-[var(--text-muted)] hidden sm:inline">•</span>
+            <span className="text-[var(--text-secondary)] font-sans">Shielded Multisig</span>
+          </div>
         </div>
       </div>
 

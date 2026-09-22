@@ -1,61 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="goldShield" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#FCD34D" />
-      <stop offset="40%" stopColor="#F59E0B" />
-      <stop offset="100%" stopColor="#B45309" />
+    <linearGradient id="fiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E2B16B" />
+      <stop offset="100%" stop-color="#A87428" />
     </linearGradient>
-    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#1E2638" />
-      <stop offset="100%" stopColor="#0B0F19" />
-    </linearGradient>
-    <linearGradient id="zGold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#FDE68A" />
-      <stop offset="50%" stopColor="#F59E0B" />
-      <stop offset="100%" stopColor="#D97706" />
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111726" />
+      <stop offset="100%" stop-color="#070A10" />
     </linearGradient>
   </defs>
 
-  <!-- Outer Shield Outline -->
-  <path 
-    d="M32 4 L54 12 V32 C54 44 44.5 54.5 32 59 C19.5 54.5 10 44 10 32 V12 L32 4 Z" 
-    fill="url(#shieldBg)" 
-    stroke="url(#goldShield)" 
-    stroke-width="2.5" 
-    stroke-linejoin="round"
-  />
+  <!-- Modern rounded background tile for favicon visibility on all browser tabs -->
+  <rect width="64" height="64" rx="16" fill="url(#bgGrad)" />
+  <rect width="64" height="64" rx="16" stroke="rgba(226, 177, 107, 0.25)" stroke-width="1.5" />
 
-  <!-- Stylized Quorum Outer Circle 'Q' -->
-  <circle 
-    cx="32" 
-    cy="31" 
-    r="14" 
-    stroke="url(#goldShield)" 
-    stroke-width="3" 
-    stroke-dasharray="70 18" 
-    stroke-linecap="round"
-  />
-
-  <!-- Q Tail -->
+  <!-- Distinctive 'Q' Glyph from Quorum Fi -->
+  <circle cx="28" cy="28" r="15" fill="none" stroke="#FFFFFF" stroke-width="4.5" />
+  
+  <!-- Signature tail hook of Q -->
   <path 
-    d="M39 38 L47 46" 
-    stroke="url(#goldShield)" 
-    stroke-width="3.5" 
-    stroke-linecap="round"
-  />
-
-  <!-- Zcash 'Z' inside -->
-  <path 
-    d="M26 23 H38 L26 39 H38" 
-    stroke="url(#zGold)" 
-    stroke-width="3.2" 
+    d="M 32 38 C 34 44, 28 48, 23 46" 
+    fill="none" 
+    stroke="#FFFFFF" 
+    stroke-width="4.5" 
     stroke-linecap="round" 
-    stroke-linejoin="round"
   />
-  <path 
-    d="M32 20 V23 M32 39 V42" 
-    stroke="url(#zGold)" 
-    stroke-width="2.5" 
-    stroke-linecap="round"
-  />
+
+  <!-- 'Fi' gold accent symbol -->
+  <circle cx="48" cy="19" r="3.5" fill="url(#fiGradient)" />
+  <path d="M 44 26 H 52 M 48 26 V 42" stroke="url(#fiGradient)" stroke-width="4" stroke-linecap="round" />
 </svg>
