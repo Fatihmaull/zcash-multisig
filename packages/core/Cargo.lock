@@ -1629,10 +1629,13 @@ dependencies = [
  "rand_core 0.6.4",
  "reddsa",
  "serde",
+ "serde_json",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "zcash_keys",
+ "zcash_protocol",
  "zeroize",
 ]
 

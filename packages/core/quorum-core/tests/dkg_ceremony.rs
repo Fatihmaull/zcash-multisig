@@ -11,7 +11,7 @@
 use std::collections::BTreeMap;
 
 use quorum_core::dkg::{DkgError, Round1, Round2, VaultConfig, VaultIdentifier};
-use quorum_core::vault_key::VaultKey;
+use quorum_core::vault_key::{VaultKey, VaultSeed};
 use quorum_core::Ciphersuite;
 
 fn ids(n: u16) -> Vec<VaultIdentifier> {
@@ -116,7 +116,8 @@ fn the_ceremony_yields_a_zcash_vault_address() {
     let mut rng = rand::thread_rng();
 
     let any = finished.values().next().expect("a participant");
-    let vault = VaultKey::derive(&any.public_key_package, &mut rng).expect("derive vault key");
+    let seed = VaultSeed::generate(&mut rng);
+    let vault = VaultKey::derive(&any.public_key_package, &seed).expect("derive vault key");
 
     // Every participant derives the same vault, because they agree on the
     // group key. The throwaway spending key differs per derivation and must
