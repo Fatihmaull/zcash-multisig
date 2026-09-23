@@ -72,13 +72,21 @@ Verified 15–16 September 2026. Rationale and failure modes in
 5. **Target FROST v3.x** (`frost-core` v3.0.0 released). The rerandomized API was reworked so all
    signing parties contribute randomness; `InvalidSignatureShare::culprit` became `culprits`
    (a vector). Read the changelog before pinning.
-6. **PCZT v2 + Ironwood is on release candidates** (`pczt 0.8.0-rc.1`,
-   `zcash_client_backend 0.24.0-rc.1`) with open upstream issues. Pin exact versions, commit
-   `Cargo.lock`, do not chase upstream mid-hackathon.
+6. **We are pinned to release candidates** (`pczt 0.8.0-rc.1`, `zcash_client_backend
+   0.24.0-rc.1`). **Final releases now exist** — `zcash-devtool` uses `pczt 0.9.1` and
+   `zcash_client_backend 0.24.0`. Moving off an rc onto its final is not the "chasing upstream"
+   this constraint forbids, but make it a deliberate decision — ideally after Gate B, unless
+   P1-A4 needs something only 0.9.1 has. Pin exact versions and commit `Cargo.lock` either way.
 7. **ZIP-312 is still Draft.** The Zcash Foundation's 2026 roadmap says it is being finalised.
    Flag anywhere our design depends on draft behaviour.
 8. **Build on the Z3 stack** (Zebra, Zaino, Zallet). `zcashd` is retired.
 9. **Testnet only. No mainnet funds, ever, during this build.**
+10. **The vault seed is persisted, and it is a shared secret.** `ak` comes from FROST; `nk` and
+    `rivk` come from a `VaultSeed` generated once at the ceremony. Redraw it and every
+    derivation yields a different address — that stranded 0.05 TAZ on 22 Sep. **Never derive
+    it from the group key**: `ak` is in the address, so anyone holding the address could
+    rebuild the viewing key and read the vault's entire history. See
+    `quorum-core/src/vault_key.rs`.
 
 ---
 
@@ -128,7 +136,7 @@ importance:
 
 | Date | Gate |
 |---|---|
-| 21 Sep | **A** — `frost-zcash-demo` running with RedPallas, coordinator + 2 participants. Verdict on PCZT v2 + Ironwood. |
+| 21 Sep | ✅ **A** (passed) — `frost-zcash-demo` running with RedPallas, coordinator + 2 participants. Verdict on PCZT v2 + Ironwood. |
 | 27 Sep | **B** — 2-of-3 shielded Ironwood spend confirmed on testnet, CLI only. **No UI required.** |
 | 4 Oct | **C** — end to end through the web UI. **Feature freeze.** |
 | 5 Oct | **D** — demo recording begins. |
@@ -154,30 +162,43 @@ intuition and will cost a day each if missed:
   yields zero spends rather than an error. Track `(pool, index, alpha)` and treat an empty
   result as a failure.
 
-## Current phase
+## Current phase — Phase 1, 22 Sep
 
-**Pre-development.** No application code yet.
+**Protocol core is done and merged.** DKG, `frostd` transport, signer, coordinator, and vault
+key derivation — 32 tests, including a 2-of-3 signature verified by **Orchard's own verifier**
+against `rk = ak.randomize(alpha)`.
 
-**Spike S1 complete (19 Sep).** Read [docs/12-spike-s1-report.md](docs/12-spike-s1-report.md)
-before writing Phase 1 code. Headlines:
+**A funded vault exists on testnet.** 0.04 TAZ in the **Ironwood** pool (tx `0720f1d1`, block
+4,380,118), found by a watch-only wallet built from the vault's own UFVK. The dev fixture that
+made it — `cargo run -p quorum-signer --example ceremony` — runs in **one process**; Gate B still
+needs three signers over `frostd`.
 
-- Node access: public endpoint `testnet.zec.rocks:443`, verified to serve Ironwood.
-- **The reference demo is on FROST v2, not v3** — do not copy its patterns. Use report §4 and
-  `packages/core/quorum-core/tests/redpallas_v3_smoke.rs` as the reference instead.
-- `sign()` is deprecated; use `sign_with_randomizer_seed()` with a seed from
-  `RandomizedParams::new_from_commitments()`.
-- Two dependency pins were broken and are fixed. Assume more are hiding in the unexercised half
-  of the workspace table.
-- `frostd` = TLS + Noise_K participant-to-participant. Satisfies C5; the bootstrap contact
-  exchange is the residual MITM surface, and F1 must treat it as a security step.
-- **Open, escalated to ZF:** FROST vault FVK derivation may be incompatible with Ironwood's
-  quantum recoverability — report §7. Do not claim Ironwood support until answered.
+**The critical path is P1-A4** (PCZT assembly, #14) plus a real broadcast in P1-B2 (#8).
+Together those *are* Gate B.
 
-The next action is spike **S1** — tasks P0-A1 through P0-A5 in
-[docs/10-roadmap.md](docs/10-roadmap.md): read
-`ZcashFoundation/frost` and `ZcashFoundation/frost-zcash-demo`, get the demo running locally
-with RedPallas — coordinator and participants in separate terminals — then report on the real
-v3.x API surface, where the developer experience breaks down, and what should change about the
-scope above based on what was found.
+### The randomizer — read this before touching signing
 
-Do not write application code before S1 reports back.
+For Zcash, **use the deprecated `frost_rerandomized::sign()` with an explicit `Randomizer`**,
+and `RandomizedParams::from_randomizer()` to aggregate.
+
+Do **not** "modernise" to `sign_with_randomizer_seed()`. It *derives* the randomizer from a seed
+plus the round-1 commitments, so it cannot produce the alpha the transaction already fixed. The
+only public API that accepts an explicit randomizer is the deprecated one, because
+`KeyPackage::randomize` is private. Raised upstream as
+[ZcashFoundation/frost#1094](https://github.com/ZcashFoundation/frost/issues/1094).
+
+An earlier version of this file said the opposite. It was wrong.
+
+### Tooling
+
+Wallet and node work goes through **`zcash-devtool`** (#19), not a GUI wallet — Ironwood
+readiness across wallets is still patchy. Its `wallet shield` targets Ironwood automatically,
+and its `pczt` subcommand is the reference for P1-A4. Recipe in `secrets/README-devtool-wallet.md`.
+
+### Open, and not ours alone
+
+- **#24 — Supabase is readable and writable by anyone.** Publishable key in public git history,
+  live reads and writes, zero RLS. The web sign route counts DB rows, so anyone can fake quorum.
+- **#15 — two schema sources of truth** (`schema.prisma` and `supabase_schema.sql`).
+- The web app is **not yet wired to the Rust core** — its signing is simulated. That wiring is
+  Phase 3 (P3-A1, P3-B1); until then the UI must label it as simulated.

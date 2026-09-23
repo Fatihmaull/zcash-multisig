@@ -113,10 +113,10 @@ This phase is the whole project. Everything after it is user interface.
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P1-A1** | `quorum-core`: wrap `frost-rerandomized` behind our own types. DKG orchestration over `frostd`, with **authenticated *and* confidential** channels (constraint C5). | 1.5d | Gate A |
-| **P1-A2** | `quorum-signer` binary: holds the share, encrypted at rest with a participant-set passphrase. Performs round 1 (commitments + randomness contribution) and round 2 (signature share). **Never transmits the share** — if a code path would move share material across the process boundary, that path is wrong. | 1.5d | P1-A1 |
-| **P1-A3** | `quorum-coordinator`: drives the FROST coordinator role, aggregates shares, maps `InvalidSignatureShare::culprits` to a typed domain error rather than letting a library error escape. | 1.5d | P1-A1 |
-| **P1-A4** | PCZT assembly with an Ironwood bundle. **Defer the anchor to broadcast** (constraint C3) — never bind it at build time for convenience. | 1.5d | P1-B1 |
+| ~~**P1-A1**~~ | ✅ **DONE 21 Sep** (#11). DKG as a typestate plus the full `frostd` transport — XEdDSA login, sessions, Noise_K end to end. Our own client, because `frost-client` is unpublished and pinned to frost-core 2.2.0. | — | — |
+| ~~**P1-A2**~~ | ✅ **DONE 21 Sep** (#11). `quorum-signer`. `sign()` consumes the session, so nonce reuse — the one mistake that leaks the signing share — is a compile error. Share at rest behind Argon2id + XChaCha20-Poly1305. | — | — |
+| ~~**P1-A3**~~ | ✅ **DONE 21 Sep** (#11). `quorum-coordinator`. Unit of work is an **action**, not a transaction. Culprit attribution carried in the error type, not flattened to a message. | — | — |
+| **P1-A4** | ⬜ **THE CRITICAL PATH** (#14). A funded vault exists — 0.04 TAZ in Ironwood, tx `0720f1d1`, block 4,380,118, visible to the vault's own UFVK. This is the last thing between us and Gate B, and it is what will finally exercise P1-B1 and P1-B2 against a real transaction. | sisa | — |
 
 ### Dev B — Phase 1 share
 
