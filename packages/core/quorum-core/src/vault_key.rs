@@ -179,6 +179,21 @@ impl VaultKey {
         &self.fvk
     }
 
+    /// The vault as a unified full viewing key.
+    ///
+    /// This is what makes the audit trail worth anything. An application
+    /// event log is a database table: it proves nothing to anyone who does
+    /// not already trust us, which for an audit artifact is the entire
+    /// population that matters. Hand a funder this key and they can verify
+    /// the vault's history against the chain themselves.
+    ///
+    /// It is also a secret. It grants no spend authority and reveals every
+    /// transaction the vault has ever made — so sharing it is a decision,
+    /// not a default.
+    pub fn unified_full_viewing_key(&self) -> Option<zcash_keys::keys::UnifiedFullViewingKey> {
+        zcash_keys::keys::UnifiedFullViewingKey::from_orchard_fvk(self.fvk.clone()).ok()
+    }
+
     /// The vault's receiving address at the default diversifier.
     pub fn address(&self) -> orchard::Address {
         self.fvk.address_at(0u32, Scope::External)

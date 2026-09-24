@@ -90,6 +90,10 @@ argon2 = "0.5"
 chacha20poly1305 = "0.10"
 zeroize = { version = "1", features = ["derive"] }
 
+# ── Coordinator HTTP service ──────────────────────────────
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
 # ── General ───────────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
