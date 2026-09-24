@@ -12,6 +12,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
+import { Button } from "@/components/ui/Button";
 
 type ProtocolTab = "dkg" | "shielded" | "culprit" | "compliance";
 
@@ -127,13 +128,14 @@ let incoming_viewing_key = ufvk.to_ivk();
         </p>
 
         <div className="pt-2 flex items-center gap-3">
-          <Link
+          <Button
+            variant="outline"
+            size="md"
             href="/vaults/new"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 text-white text-xs sm:text-sm font-semibold transition cursor-pointer backdrop-blur-md font-heading"
+            iconRight={<ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
           >
-            <span>Create new vault</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          </Link>
+            Create new vault
+          </Button>
         </div>
       </div>
 
@@ -216,23 +218,20 @@ let incoming_viewing_key = ufvk.to_ivk();
             </h2>
           </div>
 
-          {/* Tab Selector */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#10141D] rounded-xl border border-white/10">
+          {/* Tab Selector - Boxy Buttons */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#10141D] border border-white/10">
             {(["dkg", "shielded", "culprit", "compliance"] as ProtocolTab[]).map((tab) => (
-              <button
+              <Button
                 key={tab}
+                variant={activeTab === tab ? "primary" : "ghost"}
+                size="sm"
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-heading transition cursor-pointer ${
-                  activeTab === tab
-                    ? "bg-[#38BDF8] text-slate-950 shadow"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                }`}
               >
                 {tab === "dkg" && "Key Ceremony"}
                 {tab === "shielded" && "Ironwood Pool"}
                 {tab === "culprit" && "Culprit Detection"}
                 {tab === "compliance" && "Viewing Keys"}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -301,19 +300,21 @@ let incoming_viewing_key = ufvk.to_ivk();
             Want to test the key generation ceremony with simulated signers?
           </span>
           <div className="flex items-center gap-3">
-            <Link
+            <Button
+              variant="primary"
+              size="sm"
               href="/vaults/vault-demo-001/ceremony"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#38BDF8] hover:bg-[#7DD3FC] text-slate-950 text-xs font-bold font-heading transition shadow cursor-pointer"
+              iconRight={<ArrowRight className="w-3.5 h-3.5" />}
             >
-              <span>Launch Ceremony Sandbox</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-            <Link
+              Launch Ceremony Sandbox
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               href="/vaults/new"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/20 hover:border-white/40 bg-white/5 text-xs font-semibold text-slate-200 transition cursor-pointer font-heading"
             >
-              <span>Create New Vault</span>
-            </Link>
+              Create New Vault
+            </Button>
           </div>
         </div>
       </div>

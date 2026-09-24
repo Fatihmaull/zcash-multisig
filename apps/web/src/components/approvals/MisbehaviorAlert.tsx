@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertOctagon, RotateCcw, FileText, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface MisbehaviorAlertProps {
   participantName: string;
@@ -53,22 +54,24 @@ export function MisbehaviorAlert({
           {/* Remediation Action */}
           <div className="pt-2 flex flex-wrap gap-2.5">
             {recoverable && (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={onExcludeCulprit}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+                icon={<RotateCcw className="w-3.5 h-3.5" />}
               >
-                <RotateCcw className="w-3.5 h-3.5" />
                 Resume with Carol (Standby)
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onViewTrace}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)] text-xs font-medium transition cursor-pointer"
+              icon={<FileText className="w-3.5 h-3.5" />}
             >
-              <FileText className="w-3.5 h-3.5" />
               View Verification Proof
-            </button>
+            </Button>
           </div>
         </div>
       </div>

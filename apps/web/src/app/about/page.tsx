@@ -9,6 +9,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
+import { Button } from "@/components/ui/Button";
 
 export default function AboutPage() {
   const specs = [
@@ -37,13 +38,14 @@ export default function AboutPage() {
         </p>
 
         <div className="pt-2 flex items-center gap-3">
-          <Link
+          <Button
+            variant="outline"
+            size="md"
             href="/vaults"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 text-white text-xs sm:text-sm font-semibold transition cursor-pointer backdrop-blur-md font-heading"
+            iconRight={<ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
           >
-            <span>Launch coordinator app</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          </Link>
+            Launch coordinator app
+          </Button>
         </div>
       </div>
 
@@ -133,13 +135,14 @@ export default function AboutPage() {
               &quot;Privacy is necessary for an open society in the electronic age. We cannot expect governments, corporations, or other large, faceless organizations to grant us privacy out of their beneficence.&quot;
             </p>
           </div>
-          <Link
+          <Button
+            variant="primary"
+            size="md"
             href="/vaults"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#38BDF8] hover:bg-[#7DD3FC] text-slate-950 font-bold font-heading text-xs shrink-0 shadow-lg shadow-[#38BDF8]/20 transition active:scale-95 cursor-pointer"
+            iconRight={<ArrowRight className="w-3.5 h-3.5" />}
           >
-            <span>Open Vaults</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+            Open Vaults
+          </Button>
         </div>
       </div>
     </LandingLayout>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import type { Prisma } from "@prisma/client";
 import { getLiveWalletBalance } from "@/lib/onchain-balance";
+import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
 
@@ -111,107 +112,193 @@ interface SbVaultRecord {
     }
   }
 
+  const activeVaultsCount = vaults.filter((v) => v.status === "ACTIVE").length;
+  const pendingDkgCount = vaults.filter((v) => v.status === "PENDING_DKG").length;
+
   return (
     <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
-            Shielded Multisig Vaults
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+              Shielded Multisig Vaults
+            </h1>
+            <div className="hidden sm:flex items-center gap-1.5 pl-2">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                {activeVaultsCount} Active
+              </span>
+              {pendingDkgCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  {pendingDkgCount} Pending Setup
+                </span>
+              )}
+            </div>
+          </div>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
             Collaborative vaults where outgoing transactions require threshold consensus from key holders.
           </p>
         </div>
 
-        <Link
+        <Button
+          variant="primary"
+          size="md"
           href="/vaults/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs sm:text-sm font-semibold transition shadow-md shadow-amber-500/20 active:scale-98 self-start sm:self-auto cursor-pointer"
+          icon={<KeyRound className="w-4 h-4" />}
         >
-          <KeyRound className="w-4 h-4" />
-          <span>Create New Vault</span>
-        </Link>
+          Create New Vault
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Render Live Vaults from Database */}
-        {vaults.map((vault) => (
-          <div 
-            key={vault.id}
-            className="p-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs hover:border-[var(--zcash-gold-border)] transition flex flex-col justify-between space-y-4"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                    <Shield className="w-5 h-5" />
+        {vaults.map((vault) => {
+          const isPendingDkg = vault.status === "PENDING_DKG";
+          const pendingApprovalsCount = vault.approvalRequests.filter(
+            (a) => a.status === "PENDING"
+          ).length;
+
+          return (
+            <div 
+              key={vault.id}
+              className={`p-6 rounded-2xl border bg-[var(--bg-card)] shadow-xs transition flex flex-col justify-between space-y-4 ${
+                isPendingDkg 
+                  ? "border-amber-500/40 hover:border-amber-500/60 bg-amber-500/[0.02]" 
+                  : "border-[var(--border-default)] hover:border-[var(--zcash-gold-border)]"
+              }`}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
+                      isPendingDkg 
+                        ? "bg-amber-500/15 border-amber-500/30 text-amber-500" 
+                        : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                    }`}>
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[var(--text-primary)] text-base">{vault.label}</h3>
+                      <p className="text-xs text-[var(--text-muted)] font-mono">ID: {vault.id}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-[var(--text-primary)] text-base">{vault.label}</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-mono">ID: {vault.id}</p>
+
+                  <div className="flex items-center gap-1.5">
+                    {pendingApprovalsCount > 0 && !isPendingDkg && (
+                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
+                        {pendingApprovalsCount} Need Sign
+                      </span>
+                    )}
+                    {isPendingDkg ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        PENDING DKG
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        ACTIVE
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-                  {vault.status}
-                </span>
-              </div>
+                {isPendingDkg && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="leading-snug">
+                      <span className="font-semibold">Key Ceremony Belum Ditandatangani</span>
+                      <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 mt-0.5">
+                        Vault belum aktif karena para key holder belum menjalankan DKG Ceremony untuk membentuk group key.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-mono break-all bg-[var(--bg-secondary)] p-2.5 rounded-xl border border-[var(--border-subtle)]">
-                {vault.shieldedAddress || "No shielded address assigned yet"}
-              </p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-mono break-all bg-[var(--bg-secondary)] p-2.5 rounded-xl border border-[var(--border-subtle)]">
+                  {vault.shieldedAddress || "No shielded address assigned yet (Pending DKG generation)"}
+                </p>
 
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
-                <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] block text-[11px]">Shielded Balance</span>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className="font-bold text-[var(--text-primary)] font-mono text-sm">
-                      {onchainBalance.ironwood}
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
+                  <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] block text-[11px]">Shielded Balance</span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="font-bold text-[var(--text-primary)] font-mono text-sm">
+                        {isPendingDkg ? "0.0000" : onchainBalance.ironwood}
+                      </span>
+                      <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
+                    </div>
+                    <span className={`text-[9px] font-mono block mt-0.5 ${
+                      isPendingDkg ? "text-[var(--text-muted)]" : "text-emerald-600 dark:text-emerald-400"
+                    }`}>
+                      {isPendingDkg ? "○ Setup Required" : "● Live Ironwood"}
                     </span>
-                    <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
                   </div>
-                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono block mt-0.5">
-                    ● Live Ironwood
-                  </span>
-                </div>
-                <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] block text-[11px]">Spend Policy</span>
-                  <span className="font-semibold text-[var(--text-primary)] block mt-0.5">
-                    {vault.threshold} of {vault.totalParticipants} signers
-                  </span>
-                  <span className="text-[10px] text-[var(--zcash-gold)] font-mono block mt-0.5">
-                    {vault.network}
-                  </span>
-                </div>
-                <div className="col-span-2 p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] block text-[11px]">Signers ({vault.participants.length})</span>
-                  <span className="text-[var(--text-secondary)] font-medium">
-                    {vault.participants.length > 0 
-                      ? vault.participants.map((p) => p.label).join(" • ")
-                      : "No participants registered"}
-                  </span>
+                  <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] block text-[11px]">Spend Policy</span>
+                    <span className="font-semibold text-[var(--text-primary)] block mt-0.5">
+                      {vault.threshold} of {vault.totalParticipants} signers
+                    </span>
+                    <span className="text-[10px] text-[var(--zcash-gold)] font-mono block mt-0.5">
+                      {vault.network}
+                    </span>
+                  </div>
+                  <div className="col-span-2 p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] block text-[11px]">Signers ({vault.participants.length})</span>
+                    <span className="text-[var(--text-secondary)] font-medium">
+                      {vault.participants.length > 0 
+                        ? vault.participants.map((p) => p.label).join(" • ")
+                        : "No participants registered"}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
-              <Link
-                href={`/vaults/${vault.id}/ceremony`}
-                className="text-xs text-[var(--text-secondary)] hover:text-[var(--zcash-gold)] inline-flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-                <span>Simulate Ceremony</span>
-              </Link>
+              <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                {isPendingDkg ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      href={`/vaults/${vault.id}/ceremony`}
+                      icon={<KeyRound className="w-3.5 h-3.5" />}
+                    >
+                      Complete Key Ceremony
+                    </Button>
 
-              <Link
-                href={`/vaults/${vault.id}`}
-                className="px-3.5 py-2 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs font-medium inline-flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <span>View Vault</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      href={`/vaults/${vault.id}`}
+                      iconRight={<ArrowUpRight className="w-3.5 h-3.5" />}
+                    >
+                      View Details
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      href={`/vaults/${vault.id}/ceremony`}
+                      icon={<KeyRound className="w-3.5 h-3.5 text-[var(--zcash-gold)]" />}
+                    >
+                      Simulate Ceremony
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      href={`/vaults/${vault.id}`}
+                      iconRight={<ArrowUpRight className="w-3.5 h-3.5" />}
+                    >
+                      View Vault
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Create New Vault Placeholder Card */}
         <Link

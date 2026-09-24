@@ -51,3 +51,5 @@ yarn-error.log*
 
 # Dev tools
 tools/zcash-devtool/
+*.db
+*.db-journal

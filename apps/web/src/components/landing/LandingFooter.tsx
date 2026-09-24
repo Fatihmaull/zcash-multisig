@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { FileCheck2 } from "lucide-react";
+import { useSplashScreen } from "@/components/ui/SplashScreenProvider";
 
 export function LandingFooter() {
+  const { triggerSplashNavigation } = useSplashScreen();
+
   return (
     <>
       {/* Clean Minimalist Bottom Bar */}
@@ -27,14 +30,14 @@ export function LandingFooter() {
       </footer>
 
       {/* Floating Amber Action Button */}
-      <Link
-        href="/approvals"
+      <button
+        onClick={() => triggerSplashNavigation("/approvals")}
         aria-label="View Proposals & Spend Governance"
         className="fixed bottom-6 right-6 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 hover:scale-110 active:scale-95 text-slate-950 flex items-center justify-center shadow-2xl shadow-orange-500/50 transition-all cursor-pointer group"
         title="View Approvals & Proposals"
       >
         <FileCheck2 className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 group-hover:rotate-12 transition-transform" />
-      </Link>
+      </button>
     </>
   );
 }
