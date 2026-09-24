@@ -70,6 +70,15 @@ export async function GET(
       include: { participants: true },
     });
 
+interface SbParticipant {
+  id: string;
+  label: string;
+  public_key_identifier?: string | null;
+  is_active: boolean;
+  joined_at?: string | null;
+  updated_at?: string | null;
+}
+
     if (!vault) {
       const { data: sbVault } = await supabase
         .from("vaults")
@@ -88,16 +97,16 @@ export async function GET(
           network: sbVault.network,
           createdAt: new Date(sbVault.created_at),
           updatedAt: new Date(sbVault.updated_at),
-          participants: (sbVault.participants || []).map((p: any) => ({
+          participants: ((sbVault.participants as unknown as SbParticipant[]) || []).map((p) => ({
             id: p.id,
             vaultId: sbVault.id,
             label: p.label,
-            publicKeyIdentifier: p.public_key_identifier,
+            publicKeyIdentifier: p.public_key_identifier ?? null,
             isActive: p.is_active,
             joinedAt: new Date(p.joined_at || 0),
             updatedAt: new Date(p.updated_at || 0),
           })),
-        } as any;
+        };
       }
     }
 
@@ -112,7 +121,7 @@ export async function GET(
       success: true,
       vault,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: "Failed to fetch vault ceremony data" },
       { status: 500 }

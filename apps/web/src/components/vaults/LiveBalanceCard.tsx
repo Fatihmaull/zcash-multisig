@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, ShieldCheck, PlusCircle, Check, Copy, ExternalLink, ArrowDownLeft } from "lucide-react";
+import { RefreshCw, ShieldCheck, PlusCircle, Check, Copy, ArrowDownLeft } from "lucide-react";
 import type { OnchainWalletBalance } from "@/lib/onchain-balance";
 import { Button } from "@/components/ui/Button";
 

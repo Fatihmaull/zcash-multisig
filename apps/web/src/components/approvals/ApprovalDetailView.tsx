@@ -60,6 +60,7 @@ export function ApprovalDetailView({
 
   // Automatically reset and apply the new simulation state when activeScenario is switched from Header or bottom buttons
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- simulation state reset driven by scenario toggle
     setBobSigned(false);
     setCarolSigned(false);
     setExcludedCulprit(false);

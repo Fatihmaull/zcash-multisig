@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { 
   KeyRound, 
   Users, 
@@ -12,8 +11,7 @@ import {
   Copy, 
   Check, 
   Plus, 
-  Trash2, 
-  RefreshCw
+  Trash2
 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Button } from "@/components/ui/Button";
@@ -38,7 +36,6 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dkgProgress, setDkgProgress] = useState(0);
-  const [existingVaultStatus, setExistingVaultStatus] = useState<string | null>(null);
 
   const [participants, setParticipants] = useState<Participant[]>([
     { name: "Alice", role: "Lead Treasurer", status: "waiting" },
@@ -57,10 +54,9 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
           const v = data.vault;
           setVaultName(v.label);
           setThreshold(v.threshold);
-          setExistingVaultStatus(v.status);
           if (v.participants && v.participants.length > 0) {
             setParticipants(
-              v.participants.map((p: any) => ({
+              v.participants.map((p: { label: string }) => ({
                 name: p.label.split(" (")[0] || p.label,
                 role: p.label.includes("(") ? p.label.split("(")[1].replace(")", "") : "Key Holder",
                 status: "waiting",

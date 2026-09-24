@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface SplashScreenContextType {
   triggerSplashNavigation: (href: string) => void;
@@ -22,7 +23,6 @@ export const useSplashScreen = () => useContext(SplashScreenContext);
  */
 export function SplashScreenProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [targetDestination, setTargetDestination] = useState<string>("");
   const [phase, setPhase] = useState<"entering" | "holding" | "exiting">("entering");
@@ -108,9 +108,11 @@ export function SplashScreenProvider({ children }: { children: React.ReactNode }
 
               {/* Core Icon Wrapper */}
               <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-[#090D16] border border-amber-500/40 p-3.5 shadow-[0_0_50px_rgba(244,183,40,0.3)] flex items-center justify-center">
-                <img
+                <Image
                   src="/favicon.png"
                   alt="Quorum Fi"
+                  width={96}
+                  height={96}
                   className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(244,183,40,0.5)]"
                 />
               </div>

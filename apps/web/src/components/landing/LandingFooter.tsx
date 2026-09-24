@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { FileCheck2 } from "lucide-react";
 import { useSplashScreen } from "@/components/ui/SplashScreenProvider";
 

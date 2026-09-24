@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { 
   ArrowRight, 
@@ -11,15 +10,8 @@ import {
   EyeOff, 
   Activity,
   Cpu,
-  Layers,
   Lock,
-  FileCheck2,
-  CheckCircle2,
-  Shield,
-  ExternalLink,
   ChevronDown,
-  Terminal,
-  FileCode2,
   type LucideIcon
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
