@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Shield, 
@@ -15,6 +15,7 @@ import {
 import { QuorumIndicator } from "./QuorumIndicator";
 import { MisbehaviorAlert } from "./MisbehaviorAlert";
 import { useUI } from "@/context/UIContext";
+import { Button } from "@/components/ui/Button";
 
 interface ApprovalInitialData {
   id: string;
@@ -56,6 +57,18 @@ export function ApprovalDetailView({
   const [broadcastTxid, setBroadcastTxid] = useState<string | null>(initialData?.txid || null);
   const [toastMessage, setToastMessage] = useState<{ title: string; desc: string } | null>(null);
   const [toastHiding, setToastHiding] = useState(false);
+
+  // Automatically reset and apply the new simulation state when activeScenario is switched from Header or bottom buttons
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- simulation state reset driven by scenario toggle
+    setBobSigned(false);
+    setCarolSigned(false);
+    setExcludedCulprit(false);
+    setIsSigning(false);
+    if (activeScenario !== "happy_path") {
+      setBroadcastTxid(null);
+    }
+  }, [activeScenario]);
 
   const showToast = (title: string, desc: string) => {
     setToastHiding(false);
@@ -392,17 +405,19 @@ export function ApprovalDetailView({
 
                 <div className="flex items-center gap-2">
                   {!bobSigned && !isMalicious && !isTimeout && (
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={handleSimulateBobSigning}
+                      isLoading={isSigning}
                       disabled={isSigning}
-                      className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                     >
                       <span>Sign as Bob</span>
-                      <span className="text-[10px] opacity-75 font-normal">(Simulated)</span>
-                    </button>
+                      <span className="text-[10px] opacity-75 font-normal ml-1">(Simulated)</span>
+                    </Button>
                   )}
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono ${
-                    bobSigned && !isMalicious
+                    bobSigned && !isMalicious 
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                       : isMalicious && !excludedCulprit
                       ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
@@ -439,14 +454,16 @@ export function ApprovalDetailView({
 
                 <div className="flex items-center gap-2">
                   {(excludedCulprit || isTimeout) && !carolSigned && (
-                    <button
+                    <Button
+                      variant="success"
+                      size="sm"
                       onClick={handleSimulateCarolSigning}
+                      isLoading={isSigning}
                       disabled={isSigning}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                     >
                       <span>Sign as Carol</span>
-                      <span className="text-[10px] opacity-75 font-normal">(Simulated)</span>
-                    </button>
+                      <span className="text-[10px] opacity-75 font-normal ml-1">(Simulated)</span>
+                    </Button>
                   )}
                   <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono ${
                     carolSigned 
@@ -503,45 +520,42 @@ export function ApprovalDetailView({
             </p>
 
             <div className="grid grid-cols-1 gap-2">
-              <button
+              <Button
+                variant={activeScenario === "happy_path" && !isMalicious ? "primary" : "outline"}
+                size="sm"
+                fullWidth
                 onClick={() => {
                   setActiveScenario("happy_path");
                   setExcludedCulprit(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs transition border cursor-pointer ${
-                  activeScenario === "happy_path" && !isMalicious
-                    ? "bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300 font-semibold"
-                    : "bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
+                className="justify-start text-left"
               >
                 1. Normal Flow (Bob signs smoothly)
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={activeScenario === "non_responding" ? "primary" : "outline"}
+                size="sm"
+                fullWidth
                 onClick={() => {
                   setActiveScenario("non_responding");
                   setExcludedCulprit(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs transition border cursor-pointer ${
-                  activeScenario === "non_responding"
-                    ? "bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300 font-semibold"
-                    : "bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
+                className="justify-start text-left"
               >
                 2. Bob Unreachable (Switch to Carol)
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={activeScenario === "malicious_share" && !excludedCulprit ? "danger" : "outline"}
+                size="sm"
+                fullWidth
                 onClick={() => {
                   setActiveScenario("malicious_share");
                   setExcludedCulprit(false);
                 }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs transition border cursor-pointer ${
-                  activeScenario === "malicious_share" && !excludedCulprit
-                    ? "bg-rose-500/20 border-rose-500/40 text-rose-700 dark:text-rose-300 font-semibold"
-                    : "bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
+                className="justify-start text-left"
               >
                 3. Corrupt Share (F4 Culprit Detection)
-              </button>
+              </Button>
             </div>
           </div>
         </div>

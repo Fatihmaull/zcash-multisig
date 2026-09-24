@@ -8,6 +8,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { LandingLayout } from "@/components/landing/LandingLayout";
+import { Button } from "@/components/ui/Button";
 
 export default function ProjectPage() {
   const [totalSigners, setTotalSigners] = useState<number>(5);
@@ -35,13 +36,14 @@ export default function ProjectPage() {
         </p>
 
         <div className="pt-2 flex items-center gap-3">
-          <Link
+          <Button
+            variant="outline"
+            size="md"
             href="/approvals"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 text-white text-xs sm:text-sm font-semibold transition cursor-pointer backdrop-blur-md font-heading"
+            iconRight={<ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
           >
-            <span>Review spend proposals</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          </Link>
+            Review spend proposals
+          </Button>
         </div>
       </div>
 
@@ -213,22 +215,20 @@ export default function ProjectPage() {
                 <span className="text-slate-300 font-medium">Total Signers ($n$):</span>
                 <span className="text-[#38BDF8] font-mono font-bold">{totalSigners} Participants</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {[3, 4, 5, 7].map((num) => (
-                  <button
+                  <Button
                     key={num}
+                    variant={totalSigners === num ? "primary" : "outline"}
+                    size="sm"
+                    fullWidth
                     onClick={() => {
                       setTotalSigners(num);
                       if (threshold > num) setThreshold(Math.ceil(num / 2));
                     }}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold font-heading transition cursor-pointer ${
-                      totalSigners === num
-                        ? "bg-[#38BDF8] text-slate-950 shadow"
-                        : "bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
-                    }`}
                   >
                     {num} Signers
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -238,19 +238,17 @@ export default function ProjectPage() {
                 <span className="text-slate-300 font-medium">Required Approval Threshold ($t$):</span>
                 <span className="text-emerald-400 font-mono font-bold">{threshold} of {totalSigners} Required</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {Array.from({ length: totalSigners - 1 }, (_, i) => i + 2).map((num) => (
-                  <button
+                  <Button
                     key={num}
+                    variant={threshold === num ? "success" : "outline"}
+                    size="sm"
+                    fullWidth
                     onClick={() => setThreshold(num)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold font-heading transition cursor-pointer ${
-                      threshold === num
-                        ? "bg-emerald-400 text-slate-950 shadow"
-                        : "bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
-                    }`}
                   >
                     {num} of {totalSigners}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -299,13 +297,14 @@ export default function ProjectPage() {
 
             <div className="pt-2 flex justify-between items-center text-[11px]">
               <span className="text-slate-400">Ready to configure this quorum?</span>
-              <Link
+              <Button
+                variant="primary"
+                size="sm"
                 href="/vaults/new"
-                className="text-[#38BDF8] hover:text-[#7DD3FC] font-bold font-heading flex items-center gap-1 transition"
+                iconRight={<ArrowRight className="w-3.5 h-3.5" />}
               >
-                <span>Deploy {threshold}-of-{totalSigners} Vault</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+                Deploy {threshold}-of-{totalSigners} Vault
+              </Button>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Send, Shield, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 export default function NewProposalPage() {
   const router = useRouter();
@@ -128,20 +129,16 @@ export default function NewProposalPage() {
           </p>
         </div>
 
-        <button
+        <Button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 cursor-pointer"
+          variant="primary"
+          size="lg"
+          fullWidth
+          isLoading={isSubmitting}
+          icon={<Send className="w-4 h-4" />}
         >
-          {isSubmitting ? (
-            <span>Submitting to Supabase...</span>
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              <span>Submit Spend Proposal</span>
-            </>
-          )}
-        </button>
+          Submit Spend Proposal
+        </Button>
       </form>
     </div>
   );

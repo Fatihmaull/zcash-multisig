@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { label, threshold, totalParticipants, shieldedAddress, participants } = body;
+    const { label, threshold, totalParticipants, shieldedAddress, participants, status } = body;
 
     if (!label || !threshold || !totalParticipants || !participants || !Array.isArray(participants)) {
       return NextResponse.json(
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         threshold: Number(threshold),
         totalParticipants: Number(totalParticipants),
         shieldedAddress: finalAddress,
-        status: "ACTIVE",
+        status: status === "PENDING_DKG" ? "PENDING_DKG" : "ACTIVE",
         network: "TESTNET",
         participants: {
           create: participants.map((p: { name: string; role?: string }, index: number) => ({

@@ -18,6 +18,7 @@ interface SearchableSelectProps<T = string | number> {
   searchPlaceholder?: string;
   disabled?: boolean;
   className?: string;
+  triggerClassName?: string;
   dropdownClassName?: string;
   align?: "left" | "right";
   icon?: React.ReactNode;
@@ -31,6 +32,7 @@ export function SearchableSelect<T = string | number>({
   searchPlaceholder = "Search options...",
   disabled = false,
   className = "",
+  triggerClassName = "",
   dropdownClassName = "",
   align = "left",
   icon,
@@ -87,7 +89,7 @@ export function SearchableSelect<T = string | number>({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] text-xs sm:text-sm text-[var(--text-primary)] transition-all shadow-xs focus:outline-none focus:ring-1 focus:ring-[var(--zcash-gold)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`w-full h-9 flex items-center justify-between gap-2 px-3 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] text-xs text-[var(--text-primary)] transition-all shadow-xs focus:outline-none focus:ring-1 focus:ring-[var(--zcash-gold)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -110,7 +112,7 @@ export function SearchableSelect<T = string | number>({
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className={`absolute z-50 mt-1.5 w-full min-w-[220px] max-w-[340px] rounded-2xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-xl shadow-black/20 backdrop-blur-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+          className={`absolute z-50 mt-1.5 w-full min-w-[220px] max-w-[340px] rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-xl shadow-black/20 backdrop-blur-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
             align === "right" ? "right-0" : "left-0"
           } ${dropdownClassName}`}
         >

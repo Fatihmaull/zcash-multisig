@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { 
   KeyRound, 
   Users, 
@@ -12,10 +11,10 @@ import {
   Copy, 
   Check, 
   Plus, 
-  Trash2, 
-  RefreshCw
+  Trash2
 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { Button } from "@/components/ui/Button";
 
 interface Participant {
   name: string;
@@ -26,7 +25,11 @@ interface Participant {
 
 type CeremonyStep = 1 | 2 | 3;
 
-export function KeyCeremonyView() {
+interface KeyCeremonyViewProps {
+  vaultId?: string;
+}
+
+export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
   const [step, setStep] = useState<CeremonyStep>(1);
   const [vaultName, setVaultName] = useState("Dev Treasury");
   const [threshold, setThreshold] = useState(2);
@@ -39,6 +42,31 @@ export function KeyCeremonyView() {
     { name: "Bob", role: "Finance Director", status: "waiting" },
     { name: "Carol", role: "Auditor (Standby)", status: "waiting" },
   ]);
+
+  // If vaultId is provided, load existing vault from DB
+  useEffect(() => {
+    if (!vaultId) return;
+
+    fetch(`/api/vaults/${vaultId}/ceremony`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.vault) {
+          const v = data.vault;
+          setVaultName(v.label);
+          setThreshold(v.threshold);
+          if (v.participants && v.participants.length > 0) {
+            setParticipants(
+              v.participants.map((p: { label: string }) => ({
+                name: p.label.split(" (")[0] || p.label,
+                role: p.label.includes("(") ? p.label.split("(")[1].replace(")", "") : "Key Holder",
+                status: "waiting",
+              }))
+            );
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load vault for ceremony:", err));
+  }, [vaultId]);
 
   const handleAddParticipant = () => {
     if (participants.length >= 5) return;
@@ -91,26 +119,47 @@ export function KeyCeremonyView() {
     await new Promise((r) => setTimeout(r, 600));
     setDkgProgress(60);
 
-    // Call /api/vaults/create to save into PostgreSQL and Supabase
-    try {
-      const res = await fetch("/api/vaults/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          label: vaultName,
-          threshold,
-          totalParticipants: participants.length,
-          shieldedAddress: generatedAddress,
-          participants,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.vault) {
-        setCreatedVaultId(data.vault.id);
+    if (vaultId) {
+      // Activating an existing vault from PENDING_DKG to ACTIVE
+      try {
+        const res = await fetch(`/api/vaults/${vaultId}/ceremony`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shieldedAddress: generatedAddress,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setCreatedVaultId(vaultId);
+        }
+      } catch (err) {
+        console.error("Failed to activate vault:", err);
+        setSaveError("Vault ceremony signed. Database sync will retry.");
       }
-    } catch (err) {
-      console.error("Failed to save vault:", err);
-      setSaveError("Vault generated locally. Remote sync will retry.");
+    } else {
+      // Call /api/vaults/create to save into PostgreSQL and Supabase
+      try {
+        const res = await fetch("/api/vaults/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            label: vaultName,
+            threshold,
+            totalParticipants: participants.length,
+            shieldedAddress: generatedAddress,
+            participants,
+            status: "ACTIVE",
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.vault) {
+          setCreatedVaultId(data.vault.id);
+        }
+      } catch (err) {
+        console.error("Failed to save vault:", err);
+        setSaveError("Vault generated locally. Remote sync will retry.");
+      }
     }
 
     setDkgProgress(90);
@@ -271,12 +320,15 @@ export function KeyCeremonyView() {
               ))}
 
               {participants.length < 5 && (
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
                   onClick={handleAddParticipant}
-                  className="w-full py-2.5 rounded-xl border border-dashed border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] text-xs text-[var(--text-muted)] hover:text-[var(--zcash-gold)] flex items-center justify-center gap-2 transition bg-[var(--bg-secondary)] cursor-pointer"
+                  icon={<Plus className="w-4 h-4" />}
                 >
-                  <Plus className="w-4 h-4" /> Add Key Holder (Up to 5)
-                </button>
+                  Add Key Holder (Up to 5)
+                </Button>
               )}
             </div>
 
@@ -289,13 +341,15 @@ export function KeyCeremonyView() {
             </div>
 
             {/* Continue Button */}
-            <button
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
               onClick={handleConnectChannels}
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              iconRight={<ArrowRight className="w-4 h-4" />}
             >
-              <span>Next: Connect Signer Devices</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              Next: Connect Signer Devices
+            </Button>
           </div>
         )}
 
@@ -353,23 +407,17 @@ export function KeyCeremonyView() {
               ))}
             </div>
 
-            <button
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
               onClick={handleRunDkg}
               disabled={isProcessing || participants.some((p) => p.status !== "connected")}
-              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 cursor-pointer"
+              isLoading={isProcessing}
+              iconRight={!isProcessing ? <ArrowRight className="w-4 h-4" /> : undefined}
             >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Verifying Connections...</span>
-                </>
-              ) : (
-                <>
-                  <span>Begin Distributed Key Generation</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              {isProcessing ? "Verifying Connections..." : "Begin Distributed Key Generation"}
+            </Button>
           </div>
         )}
 
@@ -401,10 +449,14 @@ export function KeyCeremonyView() {
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <h3 className="text-sm sm:text-base font-semibold text-emerald-800 dark:text-emerald-300">
-                      Shielded Vault Created Successfully ({threshold}-of-{participants.length} Policy)
+                      {vaultId
+                        ? `Key Ceremony Complete — Vault Activated (${threshold}-of-${participants.length} Policy)`
+                        : `Shielded Vault Created Successfully (${threshold}-of-${participants.length} Policy)`}
                     </h3>
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                      Each participant holds their mathematical key share securely. The vault is ready to receive and spend shielded Zcash.
+                      {vaultId
+                        ? "Key holders have successfully linked devices and signed the DKG ceremony. Vault status is now ACTIVE."
+                        : "Each participant holds their mathematical key share securely. The vault is ready to receive and spend shielded Zcash."}
                     </p>
                     {saveError && (
                       <p className="text-xs text-amber-600 dark:text-amber-400 font-mono mt-1">
@@ -420,13 +472,14 @@ export function KeyCeremonyView() {
                     <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-semibold">
                       Vault Address (Shielded / Private)
                     </span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => copyAddress(generatedAddress)}
-                      className="inline-flex items-center gap-1 text-xs text-[var(--zcash-gold)] hover:underline font-medium cursor-pointer"
+                      icon={copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[var(--zcash-gold)]" />}
                     >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copied ? "Copied!" : "Copy Address"}</span>
-                    </button>
+                      {copied ? "Copied!" : "Copy Address"}
+                    </Button>
                   </div>
                   <p className="font-mono text-xs text-[var(--text-secondary)] break-all bg-[var(--bg-card)] p-2.5 rounded-lg border border-[var(--border-default)] select-all">
                     {generatedAddress}
@@ -450,13 +503,15 @@ export function KeyCeremonyView() {
                 </div>
 
                 {/* Return button */}
-                <Link
-                  href={createdVaultId ? `/vaults/${createdVaultId}` : "/vaults"}
-                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm transition shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  href={vaultId ? `/vaults/${vaultId}` : (createdVaultId ? `/vaults/${createdVaultId}` : "/vaults")}
+                  iconRight={<ArrowRight className="w-4 h-4" />}
                 >
-                  <span>{createdVaultId ? "Open Newly Created Vault" : "Finish & Open Vaults"}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+                  {vaultId ? "Open Activated Vault" : (createdVaultId ? "Open Newly Created Vault" : "Finish & Open Vaults")}
+                </Button>
               </div>
             )}
           </div>

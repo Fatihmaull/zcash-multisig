@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { ArrowUpRight, Clock, FileCheck2, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import type { Prisma } from "@prisma/client";
+import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
 
@@ -126,13 +126,14 @@ export default async function ApprovalsPage() {
           </p>
         </div>
 
-        <Link
+        <Button
+          variant="primary"
+          size="md"
           href="/approvals/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs sm:text-sm font-semibold transition shadow-md shadow-amber-500/20 active:scale-98 self-start sm:self-auto cursor-pointer"
+          icon={<Plus className="w-4 h-4" />}
         >
-          <Plus className="w-4 h-4" />
-          <span>Propose Transfer</span>
-        </Link>
+          Propose Transfer
+        </Button>
       </div>
 
       <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs overflow-hidden divide-y divide-[var(--border-subtle)]">
@@ -187,13 +188,14 @@ export default async function ApprovalsPage() {
                     </div>
                   </div>
 
-                  <Link
+                  <Button
+                    variant="primary"
+                    size="sm"
                     href={`/approvals/${req.id}`}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold transition shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+                    iconRight={<ArrowUpRight className="w-3.5 h-3.5" />}
                   >
-                    <span>Review &amp; Sign</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </Link>
+                    Review &amp; Sign
+                  </Button>
                 </div>
               </div>
             );
