@@ -9,6 +9,8 @@
 
 pub mod pczt_job;
 pub mod round;
+pub mod routes;
+pub mod service;
 
 pub use pczt_job::{apply, inspect, PcztError, PcztSigningJob};
 pub use round::{Action, CollectingCommitments, CollectingShares, CoordinatorError, ShieldedPool};

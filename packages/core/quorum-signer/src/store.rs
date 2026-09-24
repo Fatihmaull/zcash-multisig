@@ -25,7 +25,7 @@
 use argon2::Argon2;
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
-    XChaCha20Poly1305, XNonce,
+    Key, XChaCha20Poly1305, XNonce,
 };
 use frost_core::keys::KeyPackage;
 use quorum_core::Ciphersuite;
@@ -87,7 +87,7 @@ pub fn seal<R: RngCore + CryptoRng>(
     rng.fill_bytes(&mut nonce);
 
     let mut key = derive_key(passphrase.as_bytes(), &salt)?;
-    let cipher = XChaCha20Poly1305::new(key.as_ref().into());
+    let cipher = XChaCha20Poly1305::new(Key::from_slice(&key));
     let ciphertext = cipher
         .encrypt(XNonce::from_slice(&nonce), plaintext.as_ref())
         .map_err(|_| StoreError::CannotDecrypt)?;
@@ -125,7 +125,7 @@ pub fn open(stored: &[u8], passphrase: &str) -> Result<KeyPackage<Ciphersuite>, 
     let ciphertext = &stored[1 + SALT_LEN + NONCE_LEN..];
 
     let mut key = derive_key(passphrase.as_bytes(), salt)?;
-    let cipher = XChaCha20Poly1305::new(key.as_ref().into());
+    let cipher = XChaCha20Poly1305::new(Key::from_slice(&key));
     let mut plaintext = cipher
         .decrypt(XNonce::from_slice(nonce), ciphertext)
         .map_err(|_| StoreError::CannotDecrypt)?;

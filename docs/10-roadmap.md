@@ -178,17 +178,17 @@ arrive at the UI as structured data with a participant identity, not as a string
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P3-A1** | Expose the coordinator over the integration contract, replacing the mock. | 1d | Gate B, P2-B1 |
-| **P3-A2** | Misbehaving-signer support: a deterministic, repeatable way to inject a bad share for the demo, plus the culprit mapped to a structured event carrying participant identity. | 1d | P3-A1 |
-| **P3-A3** | Non-responding signer: timeouts, clean round abort, resume without that participant. The most common real failure of shared control is not malice — it is someone on a plane. | 1.5d | P3-A1 |
-| **P3-A4** | Viewing-key derivation and history query backing the audit export. Derived from the chain, **never reconstructed from the event log**. | 1.5d | P1-B1 |
-| **P3-A5** | Hardening: no Rust panic ever reaches the UI. Every error path produces a domain event. | 1d | P3-A1 |
+| ~~**P3-A1**~~ | ✅ **DONE 24 Sep.** `quorum-coordinatord` serves the integration contract on `:2745`. Two surfaces, kept apart the way the contract split them: nothing under `/coordinator` can produce a signature, and a test asserts those routes return 404. Holds no key material. | — | — |
+| ~~**P3-A2**~~ | ✅ **DONE 24 Sep.** A bad share is rejected and its signer **named**, with a message that says no funds moved and what to do next. Attribution survives all the way to the HTTP response rather than being flattened to a string. | — | — |
+| ~~**P3-A3**~~ | ✅ **DONE 24 Sep.** A signer past the deadline is marked `TIMEOUT`, with `culpritDetected: false` and a message that reassures. A timeout does not abort the request — the commonest real failure of shared control is someone on a plane, not malice. | — | — |
+| ~~**P3-A4**~~ | ✅ **DONE 24 Sep.** `/coordinator/vault/audit` exports the vault's **unified full viewing key** alongside the event log, and refuses a seed that does not reproduce the vault. The viewing key is the point: an event log is a table we control, the chain is not. | — | — |
+| ~~**P3-A5**~~ | ✅ **DONE 24 Sep.** No panic path reaches a handler — map indexing replaced with checked lookups, and a poisoned lock returns a typed error saying state may be inconsistent and nothing was signed, rather than taking the service down. | — | — |
 
 ### Dev B
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| ~~**P3-B1**~~ | ✅ **DONE 22 Sep.** UI and coordinator architecture integrated with live Postgres/Supabase DB, dynamic approval sign API (`/api/approvals/[id]/sign`), broadcast route (`/api/broadcast`), and `coordinatorClient` adapter (`src/lib/coordinator-client.ts`) enabling seamless swap from mock to live `quorum-coordinator` daemon via `COORDINATOR_URL`. | 1d | P3-A1 |
+| **P3-B1** | 🟡 **PARTIAL.** The UI and the contract types are in place, but the web app still drives approvals through Prisma rows rather than the coordinator — its sign route records a label from the request body. Now unblocked: `quorum-coordinatord` exists and speaks the contract (P3-A1). What remains is pointing `coordinator-client.ts` at it and retiring the mock. | sisa | — |
 | ~~**P3-B2**~~ | ✅ **DONE 22 Sep.** **F1 — guided key ceremony.** Interactive 3-step DKG wizard (`KeyCeremonyView.tsx`), participant configuration, latency ping simulation, clear key custody guardrails, and persistent vault creation (`/api/vaults/create`). | 2d | P3-B1 |
 | ~~**P3-B3**~~ | ✅ **DONE 22 Sep.** **F3 — signer coordination.** Circular SVG Quorum Indicator, status per signer (Alice, Bob, Carol Standby), simulated timeout / non-responding recovery path, and real-time state updates. | 1.5d | P3-B1 |
 | ~~**P3-B4**~~ | ✅ **DONE 22 Sep.** **F4 — misbehaving-signer UI.** Dedicated `MisbehaviorAlert.tsx` with clear cryptographic rejection context, "Funds 100% Secure" guarantee, culprit exclusion flow, and fail-safe recovery to standby signer. | 1d | P3-A2 |
