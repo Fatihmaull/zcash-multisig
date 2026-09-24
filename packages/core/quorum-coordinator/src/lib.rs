@@ -7,6 +7,8 @@
 //!
 //! See `docs/03-architecture.md` §2.
 
+pub mod pczt_job;
 pub mod round;
 
+pub use pczt_job::{apply, inspect, PcztError, PcztSigningJob};
 pub use round::{Action, CollectingCommitments, CollectingShares, CoordinatorError, ShieldedPool};
