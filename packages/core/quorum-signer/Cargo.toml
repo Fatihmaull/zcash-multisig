@@ -8,6 +8,13 @@ description = "Participant signer binary — holds shares, performs FROST rounds
 name = "quorum-signerd"
 path = "src/bin/signerd.rs"
 
+# The distributed key ceremony. Separate from signerd on purpose: it runs
+# once, produces the share signerd later consumes, and has no business
+# sharing a process with the thing that holds the share day to day.
+[[bin]]
+name = "quorum-dkgd"
+path = "src/bin/dkgd.rs"
+
 [lib]
 name = "quorum_signer"
 path = "src/lib.rs"
@@ -30,13 +37,15 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 rand = "0.8"
+# The ceremony derives the vault address so every participant can confirm
+# they built the same vault before anyone writes a share.
+zcash_keys.workspace = true
+zcash_protocol = "0.10"
 
 [dev-dependencies]
 rand.workspace = true
 hex.workspace = true
 serde_json.workspace = true
-zcash_protocol = "0.10"
-zcash_keys.workspace = true
 pasta_curves.workspace = true
 ff.workspace = true
 serde.workspace = true
@@ -44,3 +53,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
+# The mock relay the ceremony test runs against — frostd's wire protocol,
+# none of frostd.
+axum.workspace = true
+uuid.workspace = true

@@ -82,9 +82,18 @@ while read -r pid label token; do
   # `env` rather than assignment prefixes: bash parses assignments before
   # expansion, so a conditional ${MIS:+VAR=1} becomes the command name
   # instead of a variable, and the signer silently never starts.
+  # Two layouts. `examples/ceremony.rs` writes every share into the vault
+  # root, because one process made them all. `three-party-ceremony.sh`
+  # writes each into its own participant directory, because three processes
+  # did — and that arrangement is itself part of the claim, so prefer it
+  # when it is there.
+  SHARE="$VAULT/share-$i.bin"
+  PER_PARTY="$VAULT/$(printf '%s' "$label" | tr 'A-Z' 'a-z')/share-$i.bin"
+  [ -f "$PER_PARTY" ] && SHARE="$PER_PARTY"
+
   env \
     QUORUM_COORDINATOR_URL="$URL" \
-    QUORUM_SIGNER_SHARE="$VAULT/share-$i.bin" \
+    QUORUM_SIGNER_SHARE="$SHARE" \
     QUORUM_SIGNER_PASSPHRASE="$PASSPHRASE" \
     QUORUM_SIGNER_ID="$pid" \
     QUORUM_SIGNER_TOKEN="$token" \
@@ -92,7 +101,7 @@ while read -r pid label token; do
     ${MIS:+QUORUM_SIGNER_MISBEHAVE=1} \
     "$BIN/quorum-signerd" >"$RUN/$label.log" 2>&1 &
   PIDS+=($!)
-  printf '  %-6s pid %-7s share-%d.bin%s\n' "$label" "$!" "$i" \
+  printf '  %-6s pid %-7s %s%s\n' "$label" "$!" "${SHARE#"$VAULT"/}" \
     "$([ -n "$MIS" ] && echo '   ← will submit a bad share')"
 done < <(python3 -c "
 import json,sys
@@ -103,7 +112,7 @@ sleep 1
 
 say "Submitting an approval request"
 APPROVAL=$(python3 - "$VAULT_ID" "$PCZT" <<'PY'
-import json, sys, urllib.request, pathlib
+import json, sys, urllib.request, urllib.error, pathlib
 body = {
     "vaultId": sys.argv[1],
     "recipientAddress": "utest1recipient",
@@ -114,7 +123,14 @@ body = {
 req = urllib.request.Request("http://127.0.0.1:2745/coordinator/approval/submit",
                              data=json.dumps(body).encode(),
                              headers={"content-type": "application/json"})
-print(json.loads(urllib.request.urlopen(req).read())["id"])
+try:
+    print(json.loads(urllib.request.urlopen(req).read())["id"])
+except urllib.error.HTTPError as e:
+    # The likeliest cause during a rehearsal is a PCZT built for a different
+    # vault. The coordinator refuses it before any signer commits a nonce, and
+    # a traceback here would bury the one sentence that explains why.
+    detail = json.loads(e.read()).get("message", "no detail")
+    sys.exit(f"\n  The coordinator refused the request:\n\n    {detail}\n")
 PY
 )
 echo "  request $APPROVAL"

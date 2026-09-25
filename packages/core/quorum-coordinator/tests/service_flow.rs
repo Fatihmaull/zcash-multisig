@@ -12,7 +12,10 @@ use std::collections::BTreeMap;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use ff::PrimeField;
 use frost_core::keys::{self, IdentifierList, KeyPackage};
+use orchard::keys::SpendValidatingKey;
+use pasta_curves::pallas;
 use quorum_coordinator::routes::router;
 use quorum_coordinator::service::AppState;
 use quorum_core::Ciphersuite;
@@ -25,11 +28,73 @@ use tower::ServiceExt;
 /// exercises the actual bundle shape a wallet produces.
 const PCZT_FIXTURE: &str = include_str!("fixtures/unsigned_pczt.hex");
 
+/// Rewrite the fixture's randomized key so it belongs to `ak`.
+///
+/// The coordinator refuses a PCZT whose `rk` is not this vault's `ak`
+/// randomized by the action's own `alpha` — see
+/// `tests/pczt_vault_binding.rs` for why. That check is correct and these
+/// tests have to satisfy it, but the fixture was built by a vault whose
+/// shares are not in this repository and must not be: a key share belongs on
+/// a participant's machine, and a test that needed one committed would be
+/// arguing against the product.
+///
+/// So the transaction is bound to the vault instead of the other way round.
+/// `rk` depends only on `ak` and `alpha`, both public, so recomputing it is
+/// arithmetic on public data. The result is a structurally valid PCZT that
+/// is cryptographically consistent for signing: the sighash is recomputed
+/// over the patched bytes, every signer signs that, and aggregation verifies
+/// against the vault's real group key.
+///
+/// **A node would reject the result** — the zk-proof still commits to the
+/// original key. That is fine and deliberate: nothing here is broadcast.
+/// Broadcasting is proven by `scripts/three-signer-demo.sh` against a vault
+/// and a transaction that genuinely belong together.
+fn bind_fixture_to(ak: &SpendValidatingKey) -> Vec<u8> {
+    let mut bytes = hex::decode(PCZT_FIXTURE.trim()).expect("fixture is hex");
+    let spends = quorum_coordinator::spend_keys(&bytes).expect("fixture parses");
+    assert_eq!(
+        spends.len(),
+        1,
+        "fixture should have exactly one unsigned spend"
+    );
+
+    let alpha = pallas::Scalar::from_repr(spends[0].alpha)
+        .into_option()
+        .expect("fixture alpha is a scalar");
+    let wanted: [u8; 32] = (&ak.randomize(&alpha)).into();
+
+    // Locate the old key by value. Requiring exactly one occurrence is what
+    // makes a blind byte replacement safe: if the encoding ever changes shape
+    // this fails loudly rather than corrupting some other field.
+    let occurrences: Vec<usize> = bytes
+        .windows(32)
+        .enumerate()
+        .filter(|(_, w)| *w == spends[0].rk)
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(
+        occurrences.len(),
+        1,
+        "expected rk to appear exactly once in the serialised PCZT, found {}",
+        occurrences.len()
+    );
+    bytes[occurrences[0]..occurrences[0] + 32].copy_from_slice(&wanted);
+
+    // And the patch must have achieved what it claimed.
+    let after = quorum_coordinator::spend_keys(&bytes).expect("patched fixture parses");
+    assert_eq!(after[0].rk, wanted, "rk patch did not take");
+    assert_eq!(after[0].alpha, spends[0].alpha, "alpha must not have moved");
+    bytes
+}
+
 struct Fixture {
     vault_id: String,
     key_packages: BTreeMap<String, KeyPackage<Ciphersuite>>,
     /// participant id → bearer token, handed out at registration.
     tokens: BTreeMap<String, String>,
+    /// The fixture transaction, rebound to this vault. See
+    /// [`bind_fixture_to`].
+    pczt_hex: String,
 }
 
 async fn call(app: &axum::Router, path: &str, body: Value) -> (StatusCode, Value) {
@@ -69,6 +134,15 @@ async fn fixture() -> (axum::Router, Fixture) {
     let (shares, pubkeys) =
         keys::generate_with_dealer::<Ciphersuite, _>(3, 2, IdentifierList::Default, &mut rng)
             .expect("dealer keygen");
+
+    let ak = SpendValidatingKey::from_bytes(
+        &pubkeys
+            .verifying_key()
+            .serialize()
+            .expect("serialise group key"),
+    )
+    .expect("a FROST group key is a valid Orchard ak");
+    let pczt_hex = hex::encode(bind_fixture_to(&ak));
 
     let key_packages: BTreeMap<String, KeyPackage<Ciphersuite>> = shares
         .into_iter()
@@ -122,19 +196,20 @@ async fn fixture() -> (axum::Router, Fixture) {
             vault_id,
             key_packages,
             tokens,
+            pczt_hex,
         },
     )
 }
 
-async fn open_request(app: &axum::Router, vault_id: &str, deadline: u64) -> String {
+async fn open_request(app: &axum::Router, f: &Fixture, deadline: u64) -> String {
     let (status, body) = call(
         app,
         "/coordinator/approval/submit",
         json!({
-            "vaultId": vault_id,
+            "vaultId": f.vault_id,
             "recipientAddress": "utest1recipient",
             "amountZatoshi": "1000000",
-            "pcztHex": PCZT_FIXTURE.trim(),
+            "pcztHex": f.pczt_hex,
             "signerDeadlineSecs": deadline,
         }),
     )
@@ -163,7 +238,7 @@ async fn the_browser_surface_cannot_sign() {
 #[tokio::test]
 async fn two_of_three_sign_through_the_service() {
     let (app, f) = fixture().await;
-    let approval = open_request(&app, &f.vault_id, 300).await;
+    let approval = open_request(&app, &f, 300).await;
     let mut rng = rand::thread_rng();
 
     // Round 1 — two signers commit.
@@ -257,7 +332,7 @@ async fn a_bad_share_is_attributed_by_name() {
     // Feature F4, end to end through the service. A treasurer needs a name,
     // not "signing failed" — and needs to know nothing was spent.
     let (app, f) = fixture().await;
-    let approval = open_request(&app, &f.vault_id, 300).await;
+    let approval = open_request(&app, &f, 300).await;
     let mut rng = rand::thread_rng();
 
     let signers: Vec<String> = f.key_packages.keys().take(2).cloned().collect();
@@ -381,7 +456,7 @@ async fn a_signer_who_never_answers_is_marked_not_blamed() {
     // It must read differently from a bad share, and it must not abort the
     // round.
     let (app, f) = fixture().await;
-    let approval = open_request(&app, &f.vault_id, 0).await; // deadline already passed
+    let approval = open_request(&app, &f, 0).await; // deadline already passed
 
     let (_, state) = call(
         &app,
@@ -424,7 +499,7 @@ async fn a_signer_must_prove_who_it_is() {
     // name the wrong person, and naming the right one is the whole value of
     // F4. Constraint C5 also requires signing channels to be authenticated.
     let (app, f) = fixture().await;
-    let approval = open_request(&app, &f.vault_id, 300).await;
+    let approval = open_request(&app, &f, 300).await;
     let victim = f.tokens.keys().next().expect("a participant").clone();
     let body = json!({ "approvalId": approval, "participantId": victim, "commitmentsHex": [] });
 

@@ -35,6 +35,10 @@ zcash_protocol = "0.10"
 zcash_keys.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
+# inspect() converts an action's alpha back into a scalar to recompute the
+# randomized key it must verify against.
+pasta_curves.workspace = true
+
 [dev-dependencies]
 quorum-signer = { path = "../quorum-signer" }
 tower = "0.5"

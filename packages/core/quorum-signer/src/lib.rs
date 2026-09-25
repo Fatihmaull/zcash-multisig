@@ -4,14 +4,17 @@
 //! ever exists in usable form. The coordinator never sees one, the browser
 //! never sees one, and our servers never see one.
 //!
+//! - [`ceremony`] — the distributed key ceremony, where the share comes from.
 //! - [`store`] — the share at rest, behind a passphrase.
 //! - [`session`] — the two FROST rounds, with the nonce lifecycle enforced by
 //!   the type system rather than by care.
 //!
 //! See `docs/03-architecture.md` §2.
 
+pub mod ceremony;
 pub mod session;
 pub mod store;
 
+pub use ceremony::{CeremonyError, Member, Outcome, Roster, SeedRole};
 pub use session::{SignerError, SigningSession};
 pub use store::{open, seal, StoreError};

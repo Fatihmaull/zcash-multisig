@@ -138,16 +138,18 @@ on cryptography rather than plumbing.
 - [x] No share material has ever crossed into the coordinator process — three OS processes,
       one sealed share each, `./scripts/three-signer-demo.sh` (P3-A1)
 - [x] The scenario can be reset and re-run from the fixture
-- [ ] **2-of-3 DKG completes over `frostd` with three separate signer processes** — ⚠️ **not met.**
-      Signing is distributed; **key generation is not.** The shares the three signerd processes
-      load were born in one process, `cargo run -p quorum-signer --example ceremony`. The DKG
-      typestate and the Noise_K transport both exist and are tested separately; nothing has run
-      them together. Tracked as **P3-A6**.
+- [x] **2-of-3 DKG completes over `frostd` with three separate signer processes** — ✅ **25 Sep**
+      (P3-A6). `./scripts/three-party-ceremony.sh` runs three `quorum-dkgd` processes against a
+      real `frostd`; all three derive the same address and each writes only its own share.
 
-**The distinction to hold in the video and the submission text:** *no party ever sees more than
-one share while signing* is demonstrated. *No party ever saw more than one share, ever* is not —
-not yet. Saying the second while only having done the first is exactly the overclaim this project
-is not allowed to make.
+**All five met.** Both sentences are now ours to say: *no party sees more than one share while
+signing*, and *no party ever saw more than one share*. Until 25 Sep only the first was true, and
+the difference is the whole security claim.
+
+> ⚠️ **They are not yet true of the same vault.** The Gate B txid was produced by `secrets/vault`,
+> built by the single-process fixture. The distributed ceremony produced a different, unfunded
+> vault. To claim both about one vault — which the video should — that new vault needs faucet
+> funds and a spend of its own. See **P4-0**.
 
 **If Gate B had failed:** the degraded demo in [06-risk-register.md](06-risk-register.md) R1.
 Kept here because R1 still governs if the distributed ceremony does not land by Gate C.
@@ -195,7 +197,8 @@ arrive at the UI as structured data with a participant identity, not as a string
 | ~~**P3-A3**~~ | ✅ **DONE 24 Sep.** A signer past the deadline is marked `TIMEOUT`, with `culpritDetected: false` and a message that reassures. A timeout does not abort the request — the commonest real failure of shared control is someone on a plane, not malice. | — | — |
 | ~~**P3-A4**~~ | ✅ **DONE 24 Sep.** `/coordinator/vault/audit` exports the vault's **unified full viewing key** alongside the event log, and refuses a seed that does not reproduce the vault. The viewing key is the point: an event log is a table we control, the chain is not. | — | — |
 | ~~**P3-A5**~~ | ✅ **DONE 24 Sep.** No panic path reaches a handler — map indexing replaced with checked lookups, and a poisoned lock returns a typed error saying state may be inconsistent and nothing was signed, rather than taking the service down. | — | — |
-| **P3-A6** | ⬜ **The last Gate B criterion.** Run DKG across three processes over `frostd`, so the shares are never co-resident even at birth. Not a new feature — the typestate (`dkg.rs`) and the Noise_K transport are both built and tested; what is missing is a binary that runs them together, and the confidentiality requirement (constraint 4) is the reason round 2 goes per-recipient rather than broadcast. Until this lands, F1 demos a ceremony that generated all three shares in one place. | A | 1d |
+| ~~**P3-A6**~~ | ✅ **DONE 25 Sep.** `quorum-dkgd` — one process per participant, DKG over a real `frostd`. Round 2 is sealed per recipient with `Noise_K`, so the relay carries ciphertext only; a test asserts exactly that. Sender identity comes from the key that decrypted the message, never a field inside it. Added a **confirmation round** the single-process fixture never needed: everyone compares the group key and the derived address and aborts if they differ, because a seed contributor who equivocates produces three vaults wearing one name and FROST raises no objection. `MISBEHAVE_SEED=1` reproduces that. | A | 1d |
+| ~~**P3-A7**~~ | ✅ **DONE 25 Sep**, unplanned. **The coordinator now checks a PCZT belongs to this vault.** It did not, and the three-process demo had been reporting `APPROVED, 2 signatures` for a transaction built by a different vault — real quorum, real shares, authorizing nothing. Each action carries `rk`, which must equal this vault's `ak` randomized by the action's own `alpha`; both are public, so the check is free. Refused at submission, before any signer burns a nonce. `examples/which_vault.rs` answers the question before a recording starts. | A | — |
 
 ### Dev B
 
@@ -227,7 +230,8 @@ improvements". Every hackathon team breaks this rule and most of them regret it.
 
 | ID | Task | Owner | Est |
 |---|---|---|---|
-| **P4-1** | Full rehearsal on a **clean environment**, from the fixture. Find what only breaks on a fresh machine. | Both | 1d |
+| **P4-0** | **One vault for both claims.** Fund the distributed-ceremony vault from the faucet, build a PCZT for it, and put a spend of *that* vault on chain. Until this lands, "born distributed" and "confirmed on testnet" are true of two different vaults and the video cannot honestly show one flow. Needs a human at the faucet; everything either side of that is automated. | A + faucet | 0.5d |
+| **P4-1** | Full rehearsal on a **clean environment**, from the fixture. Find what only breaks on a fresh machine. Start from `three-party-ceremony.sh`, not from a committed vault. | Both | 1d |
 | **P4-2** | **Record the demo.** Dev B directs and edits; Dev A operates the terminals. Expect the first three takes to be unusable — that is normal and it is why this starts on the 5th. See [07-demo-script.md](07-demo-script.md). | B leads | 2d |
 | **P4-3** | Bug fixes arising from rehearsal **only**. No features. | A | 1.5d |
 | **P4-4** | Finalise submission: text, README, and the **security-posture review** — every external claim checked against [06-risk-register.md](06-risk-register.md) R6. | B | 1d |

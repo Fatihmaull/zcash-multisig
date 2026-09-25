@@ -131,6 +131,21 @@ impl Identity {
         })
     }
 
+    /// Rebuild an identity from a stored private key.
+    ///
+    /// The public half is derived rather than stored alongside, so a
+    /// tampered or truncated identity file cannot produce a keypair whose
+    /// halves disagree — which would fail later, during a Noise handshake,
+    /// as an unexplained decryption error rather than as a bad key.
+    pub fn from_private_key(private: PrivateKey) -> Result<Self, IdentityError> {
+        let secret = x25519_dalek::StaticSecret::from(*private.as_bytes());
+        let public = x25519_dalek::PublicKey::from(&secret);
+        Ok(Self {
+            private,
+            public: PeerPublicKey(public.to_bytes()),
+        })
+    }
+
     pub fn private_key(&self) -> &PrivateKey {
         &self.private
     }

@@ -311,9 +311,23 @@ pub fn new_id() -> String {
     Uuid::new_v4().to_string()
 }
 
-/// Build a signing job from a PCZT the wallet produced.
-pub fn job_from_pczt(pczt: &[u8]) -> Result<PcztSigningJob, pczt_job::PcztError> {
-    pczt_job::inspect(pczt)
+/// Build a signing job from a PCZT the wallet produced, for a given vault.
+///
+/// The vault is not optional. A PCZT on its own does not say which vault it
+/// belongs to — the coordinator has to assert that, and assert it before any
+/// signer commits a nonce. See [`pczt_job::PcztError::WrongVault`].
+pub fn job_from_pczt(pczt: &[u8], vault: &Vault) -> Result<PcztSigningJob, pczt_job::PcztError> {
+    let group_key = vault
+        .pubkeys
+        .verifying_key()
+        .serialize()
+        .map_err(|e| pczt_job::PcztError::Parse(format!("unusable group key: {e}")))?;
+    let ak = orchard::keys::SpendValidatingKey::from_bytes(&group_key).ok_or_else(|| {
+        pczt_job::PcztError::Parse(
+            "this vault's group key is not a valid Orchard spend validating key".into(),
+        )
+    })?;
+    pczt_job::inspect(pczt, &ak)
 }
 
 pub fn actions_to_wire(actions: &[Action]) -> Vec<SigningAction> {
