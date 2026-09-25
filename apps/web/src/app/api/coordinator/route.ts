@@ -27,7 +27,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { coordinatorClient } from "@/lib/coordinator-client";
 import { getCoordinator } from "@/lib/mock-coordinator";
-import type { MockScenario } from "@/types/coordinator";
+import type {
+  MockScenario,
+  VaultRegistrationRequest,
+  VaultAuditRequest,
+} from "@/types/coordinator";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,6 +75,36 @@ export async function POST(request: NextRequest) {
       case "approval/status": {
         const result = await coordinator.getApprovalStatus(params.approvalId);
         return NextResponse.json(serializeBigInt(result));
+      }
+
+      // ── Vault Management ─────────────────────────────────
+      case "vault/register": {
+        if (!coordinator.registerVault) {
+          return NextResponse.json({ error: "Vault registration not supported" }, { status: 400 });
+        }
+        const result = await coordinator.registerVault(params as unknown as VaultRegistrationRequest);
+        return NextResponse.json(result);
+      }
+
+      case "vault/list": {
+        if (!coordinator.listVaults) {
+          return NextResponse.json([], { status: 200 });
+        }
+        const result = await coordinator.listVaults();
+        return NextResponse.json(result);
+      }
+
+      case "vault/audit": {
+        if (!coordinator.auditVault) {
+          return NextResponse.json({ error: "Vault audit not supported" }, { status: 400 });
+        }
+        const result = await coordinator.auditVault(params as unknown as VaultAuditRequest);
+        return NextResponse.json(result);
+      }
+
+      case "health": {
+        const result = await coordinator.checkHealth();
+        return NextResponse.json(result);
       }
 
       // ── Signer (mock only — see the header note) ─────────

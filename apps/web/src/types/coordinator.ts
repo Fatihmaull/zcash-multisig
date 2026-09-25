@@ -125,6 +125,44 @@ export interface ApprovalSubmission {
   /** Amount in zatoshi (1 ZEC = 100_000_000 zatoshi). Integer to avoid float errors. */
   amountZatoshi: bigint;
   memo?: string;
+  /** Hex-encoded PCZT. If omitted, uses default testnet transaction fixture */
+  pcztHex?: string;
+  /** Deadline in seconds before signers are marked TIMEOUT */
+  signerDeadlineSecs?: number;
+}
+
+export interface VaultRegistrationRequest {
+  label: string;
+  threshold: number;
+  address: string;
+  publicKeyPackage: unknown;
+  participants: Array<{ id: string; label: string }>;
+}
+
+export interface ParticipantToken {
+  participantId: string;
+  label: string;
+  token: string;
+}
+
+export interface VaultRegistrationResponse {
+  vaultId: string;
+  participantTokens: ParticipantToken[];
+}
+
+export interface VaultAuditRequest {
+  vaultId: string;
+  vaultSeedHex: string;
+}
+
+export interface VaultAuditResponse {
+  vaultId: string;
+  label: string;
+  shieldedAddress: string;
+  network: ZcashNetwork;
+  unifiedFullViewingKey: string;
+  events: SigningRoundEvent[];
+  verification: string;
 }
 
 export interface ApprovalRequestState {
@@ -280,6 +318,11 @@ export interface CoordinatorService {
   createDkgSession(request: DkgSessionRequest): Promise<DkgSessionState>;
   getDkgStatus(sessionId: string): Promise<DkgSessionState>;
   completeDkg(sessionId: string): Promise<DkgSessionResult>;
+
+  // ── Vault Registration & Audit ──
+  registerVault?(request: VaultRegistrationRequest): Promise<VaultRegistrationResponse>;
+  listVaults?(): Promise<Array<{ id: string; label: string; threshold: number; shieldedAddress: string; network: string; participants: Array<{ identifier: string; label: string }> }>>;
+  auditVault?(request: VaultAuditRequest): Promise<VaultAuditResponse>;
 
   // ── Approval ──
   submitApproval(submission: ApprovalSubmission): Promise<ApprovalRequestState>;
