@@ -23,6 +23,10 @@ pub fn router(state: AppState) -> Router {
         .route("/coordinator/vault/audit", post(vault_audit))
         .route("/coordinator/approval/submit", post(approval_submit))
         .route("/coordinator/approval/status", post(approval_status))
+        .route(
+            "/coordinator/approval/authorized",
+            post(approval_authorized),
+        )
         // ── SignerService — the signer binary's view. ──
         .route("/signer/pending", post(signer_pending))
         .route("/signer/commit", post(signer_commit))
@@ -244,6 +248,80 @@ async fn vault_audit(State(st): State<AppState>, Json(req): Json<AuditRequest>) 
         "events": events,
         "verification": "Scan the chain with the viewing key above and compare. \
     This export is only as trustworthy as that comparison — the event log is ours, the chain is not.",
+    })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthorizedRequest {
+    approval_id: String,
+}
+
+/// The authorized transaction, once a quorum has signed it.
+///
+/// Without this the coordinator collects signatures and has no way to hand
+/// back what they authorize, which leaves the end-to-end flow unable to
+/// finish through the service at all.
+///
+/// # What this response is
+///
+/// A PCZT with the threshold signatures applied. It still needs proving and
+/// extraction before a node will take it — `zcash-devtool pczt prove` then
+/// `send` — so it is not itself a broadcastable transaction. But it is the
+/// last step that needs anyone's authority, and everything after it is
+/// mechanical.
+///
+/// # What an attacker who takes it can do
+///
+/// Broadcast it. Nothing else: the recipient, the amount and the fee were
+/// all fixed before the first signer committed, and a signature authorizes
+/// exactly that transaction. They cannot redirect it, raise it, or reuse it
+/// for another spend.
+///
+/// So the exposure is timing, not theft — a transaction the quorum approved
+/// going out sooner than intended, or one they later wanted to abandon going
+/// out anyway. Real, and worth saying plainly rather than either
+/// hand-waving or overstating. **The coordinator port is not meant to face
+/// the public internet**, and the browser tier should be the only thing that
+/// reaches it.
+async fn approval_authorized(
+    State(st): State<AppState>,
+    Json(req): Json<AuthorizedRequest>,
+) -> Reply {
+    let inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    let approval = inner
+        .approvals
+        .get(&req.approval_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such approval request"))?;
+
+    let signatures = match &approval.phase {
+        Phase::Signed(sigs) => sigs,
+        Phase::Failed => {
+            return Err(bad(
+                "INVALID_ARGUMENT",
+                "this request failed and has no authorized transaction",
+            ))
+        }
+        _ => {
+            return Err(bad(
+                "INVALID_ARGUMENT",
+                format!(
+                    "not yet authorized — {} of {} signatures collected",
+                    approval.state.signatures_collected, approval.state.threshold
+                ),
+            ))
+        }
+    };
+
+    let signed = crate::pczt_job::apply(&approval.pczt, &approval.job.actions, signatures)
+        .map_err(|e| bad("INVALID_ARGUMENT", e.to_string()))?;
+
+    Ok(Json(json!({
+        "approvalId": approval.state.id,
+        "status": approval.state.status,
+        "signatureCount": signatures.len(),
+        "pcztHex": hex::encode(&signed),
+        "nextStep": "zcash-devtool pczt prove, then send. Proving needs no authority.",
     })))
 }
 

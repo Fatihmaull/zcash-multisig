@@ -170,6 +170,25 @@ for e in s["events"]:
 print(f'\n  final: {s["status"]}, {s["signaturesCollected"]} signature(s)')
 PY
 
+# Fetch the authorized transaction, if one exists. Without this the demo
+# ends at "APPROVED" and the transaction never leaves the coordinator.
+if [ -n "${AUTHORIZED_OUT:-}" ]; then
+  say "Authorized transaction"
+  python3 - "$APPROVAL" "$AUTHORIZED_OUT" <<'PY'
+import json, sys, urllib.request, urllib.error
+req = urllib.request.Request("http://127.0.0.1:2745/coordinator/approval/authorized",
+                             data=json.dumps({"approvalId": sys.argv[1]}).encode(),
+                             headers={"content-type": "application/json"})
+try:
+    r = json.loads(urllib.request.urlopen(req).read())
+except urllib.error.HTTPError as e:
+    sys.exit(f"  not authorized: {json.loads(e.read()).get('message')}")
+open(sys.argv[2], "w").write(r["pcztHex"])
+print(f"  {r['signatureCount']} signature(s) applied → {sys.argv[2]}")
+print(f"  next: {r['nextStep']}")
+PY
+fi
+
 say "What just happened"
 cat <<'NOTE'
   Three OS processes each unsealed exactly one share. The coordinator saw
