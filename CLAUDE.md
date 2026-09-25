@@ -87,6 +87,13 @@ Verified 15–16 September 2026. Rationale and failure modes in
     it from the group key**: `ak` is in the address, so anyone holding the address could
     rebuild the viewing key and read the vault's entire history. See
     `quorum-core/src/vault_key.rs`.
+11. **`vault-3p` is burned. Never fund it again.** On 25 Sep its three sealed shares and its
+    vault seed were committed to the public repo (#36), and the passphrase that opens them is a
+    constant in `examples/ceremony.rs` — so they were shares in name only. Testnet, so nothing
+    was lost. Removed from the tree; still in git history, because you cannot un-publish a key
+    and pretending otherwise is worse than rotating. **No key material in this repository, for
+    any network, under any framing.** Fixture vaults are generated, and
+    `packages/core/fixtures/` is gitignored.
 
 ---
 
