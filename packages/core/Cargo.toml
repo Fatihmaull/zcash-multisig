@@ -73,6 +73,11 @@ zcash_address = "0.13"
 # opaque bytes, so our v3 types travel over it untouched.
 # See docs/13-phase-1-plan.md.
 snow = "0.9"        # Noise_K_25519_ChaChaPoly_BLAKE2s, same as frost-client
+# Recovering the public half of a stored identity. snow generates keypairs
+# but cannot rederive one, and a ceremony participant loads their identity
+# from disk on every run. Already in the tree via snow — declared here so
+# there is exactly one copy and the derivation matches what snow computes.
+x25519-dalek = { version = "2", features = ["static_secrets"] }
 # Pinned exactly. 1.1.0 moved to rand_core 0.10, which would sit alongside
 # the 0.6 frost-core pulls — two RNG traits in one tree, and the signing call
 # stops compiling. 1.0.2 is also what frostd's own client uses, so challenge

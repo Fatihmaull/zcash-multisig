@@ -19,6 +19,7 @@ zip32 = "0.2"
 
 rand_core = "0.6"
 snow.workspace = true
+x25519-dalek.workspace = true
 xeddsa.workspace = true
 uuid.workspace = true
 reqwest.workspace = true

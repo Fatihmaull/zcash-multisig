@@ -23,6 +23,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use frost_core::keys::{KeyPackage, PublicKeyPackage};
+use orchard::keys::SpendValidatingKey;
 use quorum_coordinator::{inspect, CollectingCommitments};
 use quorum_core::Ciphersuite;
 use quorum_signer::{store::open, SigningSession};
@@ -41,8 +42,24 @@ fn main() {
 
     let pczt_bytes = fs::read(&pczt_in).expect("read PCZT");
 
+    // ── Load the vault first ──
+    // Reading the transaction needs the vault's key, because every action
+    // carries the randomized key its signature must verify against and those
+    // have to match this vault before a nonce is spent on them.
+    let pubkeys: PublicKeyPackage<Ciphersuite> = serde_json::from_slice(
+        &fs::read(vault_dir.join("public-key-package.json")).expect("read pubkeys"),
+    )
+    .expect("parse pubkeys");
+    let ak = SpendValidatingKey::from_bytes(
+        &pubkeys
+            .verifying_key()
+            .serialize()
+            .expect("serialise group key"),
+    )
+    .expect("the group key is a valid Orchard ak");
+
     // ── What does this transaction need authorized? ──
-    let job = inspect(&pczt_bytes).expect("inspect PCZT");
+    let job = inspect(&pczt_bytes, &ak).expect("inspect PCZT");
     println!();
     println!("  sighash : {}", hex::encode(job.sighash));
     println!("  actions : {}", job.actions.len());
@@ -54,12 +71,6 @@ fn main() {
             &hex::encode(a.alpha)[..16]
         );
     }
-
-    // ── Load the vault ──
-    let pubkeys: PublicKeyPackage<Ciphersuite> = serde_json::from_slice(
-        &fs::read(vault_dir.join("public-key-package.json")).expect("read pubkeys"),
-    )
-    .expect("parse pubkeys");
 
     // Two of three. Which two is the treasurer's problem, not ours.
     let mut key_packages: BTreeMap<_, KeyPackage<Ciphersuite>> = BTreeMap::new();
@@ -107,7 +118,7 @@ fn main() {
 
     // If a signature were wrong, `apply` would have refused — orchard checks
     // it against the randomized key before accepting.
-    let after = inspect(&signed);
+    let after = inspect(&signed, &ak);
     println!();
     println!("  wrote {} ({} bytes)", pczt_out.display(), signed.len());
     match after {

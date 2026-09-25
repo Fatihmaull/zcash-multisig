@@ -1900,6 +1900,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "x25519-dalek",
  "xeddsa",
  "zcash_address",
  "zcash_keys",
@@ -1913,6 +1914,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "argon2",
+ "axum",
  "chacha20poly1305",
  "ff",
  "frost-core",
@@ -1930,6 +1932,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
  "zcash_keys",
  "zcash_protocol",
  "zeroize",

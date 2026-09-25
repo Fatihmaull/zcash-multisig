@@ -263,8 +263,24 @@ impl FrostdClient {
 
     /// Open a session. The caller becomes its coordinator.
     ///
-    /// `pubkeys` is every *other* participant. `message_count` is how many
-    /// messages the coordinator will send per round.
+    /// **`participants` must include the caller when the caller is itself a
+    /// participant.** frostd treats the session coordinator as a separate
+    /// role that "doesn't have to be a participant", so it does not add them
+    /// to `session.pubkeys`. Two consequences, neither of which announces
+    /// itself:
+    ///
+    /// - `send` rejects any recipient not in `pubkeys` with `NotInSession`,
+    ///   so peers cannot address the coordinator.
+    /// - the coordinator's `receive(.., false)` reads an empty participant
+    ///   queue forever, and the round simply times out.
+    ///
+    /// In Quorum the coordinator role is only about who opened the session.
+    /// It carries no authority over the vault: DKG has every participant
+    /// send to every other, and a relay that withholds messages can stall a
+    /// ceremony but never complete one on its own.
+    ///
+    /// `message_count` is informational — frostd requires it to be non-zero
+    /// and otherwise only reports it back through `get_session_info`.
     pub async fn create_session(
         &self,
         participants: &[PeerPublicKey],

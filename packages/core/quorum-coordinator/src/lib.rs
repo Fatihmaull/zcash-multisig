@@ -12,5 +12,5 @@ pub mod round;
 pub mod routes;
 pub mod service;
 
-pub use pczt_job::{apply, inspect, PcztError, PcztSigningJob};
+pub use pczt_job::{apply, inspect, spend_keys, PcztError, PcztSigningJob, SpendDescriptor};
 pub use round::{Action, CollectingCommitments, CollectingShares, CoordinatorError, ShieldedPool};

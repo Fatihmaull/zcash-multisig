@@ -269,13 +269,16 @@ async fn approval_submit(State(st): State<AppState>, Json(req): Json<SubmitAppro
     let pczt = hex::decode(&req.pczt_hex)
         .map_err(|e| bad("INVALID_ARGUMENT", format!("pcztHex is not hex: {e}")))?;
 
-    let job = job_from_pczt(&pczt).map_err(|e| bad("INVALID_ARGUMENT", e.to_string()))?;
-
+    // The vault has to be resolved first: reading the PCZT now requires
+    // knowing which vault's key the actions must be bound to, and that check
+    // belongs before any signer is asked for a commitment.
     let mut inner = st.0.lock().map_err(|_| lock_poisoned())?;
     let vault = inner
         .vaults
         .get(&req.vault_id)
         .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such vault"))?;
+
+    let job = job_from_pczt(&pczt, vault).map_err(|e| bad("INVALID_ARGUMENT", e.to_string()))?;
 
     let round =
         CollectingCommitments::new(job.sighash.to_vec(), job.actions.clone(), vault.threshold)

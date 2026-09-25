@@ -137,7 +137,7 @@ importance:
 | Date | Gate |
 |---|---|
 | 21 Sep | ✅ **A** (passed) — `frost-zcash-demo` running with RedPallas, coordinator + 2 participants. Verdict on PCZT v2 + Ironwood. |
-| 27 Sep | ✅ **B** (passed 23 Sep) — 2-of-3 shielded Ironwood spend confirmed on testnet, txid `0ef1e964…2681ce`, block 4,383,363. One criterion still open: DKG across three processes (P3-A6). |
+| 27 Sep | ✅ **B** (passed 23 Sep, completed 25 Sep) — 2-of-3 shielded Ironwood spend confirmed on testnet, txid `0ef1e964…2681ce`, block 4,383,363; all five criteria met once DKG ran across three processes. The spend and the distributed ceremony are still **different vaults** — P4-0. |
 | 4 Oct | **C** — end to end through the web UI. **Feature freeze.** |
 | 5 Oct | **D** — demo recording begins. |
 | 10 Oct | **E** — submit, two days early. |
@@ -170,19 +170,25 @@ is confirmed on testnet — txid
 txid in the submission; it is the single hardest thing to fake and the easiest for a judge to
 check.
 
-**Signing is distributed. Key generation is not — yet.** `./scripts/three-signer-demo.sh` starts
-`quorum-coordinatord` plus three `quorum-signerd` processes, one sealed share each, and the
-coordinator holds none. But those shares were born in one process
-(`cargo run -p quorum-signer --example ceremony`). So:
+**Both claims are now demonstrable — of two different vaults.**
 
-- *No party sees more than one share while signing* — **demonstrated.**
-- *No party ever saw more than one share* — **not yet.** P3-A6.
+- *No party sees more than one share while signing* — `./scripts/three-signer-demo.sh`.
+- *No party ever saw more than one share* — `./scripts/three-party-ceremony.sh`, three
+  `quorum-dkgd` processes over a real `frostd` (P3-A6, 25 Sep).
 
-Do not let the submission text or the video blur these two. Overstating the security posture of
-a custody product is the failure mode this file opens with.
+**But the Gate B txid came from `secrets/vault`, which the single-process fixture built, and the
+distributed ceremony produced a different vault with no funds.** Saying "born distributed *and*
+confirmed on chain" as one sentence is not yet true. **P4-0** fixes it: fund the ceremony vault,
+spend from it. Until then, say the two things separately, and say which vault each is about.
 
-**Dev A's remaining work is P3-A6** (distributed DKG over `frostd`) and then Phase 4. Everything
-else on Dev A's side is merged. 37 tests pass, 2 ignored (they need a live `frostd`).
+**A PCZT is checked against the vault before signing** (P3-A7). It was not, and the demo happily
+reported `APPROVED, 2 signatures` for another vault's transaction — real quorum, valid FROST
+signature, no authority over anything. `rk` must equal this vault's `ak` randomized by the
+action's own `alpha`. Run `cargo run -p quorum-coordinator --example which_vault -- <pczt>`
+before a recording.
+
+**Dev A's remaining work is P4-0 and then Phase 4.** Everything else on Dev A's side is merged.
+42 tests pass; 3 ignored (2 need a live `frostd`, 1 needs the local PCZT fixtures).
 
 ### The randomizer — read this before touching signing
 
