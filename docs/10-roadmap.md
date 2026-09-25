@@ -116,7 +116,7 @@ This phase is the whole project. Everything after it is user interface.
 | ~~**P1-A1**~~ | ✅ **DONE 21 Sep** (#11). DKG as a typestate plus the full `frostd` transport — XEdDSA login, sessions, Noise_K end to end. Our own client, because `frost-client` is unpublished and pinned to frost-core 2.2.0. | — | — |
 | ~~**P1-A2**~~ | ✅ **DONE 21 Sep** (#11). `quorum-signer`. `sign()` consumes the session, so nonce reuse — the one mistake that leaks the signing share — is a compile error. Share at rest behind Argon2id + XChaCha20-Poly1305. | — | — |
 | ~~**P1-A3**~~ | ✅ **DONE 21 Sep** (#11). `quorum-coordinator`. Unit of work is an **action**, not a transaction. Culprit attribution carried in the error type, not flattened to a message. | — | — |
-| **P1-A4** | ⬜ **THE CRITICAL PATH** (#14). A funded vault exists — 0.04 TAZ in Ironwood, tx `0720f1d1`, block 4,380,118, visible to the vault's own UFVK. This is the last thing between us and Gate B, and it is what will finally exercise P1-B1 and P1-B2 against a real transaction. | sisa | — |
+| ~~**P1-A4**~~ | ✅ **DONE 23 Sep** (#29) — **Gate B, four days early.** A 2-of-3 threshold-signed shielded **Ironwood** spend confirmed on testnet: txid `0ef1e96411b770fb0aec7d35c820510cd303f696126ac85782158c75382681ce`, block 4,383,363. `pczt_job.rs` reads the sighash and every unsigned spend's `(pool, index, alpha)`, and writes 64-byte RedPallas signatures back. Not via `pczt::roles::signer` — that wants a `SpendAuthorizingKey`, one secret that authorizes the spend, and no such key exists in a vault. `low_level_signer::sign_ironwood_with` is the only public door. | — | — |
 
 ### Dev B — Phase 1 share
 
@@ -129,16 +129,28 @@ on cryptography rather than plumbing.
 | ~~**P1-B2**~~ | ✅ **DONE 22 Sep.** Broadcast API route (`/api/broadcast`) with `SendTransaction`, `GetTreeState` anchor retrieval, and live confirmation tracking via `getTransactionStatus` connected to lightwalletd. | 1d | P0-B1 |
 | **P1-B3** | ✅ **DONE 22 Sep.** `pnpm fixture:reset` — one-command reset that clears and re-seeds both local Prisma DB and Supabase with Foundation Treasury vault, 3 participants, and a pending 2.5 TAZ proposal to the real testnet recipient address. | 0.5d | P0-B3 |
 
-### 🚩 Gate B — 27 Sep
+### 🚩 Gate B — ✅ **PASSED 23 Sep**, four days early
 
-- [ ] 2-of-3 DKG completes over `frostd` with three separate signer processes
-- [ ] A shielded **Ironwood** spend is threshold-signed and **confirms on testnet**
-- [ ] An invalid share is detected and the culprit identified, as a typed error
-- [ ] No share material has ever crossed into the coordinator process
-- [ ] The scenario can be reset and re-run from the fixture
+- [x] A shielded **Ironwood** spend is threshold-signed and **confirms on testnet** — txid
+      `0ef1e96411b770fb0aec7d35c820510cd303f696126ac85782158c75382681ce`, block 4,383,363
+- [x] An invalid share is detected and the culprit identified, as a typed error —
+      `InvalidSignatureShare::culprits`, surfaced by name across real processes (P3-A2)
+- [x] No share material has ever crossed into the coordinator process — three OS processes,
+      one sealed share each, `./scripts/three-signer-demo.sh` (P3-A1)
+- [x] The scenario can be reset and re-run from the fixture
+- [ ] **2-of-3 DKG completes over `frostd` with three separate signer processes** — ⚠️ **not met.**
+      Signing is distributed; **key generation is not.** The shares the three signerd processes
+      load were born in one process, `cargo run -p quorum-signer --example ceremony`. The DKG
+      typestate and the Noise_K transport both exist and are tested separately; nothing has run
+      them together. Tracked as **P3-A6**.
 
-**If Gate B fails:** trigger the degraded demo in [06-risk-register.md](06-risk-register.md) R1.
-This is a decision point, not a reason to spend Phase 3 on the same wall.
+**The distinction to hold in the video and the submission text:** *no party ever sees more than
+one share while signing* is demonstrated. *No party ever saw more than one share, ever* is not —
+not yet. Saying the second while only having done the first is exactly the overclaim this project
+is not allowed to make.
+
+**If Gate B had failed:** the degraded demo in [06-risk-register.md](06-risk-register.md) R1.
+Kept here because R1 still governs if the distributed ceremony does not land by Gate C.
 
 ---
 
@@ -178,17 +190,18 @@ arrive at the UI as structured data with a participant identity, not as a string
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| ~~**P3-A1**~~ | ✅ **DONE 24 Sep.** `quorum-coordinatord` serves the integration contract on `:2745`. Two surfaces, kept apart the way the contract split them: nothing under `/coordinator` can produce a signature, and a test asserts those routes return 404. Holds no key material. | — | — |
-| ~~**P3-A2**~~ | ✅ **DONE 24 Sep.** A bad share is rejected and its signer **named**, with a message that says no funds moved and what to do next. Attribution survives all the way to the HTTP response rather than being flattened to a string. | — | — |
+| ~~**P3-A1**~~ | ✅ **DONE 24 Sep.** `quorum-coordinatord` serves the integration contract on `:2745`, and `quorum-signerd` is a separate process per share. **Three OS processes, one share each** — run `./scripts/three-signer-demo.sh`. Signer routes require a per-participant bearer token: without it `participantId` is a claim, and the event log would name the wrong person. | — | — |
+| ~~**P3-A2**~~ | ✅ **DONE 24 Sep.** Attributed by name, across real processes. `QUORUM_SIGNER_MISBEHAVE=1` makes a signer sign under the wrong randomizer — reproducible, which recording a demo requires. Note FROST refuses the easy forgery: signing from a second session fails locally with *the participant's commitment is incorrect*. | — | — |
 | ~~**P3-A3**~~ | ✅ **DONE 24 Sep.** A signer past the deadline is marked `TIMEOUT`, with `culpritDetected: false` and a message that reassures. A timeout does not abort the request — the commonest real failure of shared control is someone on a plane, not malice. | — | — |
 | ~~**P3-A4**~~ | ✅ **DONE 24 Sep.** `/coordinator/vault/audit` exports the vault's **unified full viewing key** alongside the event log, and refuses a seed that does not reproduce the vault. The viewing key is the point: an event log is a table we control, the chain is not. | — | — |
 | ~~**P3-A5**~~ | ✅ **DONE 24 Sep.** No panic path reaches a handler — map indexing replaced with checked lookups, and a poisoned lock returns a typed error saying state may be inconsistent and nothing was signed, rather than taking the service down. | — | — |
+| **P3-A6** | ⬜ **The last Gate B criterion.** Run DKG across three processes over `frostd`, so the shares are never co-resident even at birth. Not a new feature — the typestate (`dkg.rs`) and the Noise_K transport are both built and tested; what is missing is a binary that runs them together, and the confidentiality requirement (constraint 4) is the reason round 2 goes per-recipient rather than broadcast. Until this lands, F1 demos a ceremony that generated all three shares in one place. | A | 1d |
 
 ### Dev B
 
 | ID | Task | Est | Depends on |
 |---|---|---|---|
-| **P3-B1** | 🟡 **PARTIAL.** The UI and the contract types are in place, but the web app still drives approvals through Prisma rows rather than the coordinator — its sign route records a label from the request body. Now unblocked: `quorum-coordinatord` exists and speaks the contract (P3-A1). What remains is pointing `coordinator-client.ts` at it and retiring the mock. | sisa | — |
+| **P3-B1** | 🟡 **PARTIAL — and the live path is wired to the wrong URLs.** `coordinator-client.ts` has a `COORDINATOR_URL` switch, but it calls `/v1/dkg/create`, `/v1/approvals/submit`, etc., while `quorum-coordinatord` serves `/coordinator/*`. Flipping the switch today 404s on every call. The sign route still writes rows from a label in the request body (default `"Bob"`) and counts rows for quorum; `/api/vaults/[id]/ceremony` flips `status` to ACTIVE and trusts a client-supplied `shieldedAddress`. Unblocked since 24 Sep — the daemon exists and speaks the contract. | 1d | P3-A1 |
 | ~~**P3-B2**~~ | ✅ **DONE 22 Sep.** **F1 — guided key ceremony.** Interactive 3-step DKG wizard (`KeyCeremonyView.tsx`), participant configuration, latency ping simulation, clear key custody guardrails, and persistent vault creation (`/api/vaults/create`). | 2d | P3-B1 |
 | ~~**P3-B3**~~ | ✅ **DONE 22 Sep.** **F3 — signer coordination.** Circular SVG Quorum Indicator, status per signer (Alice, Bob, Carol Standby), simulated timeout / non-responding recovery path, and real-time state updates. | 1.5d | P3-B1 |
 | ~~**P3-B4**~~ | ✅ **DONE 22 Sep.** **F4 — misbehaving-signer UI.** Dedicated `MisbehaviorAlert.tsx` with clear cryptographic rejection context, "Funds 100% Secure" guarantee, culprit exclusion flow, and fail-safe recovery to standby signer. | 1d | P3-A2 |

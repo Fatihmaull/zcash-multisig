@@ -137,7 +137,7 @@ importance:
 | Date | Gate |
 |---|---|
 | 21 Sep | ✅ **A** (passed) — `frost-zcash-demo` running with RedPallas, coordinator + 2 participants. Verdict on PCZT v2 + Ironwood. |
-| 27 Sep | **B** — 2-of-3 shielded Ironwood spend confirmed on testnet, CLI only. **No UI required.** |
+| 27 Sep | ✅ **B** (passed 23 Sep) — 2-of-3 shielded Ironwood spend confirmed on testnet, txid `0ef1e964…2681ce`, block 4,383,363. One criterion still open: DKG across three processes (P3-A6). |
 | 4 Oct | **C** — end to end through the web UI. **Feature freeze.** |
 | 5 Oct | **D** — demo recording begins. |
 | 10 Oct | **E** — submit, two days early. |
@@ -162,19 +162,27 @@ intuition and will cost a day each if missed:
   yields zero spends rather than an error. Track `(pool, index, alpha)` and treat an empty
   result as a failure.
 
-## Current phase — Phase 1, 22 Sep
+## Current phase — Phase 3, 25 Sep
 
-**Protocol core is done and merged.** DKG, `frostd` transport, signer, coordinator, and vault
-key derivation — 32 tests, including a 2-of-3 signature verified by **Orchard's own verifier**
-against `rk = ak.randomize(alpha)`.
+**Gate B passed 23 Sep, four days early.** A 2-of-3 threshold-signed shielded **Ironwood** spend
+is confirmed on testnet — txid
+`0ef1e96411b770fb0aec7d35c820510cd303f696126ac85782158c75382681ce`, block 4,383,363. Quote this
+txid in the submission; it is the single hardest thing to fake and the easiest for a judge to
+check.
 
-**A funded vault exists on testnet.** 0.04 TAZ in the **Ironwood** pool (tx `0720f1d1`, block
-4,380,118), found by a watch-only wallet built from the vault's own UFVK. The dev fixture that
-made it — `cargo run -p quorum-signer --example ceremony` — runs in **one process**; Gate B still
-needs three signers over `frostd`.
+**Signing is distributed. Key generation is not — yet.** `./scripts/three-signer-demo.sh` starts
+`quorum-coordinatord` plus three `quorum-signerd` processes, one sealed share each, and the
+coordinator holds none. But those shares were born in one process
+(`cargo run -p quorum-signer --example ceremony`). So:
 
-**The critical path is P1-A4** (PCZT assembly, #14) plus a real broadcast in P1-B2 (#8).
-Together those *are* Gate B.
+- *No party sees more than one share while signing* — **demonstrated.**
+- *No party ever saw more than one share* — **not yet.** P3-A6.
+
+Do not let the submission text or the video blur these two. Overstating the security posture of
+a custody product is the failure mode this file opens with.
+
+**Dev A's remaining work is P3-A6** (distributed DKG over `frostd`) and then Phase 4. Everything
+else on Dev A's side is merged. 37 tests pass, 2 ignored (they need a live `frostd`).
 
 ### The randomizer — read this before touching signing
 
@@ -199,6 +207,17 @@ and its `pczt` subcommand is the reference for P1-A4. Recipe in `secrets/README-
 
 - **#24 — Supabase is readable and writable by anyone.** Publishable key in public git history,
   live reads and writes, zero RLS. The web sign route counts DB rows, so anyone can fake quorum.
-- **#15 — two schema sources of truth** (`schema.prisma` and `supabase_schema.sql`).
-- The web app is **not yet wired to the Rust core** — its signing is simulated. That wiring is
-  Phase 3 (P3-A1, P3-B1); until then the UI must label it as simulated.
+  Partly addressed in PR #27 (credentials rotated, read-only RLS) but writes still originate in
+  the browser, and `migration.sql` still carries RLS=0 while `supabase_schema.sql` has RLS=5.
+- **#15 — two schema sources of truth** (`schema.prisma` and `supabase_schema.sql`), unassigned.
+- **The web app is still not wired to the Rust core** (P3-B1). Three specifics, checked 25 Sep:
+  - `coordinator-client.ts` calls `/v1/dkg/create`, `/v1/approvals/submit` and friends.
+    `quorum-coordinatord` serves `/coordinator/*` and `/signer/*`. **Every live call 404s** —
+    setting `COORDINATOR_URL` today makes things worse, not better, so the paths must be
+    corrected in the same change that flips the switch.
+  - `/api/approvals/[id]/sign` writes `SignatureRoundEvent` rows from a label in the request
+    body, defaulting to `"Bob"` / `"APPROVED"`, then counts rows to decide quorum.
+  - `/api/vaults/[id]/ceremony` (PR #31, "DKG ceremony integration") sets `status = ACTIVE` and
+    stores a `shieldedAddress` the **client supplied**. No DKG runs.
+  Until this is wired, every UI surface that implies signing must say **simulated** on screen —
+  not in a tooltip, and not only in the README.

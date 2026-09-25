@@ -4,7 +4,10 @@
 //! load-bearing, not cosmetic: nothing under `/coordinator` can produce a
 //! signature, and the web app is only ever given that base path.
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use axum::{
+    extract::State, http::HeaderMap, http::StatusCode, response::IntoResponse, routing::post, Json,
+    Router,
+};
 use serde::Deserialize;
 use serde_json::json;
 use tower_http::cors::CorsLayer;
@@ -65,6 +68,30 @@ Nothing has been signed or spent. Restart the coordinator and re-open the reques
     )
 }
 
+/// The caller did not prove it is the participant it claims to be.
+fn unauthorized() -> ApiError {
+    ApiError(
+        StatusCode::UNAUTHORIZED,
+        CoordinatorErrorBody {
+            code: "UNAUTHORIZED".into(),
+            culprits: None,
+            recoverable: false,
+            message: "Missing or invalid participant token. A signer must prove who it is \
+before it can contribute to a round — otherwise the event log would name the wrong person."
+                .into(),
+        },
+    )
+}
+
+fn bearer(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get("authorization")?
+        .to_str()
+        .ok()?
+        .strip_prefix("Bearer ")
+        .map(|s| s.to_string())
+}
+
 fn bad(code: &str, message: impl Into<String>) -> ApiError {
     ApiError(
         StatusCode::BAD_REQUEST,
@@ -107,6 +134,23 @@ async fn vault_register(State(st): State<AppState>, Json(req): Json<RegisterVaul
     let pubkeys = serde_json::from_value(req.public_key_package)
         .map_err(|e| bad("INVALID_ARGUMENT", format!("public key package: {e}")))?;
 
+    // Each participant gets a token here and only here. The coordinator
+    // cannot mint one later for someone who was not in the ceremony.
+    let participants: Vec<Participant> = req
+        .participants
+        .into_iter()
+        .map(|p| Participant {
+            id: p.id,
+            label: p.label,
+            token: new_id(),
+        })
+        .collect();
+
+    let tokens: Vec<_> = participants
+        .iter()
+        .map(|p| json!({ "participantId": p.id, "label": p.label, "token": p.token }))
+        .collect();
+
     let id = new_id();
     st.add_vault(Vault {
         id: id.clone(),
@@ -114,16 +158,10 @@ async fn vault_register(State(st): State<AppState>, Json(req): Json<RegisterVaul
         threshold: req.threshold,
         address: req.address,
         pubkeys,
-        participants: req
-            .participants
-            .into_iter()
-            .map(|p| Participant {
-                id: p.id,
-                label: p.label,
-            })
-            .collect(),
+        participants,
     });
-    Ok(Json(json!({ "vaultId": id })))
+
+    Ok(Json(json!({ "vaultId": id, "participantTokens": tokens })))
 }
 
 async fn vault_list(State(st): State<AppState>) -> Reply {
@@ -352,8 +390,20 @@ struct ByParticipant {
     participant_id: String,
 }
 
-async fn signer_pending(State(st): State<AppState>, Json(req): Json<ByParticipant>) -> Reply {
+async fn signer_pending(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<ByParticipant>,
+) -> Reply {
+    let token = bearer(&headers).ok_or_else(unauthorized)?;
     let inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    if !inner
+        .vaults
+        .values()
+        .any(|v| v.authenticate(&req.participant_id, &token))
+    {
+        return Err(unauthorized());
+    }
     let pending: Vec<_> = inner
         .approvals
         .values()
@@ -378,9 +428,15 @@ struct Commitments {
     commitments_hex: Vec<String>,
 }
 
-async fn signer_commit(State(st): State<AppState>, Json(req): Json<Commitments>) -> Reply {
+async fn signer_commit(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<Commitments>,
+) -> Reply {
+    let token = bearer(&headers).ok_or_else(unauthorized)?;
     let mut inner = st.0.lock().map_err(|_| lock_poisoned())?;
-    let (id, labels) = resolve(&inner, &req.approval_id)?;
+    let (_, labels) = resolve(&inner, &req.approval_id)?;
+    authorize(&inner, &req.approval_id, &req.participant_id, &token)?;
     let a = inner
         .approvals
         .get_mut(&req.approval_id)
@@ -439,14 +495,19 @@ async fn signer_commit(State(st): State<AppState>, Json(req): Json<Commitments>)
         }
     }
 
-    let _ = id;
     Ok(Json(
         json!({ "approvalRequestId": req.approval_id, "roundType": "COMMITMENT", "status": "RECEIVED" }),
     ))
 }
 
-async fn signer_packages(State(st): State<AppState>, Json(req): Json<Commitments>) -> Reply {
+async fn signer_packages(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<Commitments>,
+) -> Reply {
+    let token = bearer(&headers).ok_or_else(unauthorized)?;
     let inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    authorize(&inner, &req.approval_id, &req.participant_id, &token)?;
     let a = inner
         .approvals
         .get(&req.approval_id)
@@ -480,9 +541,15 @@ struct Shares {
     shares_hex: Vec<String>,
 }
 
-async fn signer_shares(State(st): State<AppState>, Json(req): Json<Shares>) -> Reply {
+async fn signer_shares(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<Shares>,
+) -> Reply {
+    let token = bearer(&headers).ok_or_else(unauthorized)?;
     let mut inner = st.0.lock().map_err(|_| lock_poisoned())?;
     let (_, labels) = resolve(&inner, &req.approval_id)?;
+    authorize(&inner, &req.approval_id, &req.participant_id, &token)?;
     let vault_id = inner
         .approvals
         .get(&req.approval_id)
@@ -602,8 +669,14 @@ struct Decline {
     participant_id: String,
 }
 
-async fn signer_decline(State(st): State<AppState>, Json(req): Json<Decline>) -> Reply {
+async fn signer_decline(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<Decline>,
+) -> Reply {
+    let token = bearer(&headers).ok_or_else(unauthorized)?;
     let mut inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    authorize(&inner, &req.approval_id, &req.participant_id, &token)?;
     let a = inner
         .approvals
         .get_mut(&req.approval_id)
@@ -623,6 +696,28 @@ async fn signer_decline(State(st): State<AppState>, Json(req): Json<Decline>) ->
 }
 
 // ── helpers ──────────────────────────────────────────────────
+
+/// Confirm the caller is the participant it claims, on this vault.
+fn authorize(
+    inner: &Inner,
+    approval_id: &str,
+    participant_id: &str,
+    token: &str,
+) -> Result<(), ApiError> {
+    let a = inner
+        .approvals
+        .get(approval_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such approval request"))?;
+    let v = inner
+        .vaults
+        .get(&a.state.vault_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "vault vanished"))?;
+    if v.authenticate(participant_id, token) {
+        Ok(())
+    } else {
+        Err(unauthorized())
+    }
+}
 
 fn resolve(
     inner: &Inner,

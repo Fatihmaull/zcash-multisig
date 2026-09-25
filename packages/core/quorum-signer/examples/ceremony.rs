@@ -151,6 +151,20 @@ fn main() {
     )
     .expect("write pubkeys");
     fs::write(out.join("vault-address.txt"), format!("{address}\n")).expect("write address");
+    // The demo and the signer daemons need identifiers in the same hex form
+    // the coordinator speaks. Deriving them by hand from share filenames is
+    // how you end up with a signer nobody can authenticate.
+    let roster: Vec<_> = finished
+        .keys()
+        .zip(["Alice", "Bob", "Carol"])
+        .map(|(id, label)| serde_json::json!({ "id": hex::encode(id.serialize()), "label": label }))
+        .collect();
+    fs::write(
+        out.join("participants.json"),
+        serde_json::to_vec_pretty(&roster).expect("serialise roster"),
+    )
+    .expect("write roster");
+
     fs::write(
         out.join("vault-seed.hex"),
         format!("{}\n", hex::encode(seed.as_bytes())),
@@ -168,6 +182,7 @@ fn main() {
     println!("    share-1.bin, share-2.bin, share-3.bin   sealed with a DEV passphrase");
     println!("    public-key-package.json                 public, needed by the coordinator");
     println!("    vault-address.txt");
+    println!("    participants.json                       hex identifiers + labels");
     println!("    vault-seed.hex          SHARED SECRET — every participant needs it to");
     println!("                            scan, and anyone holding it can read the vault's");
     println!("                            entire history. Lose it and the funds are gone.");

@@ -28,19 +28,32 @@ const PCZT_FIXTURE: &str = include_str!("fixtures/unsigned_pczt.hex");
 struct Fixture {
     vault_id: String,
     key_packages: BTreeMap<String, KeyPackage<Ciphersuite>>,
+    /// participant id → bearer token, handed out at registration.
+    tokens: BTreeMap<String, String>,
 }
 
 async fn call(app: &axum::Router, path: &str, body: Value) -> (StatusCode, Value) {
+    call_as(app, path, body, None).await
+}
+
+/// `token` is the participant's bearer token. Signer routes refuse without
+/// one — `participantId` alone is a claim, not a fact.
+async fn call_as(
+    app: &axum::Router,
+    path: &str,
+    body: Value,
+    token: Option<&str>,
+) -> (StatusCode, Value) {
+    let mut builder = Request::builder()
+        .method("POST")
+        .uri(path)
+        .header("content-type", "application/json");
+    if let Some(t) = token {
+        builder = builder.header("authorization", format!("Bearer {t}"));
+    }
     let res = app
         .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(path)
-                .header("content-type", "application/json")
-                .body(Body::from(body.to_string()))
-                .expect("request"),
-        )
+        .oneshot(builder.body(Body::from(body.to_string())).expect("request"))
         .await
         .expect("response");
     let status = res.status();
@@ -91,11 +104,24 @@ async fn fixture() -> (axum::Router, Fixture) {
     assert_eq!(status, StatusCode::OK, "register vault: {body}");
 
     let vault_id = body["vaultId"].as_str().expect("vaultId").to_string();
+    let tokens: BTreeMap<String, String> = body["participantTokens"]
+        .as_array()
+        .expect("participantTokens")
+        .iter()
+        .map(|p| {
+            (
+                p["participantId"].as_str().expect("id").to_string(),
+                p["token"].as_str().expect("token").to_string(),
+            )
+        })
+        .collect();
+
     (
         app,
         Fixture {
             vault_id,
             key_packages,
+            tokens,
         },
     )
 }
@@ -152,10 +178,11 @@ async fn two_of_three_sign_through_the_service() {
             .iter()
             .map(|c| hex::encode(c.serialize().expect("serialise")))
             .collect();
-        let (status, body) = call(
+        let (status, body) = call_as(
             &app,
             "/signer/commit",
             json!({ "approvalId": approval, "participantId": id, "commitmentsHex": hexes }),
+            Some(&f.tokens[&id.clone()]),
         )
         .await;
         assert_eq!(status, StatusCode::OK, "commit: {body}");
@@ -163,10 +190,11 @@ async fn two_of_three_sign_through_the_service() {
     }
 
     // Round 2 becomes available only once threshold commitments are in.
-    let (status, packages) = call(
+    let (status, packages) = call_as(
         &app,
         "/signer/packages",
         json!({ "approvalId": approval, "participantId": signers[0], "commitmentsHex": [] }),
+        Some(&f.tokens[&signers[0]]),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "packages: {packages}");
@@ -201,10 +229,11 @@ async fn two_of_three_sign_through_the_service() {
             .sign(&f.key_packages[id], &signing_packages, &randomizers)
             .expect("round 2");
         let hexes: Vec<String> = shares.iter().map(|s| hex::encode(s.serialize())).collect();
-        let (status, body) = call(
+        let (status, body) = call_as(
             &app,
             "/signer/shares",
             json!({ "approvalId": approval, "participantId": id, "sharesHex": hexes }),
+            Some(&f.tokens[&id.clone()]),
         )
         .await;
         assert_eq!(status, StatusCode::OK, "shares: {body}");
@@ -240,19 +269,21 @@ async fn a_bad_share_is_attributed_by_name() {
             .iter()
             .map(|c| hex::encode(c.serialize().expect("serialise")))
             .collect();
-        call(
+        call_as(
             &app,
             "/signer/commit",
             json!({ "approvalId": approval, "participantId": id, "commitmentsHex": hexes }),
+            Some(&f.tokens[&id.clone()]),
         )
         .await;
         sessions.insert(id.clone(), session);
     }
 
-    let (_, packages) = call(
+    let (_, packages) = call_as(
         &app,
         "/signer/packages",
         json!({ "approvalId": approval, "participantId": signers[0], "commitmentsHex": [] }),
+        Some(&f.tokens[&signers[0]]),
     )
     .await;
     let randomizers: Vec<[u8; 32]> = packages["actions"]
@@ -291,23 +322,25 @@ async fn a_bad_share_is_attributed_by_name() {
     }
     let swapped = produced[&signers[1]].clone();
 
-    call(
+    call_as(
         &app,
         "/signer/shares",
         json!({
             "approvalId": approval, "participantId": signers[1],
             "sharesHex": produced[&signers[1]].iter().map(|s| hex::encode(s.serialize())).collect::<Vec<_>>(),
         }),
+        Some(&f.tokens[&signers[1]]),
     )
     .await;
 
-    let (status, err) = call(
+    let (status, err) = call_as(
         &app,
         "/signer/shares",
         json!({
             "approvalId": approval, "participantId": signers[0],
             "sharesHex": swapped.iter().map(|s| hex::encode(s.serialize())).collect::<Vec<_>>(),
         }),
+        Some(&f.tokens[&signers[0]]),
     )
     .await;
 
@@ -382,4 +415,31 @@ async fn a_signer_who_never_answers_is_marked_not_blamed() {
         state["status"], "PENDING",
         "a timeout does not kill the request"
     );
+}
+
+#[tokio::test]
+async fn a_signer_must_prove_who_it_is() {
+    // Without this, `participantId` is a claim. The round would still fail
+    // cryptographically — a stranger has no share — but the event log would
+    // name the wrong person, and naming the right one is the whole value of
+    // F4. Constraint C5 also requires signing channels to be authenticated.
+    let (app, f) = fixture().await;
+    let approval = open_request(&app, &f.vault_id, 300).await;
+    let victim = f.tokens.keys().next().expect("a participant").clone();
+    let body = json!({ "approvalId": approval, "participantId": victim, "commitmentsHex": [] });
+
+    let (no_token, _) = call(&app, "/signer/commit", body.clone()).await;
+    assert_eq!(
+        no_token,
+        StatusCode::UNAUTHORIZED,
+        "no token must be refused"
+    );
+
+    let (wrong, err) = call_as(&app, "/signer/commit", body, Some("not-a-real-token")).await;
+    assert_eq!(
+        wrong,
+        StatusCode::UNAUTHORIZED,
+        "a forged token must be refused"
+    );
+    assert_eq!(err["code"], "UNAUTHORIZED");
 }

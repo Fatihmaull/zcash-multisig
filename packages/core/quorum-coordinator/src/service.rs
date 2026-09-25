@@ -181,6 +181,20 @@ impl CoordinatorErrorBody {
 pub struct Participant {
     pub id: String,
     pub label: String,
+    /// Proves a caller is this participant.
+    ///
+    /// Constraint C5 requires signing channels to be **authenticated**.
+    /// Without this, `participantId` is a claim rather than a fact, and
+    /// anyone who can reach the port could commit or submit shares as
+    /// anybody — the round would still fail cryptographically, but the
+    /// event log would blame the wrong person, and F4's whole value is
+    /// blaming the right one.
+    ///
+    /// A bearer token is the floor, not the ceiling. Participants already
+    /// hold an XEdDSA identity for `frostd` (see `quorum_core::transport`),
+    /// and the production answer is a challenge-response against that key
+    /// so nothing bearer-shaped is replayable. Tracked for Phase 5.
+    pub token: String,
 }
 
 pub struct Vault {
@@ -193,6 +207,18 @@ pub struct Vault {
 }
 
 impl Vault {
+    /// Does this token belong to this participant?
+    ///
+    /// Comparison is not constant-time. Tokens are random 128-bit values
+    /// rather than guessable secrets, so a timing oracle buys an attacker
+    /// nothing meaningful — but the XEdDSA replacement should not repeat
+    /// the shortcut.
+    pub fn authenticate(&self, participant_id: &str, token: &str) -> bool {
+        self.participants
+            .iter()
+            .any(|p| p.id == participant_id && p.token == token)
+    }
+
     /// Identifier hex → human label, for turning FROST culprits into names.
     pub fn labels(&self) -> BTreeMap<String, String> {
         self.participants
