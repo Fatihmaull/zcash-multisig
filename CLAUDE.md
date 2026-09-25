@@ -183,10 +183,13 @@ check.
 - *No party ever saw more than one share* — `./scripts/three-party-ceremony.sh`, three
   `quorum-dkgd` processes over a real `frostd` (P3-A6, 25 Sep).
 
-**But the Gate B txid came from `secrets/vault`, which the single-process fixture built, and the
-distributed ceremony produced a different vault with no funds.** Saying "born distributed *and*
-confirmed on chain" as one sentence is not yet true. **P4-0** fixes it: fund the ceremony vault,
-spend from it. Until then, say the two things separately, and say which vault each is about.
+**Both are now true of the same vault** (P4-0, 25 Sep). The ceremony vault spent shielded
+Ironwood funds on testnet: txid
+`259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61`, block 4,390,493.
+
+**Lead with that txid, not the 23 Sep one.** Both are real threshold-signed Ironwood spends;
+only this one comes from a vault whose shares were never in the same process. `0ef1e964…`
+(block 4,383,363) stays on record as the first, which is what carried Gate B four days early.
 
 **A PCZT is checked against the vault before signing** (P3-A7). It was not, and the demo happily
 reported `APPROVED, 2 signatures` for another vault's transaction — real quorum, valid FROST

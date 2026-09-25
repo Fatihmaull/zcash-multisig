@@ -146,10 +146,15 @@ on cryptography rather than plumbing.
 signing*, and *no party ever saw more than one share*. Until 25 Sep only the first was true, and
 the difference is the whole security claim.
 
-> ⚠️ **They are not yet true of the same vault.** The Gate B txid was produced by `secrets/vault`,
-> built by the single-process fixture. The distributed ceremony produced a different, unfunded
-> vault. To claim both about one vault — which the video should — that new vault needs faucet
-> funds and a spend of its own. See **P4-0**.
+> ✅ **And now true of the same vault** (P4-0, 25 Sep). The vault built by
+> `three-party-ceremony.sh` — three processes, one share each, over a real `frostd` — spent
+> shielded Ironwood funds on testnet: txid
+> `259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61`, block 4,390,493.
+>
+> **This is the txid the submission should lead with**, not the 23 Sep one. Both are real
+> threshold-signed Ironwood spends; only this one comes from a vault whose shares were never in
+> the same process. `0ef1e964…` stays on record as the first, which is what made the 27 Sep gate
+> four days early.
 
 **If Gate B had failed:** the degraded demo in [06-risk-register.md](06-risk-register.md) R1.
 Kept here because R1 still governs if the distributed ceremony does not land by Gate C.
@@ -230,7 +235,7 @@ improvements". Every hackathon team breaks this rule and most of them regret it.
 
 | ID | Task | Owner | Est |
 |---|---|---|---|
-| **P4-0** | **One vault for both claims.** Fund the distributed-ceremony vault from the faucet, build a PCZT for it, and put a spend of *that* vault on chain. Until this lands, "born distributed" and "confirmed on testnet" are true of two different vaults and the video cannot honestly show one flow. Needs a human at the faucet; everything either side of that is automated. | A + faucet | 0.5d |
+| ~~**P4-0**~~ | ✅ **DONE 25 Sep.** **One vault, both claims.** Ceremony vault funded (0.1 TAZ, Ironwood), PCZT built against its own watch-only wallet, signed by three `quorum-signerd` processes, proved, broadcast, mined: txid `259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61`, block 4,390,493. Needed a new route — `/coordinator/approval/authorized` — because the coordinator was collecting signatures with no way to hand back what they authorize, so the end-to-end flow could not finish through the service at all. | A | — |
 | **P4-1** | Full rehearsal on a **clean environment**, from the fixture. Find what only breaks on a fresh machine. Start from `three-party-ceremony.sh`, not from a committed vault. | Both | 1d |
 | **P4-2** | **Record the demo.** Dev B directs and edits; Dev A operates the terminals. Expect the first three takes to be unusable — that is normal and it is why this starts on the 5th. See [07-demo-script.md](07-demo-script.md). | B leads | 2d |
 | **P4-3** | Bug fixes arising from rehearsal **only**. No features. | A | 1.5d |
