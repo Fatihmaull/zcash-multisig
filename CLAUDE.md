@@ -46,6 +46,10 @@ a legal one.
   the words.
 - **Guard the demo deadline.** If recording has not started by **5 October**, say so
   unprompted, every session.
+- **The working sequence is [docs/16-runbook.md](docs/16-runbook.md).** Clean machine to a
+  confirmed spend, every command verified 25 Sep. If a flow changes, change it there in the
+  same commit — before the runbook existed, the only description of how any of this worked
+  was a pull request body.
 
 ---
 
