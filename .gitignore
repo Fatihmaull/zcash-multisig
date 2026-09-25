@@ -53,3 +53,14 @@ yarn-error.log*
 tools/zcash-devtool/
 *.db
 *.db-journal
+
+# Generated test vaults.
+#
+# On 25 Sep a fixture vault's three sealed key shares and its vault seed were
+# committed here. The passphrase that opens them is a constant in
+# examples/ceremony.rs, so they were shares in name only — anyone with the
+# repo held the vault. Testnet, so nothing was lost, but a shared-custody
+# product does not keep key shares in its repository under any circumstances.
+#
+# The fixture is generated on demand now. See scripts/test-coordinator-integration.ts.
+packages/core/fixtures/
