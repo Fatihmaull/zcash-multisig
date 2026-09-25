@@ -27,7 +27,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { coordinatorClient } from "@/lib/coordinator-client";
 import { getCoordinator } from "@/lib/mock-coordinator";
-import type { MockScenario } from "@/types/coordinator";
+import type {
+  MockScenario,
+  VaultRegistrationRequest,
+  VaultAuditRequest,
+} from "@/types/coordinator";
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
         if (!coordinator.registerVault) {
           return NextResponse.json({ error: "Vault registration not supported" }, { status: 400 });
         }
-        const result = await coordinator.registerVault(params as any);
+        const result = await coordinator.registerVault(params as unknown as VaultRegistrationRequest);
         return NextResponse.json(result);
       }
 
@@ -94,7 +98,7 @@ export async function POST(request: NextRequest) {
         if (!coordinator.auditVault) {
           return NextResponse.json({ error: "Vault audit not supported" }, { status: 400 });
         }
-        const result = await coordinator.auditVault(params as any);
+        const result = await coordinator.auditVault(params as unknown as VaultAuditRequest);
         return NextResponse.json(result);
       }
 

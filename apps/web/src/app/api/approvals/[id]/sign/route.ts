@@ -25,7 +25,7 @@ export async function POST(
   try {
     const { id: approvalId } = await params;
     const body = await request.json().catch(() => ({}));
-    const { signer, status = "APPROVED", txid, syncOnly = false } = body;
+    const { signer, status = "APPROVED", txid } = body;
 
     const approval = await prisma.approvalRequest.findUnique({
       where: { id: approvalId },
