@@ -73,6 +73,36 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(serializeBigInt(result));
       }
 
+      // ── Vault Management ─────────────────────────────────
+      case "vault/register": {
+        if (!coordinator.registerVault) {
+          return NextResponse.json({ error: "Vault registration not supported" }, { status: 400 });
+        }
+        const result = await coordinator.registerVault(params as any);
+        return NextResponse.json(result);
+      }
+
+      case "vault/list": {
+        if (!coordinator.listVaults) {
+          return NextResponse.json([], { status: 200 });
+        }
+        const result = await coordinator.listVaults();
+        return NextResponse.json(result);
+      }
+
+      case "vault/audit": {
+        if (!coordinator.auditVault) {
+          return NextResponse.json({ error: "Vault audit not supported" }, { status: 400 });
+        }
+        const result = await coordinator.auditVault(params as any);
+        return NextResponse.json(result);
+      }
+
+      case "health": {
+        const result = await coordinator.checkHealth();
+        return NextResponse.json(result);
+      }
+
       // ── Signer (mock only — see the header note) ─────────
       case "signer/pending": {
         const result = await mockSignerService.fetchPendingRequests(
