@@ -108,7 +108,9 @@ fn the_wrong_vault_is_refused_and_the_right_one_is_not() {
     assert!(!job.actions.is_empty(), "nothing to sign — wrong bundle?");
 
     match quorum_coordinator::inspect(&pczt, &ak_of("secrets/vault-3p")) {
-        Err(quorum_coordinator::PcztError::WrongVault { index }) => assert_eq!(index, 0),
+        Err(quorum_coordinator::PcztError::Transaction(
+            quorum_core::transaction::TransactionError::WrongVault { index },
+        )) => assert_eq!(index, 0),
         Err(other) => panic!("refused for the wrong reason: {other}"),
         Ok(_) => panic!(
             "a PCZT from another vault was accepted — this is the 24 September bug, back again"

@@ -518,3 +518,164 @@ async fn a_signer_must_prove_who_it_is() {
     );
     assert_eq!(err["code"], "UNAUTHORIZED");
 }
+
+/// A signer refuses a sighash that is not the transaction's own.
+///
+/// This is the check that makes the coordinator untrusted for *what* gets
+/// signed, not merely for key material. Before it existed, `/signer/packages`
+/// handed over a sighash and the signer signed it — so a compromised
+/// coordinator could serve the sighash of a different transaction spending the
+/// same vault, collect a valid threshold signature, and move the funds. Every
+/// share would have verified. Aggregation would have succeeded. No signer
+/// could have noticed.
+#[tokio::test]
+async fn a_signer_refuses_an_offer_that_does_not_match_the_transaction() {
+    use quorum_core::transaction::{verify_offer, TransactionError};
+
+    let mut rng = rand::thread_rng();
+    let (_shares, pubkeys) =
+        keys::generate_with_dealer::<Ciphersuite, _>(3, 2, IdentifierList::Default, &mut rng)
+            .expect("dealer keygen");
+    let ak = SpendValidatingKey::from_bytes(
+        &pubkeys
+            .verifying_key()
+            .serialize()
+            .expect("serialise group key"),
+    )
+    .expect("ak");
+    let pczt = bind_fixture_to(&ak);
+
+    // What the transaction actually says. A signer derives this itself.
+    let truth = quorum_core::transaction::summarize(&pczt, &ak).expect("summarize");
+    let alphas: Vec<[u8; 32]> = truth.spends.iter().map(|s| s.alpha).collect();
+
+    // The honest offer is accepted.
+    verify_offer(&pczt, &ak, &truth.sighash, &alphas).expect("the honest offer must be accepted");
+
+    // A different sighash — the attack. One flipped bit is enough; in practice
+    // it would be the sighash of a transaction paying the attacker.
+    let mut lying = truth.sighash;
+    lying[0] ^= 0x01;
+    match verify_offer(&pczt, &ak, &lying, &alphas) {
+        Err(TransactionError::SighashMismatch { offered, actual }) => {
+            assert_eq!(offered, hex::encode(lying));
+            assert_eq!(actual, hex::encode(truth.sighash));
+        }
+        other => panic!("a mismatched sighash must be refused, got {other:?}"),
+    }
+
+    // A different randomizer. Signing under the wrong alpha produces a
+    // signature that verifies under FROST and authorizes nothing on chain —
+    // so this has to be refused too, not just the sighash.
+    let mut wrong_alphas = alphas.clone();
+    wrong_alphas[0][0] ^= 0x01;
+    match verify_offer(&pczt, &ak, &truth.sighash, &wrong_alphas) {
+        Err(TransactionError::AlphaMismatch { .. }) => {}
+        other => panic!("a mismatched randomizer must be refused, got {other:?}"),
+    }
+
+    // And too few randomizers: a coordinator asking us to sign one action of a
+    // two-action transaction would leave the rest unauthorized.
+    match verify_offer(&pczt, &ak, &truth.sighash, &[]) {
+        Err(TransactionError::AlphaMismatch { .. }) => {}
+        other => panic!("a short randomizer list must be refused, got {other:?}"),
+    }
+}
+
+/// The coordinator hands the signer the transaction, not just a digest.
+#[tokio::test]
+async fn signer_routes_expose_the_transaction() {
+    let (app, f) = fixture().await;
+    let approval = open_request(&app, &f, 300).await;
+    let participant = f.key_packages.keys().next().expect("a participant").clone();
+    let token = f.tokens.get(&participant).expect("token").clone();
+
+    let (status, body) = call_as(
+        &app,
+        "/signer/request",
+        json!({ "approvalId": approval, "participantId": participant, "commitmentsHex": [] }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "signer/request: {body}");
+
+    // The transaction itself, before round 1 — because committing a nonce is
+    // already an act, so a signer that can only look at round 2 has already
+    // acted on trust.
+    let hex_pczt = body["pcztHex"].as_str().expect("pcztHex");
+    assert_eq!(
+        hex_pczt, f.pczt_hex,
+        "must be the transaction under approval"
+    );
+
+    // And the proposer's figures are labelled as claims rather than presented
+    // as facts, because a shielded output need not state either in the clear.
+    assert!(body["claimedRecipient"].is_string());
+    assert!(
+        body["note"].as_str().unwrap_or_default().contains("claims"),
+        "the response must say these are claims: {body}"
+    );
+
+    // Without a token it is refused: participantId alone is an assertion.
+    let (status, _) = call(
+        &app,
+        "/signer/request",
+        json!({ "approvalId": approval, "participantId": participant, "commitmentsHex": [] }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+/// Enough declines closes the request instead of leaving it open.
+///
+/// Before the consent gate existed, nothing ever declined in practice, so a
+/// request whose quorum had become unreachable simply sat at PENDING until its
+/// deadline — telling a treasurer to keep waiting for something that could not
+/// happen.
+#[tokio::test]
+async fn declining_past_the_threshold_closes_the_request() {
+    let (app, f) = fixture().await;
+    let approval = open_request(&app, &f, 300).await;
+    let participants: Vec<String> = f.key_packages.keys().cloned().collect();
+
+    // 3 participants, threshold 2. One decline still leaves two possible.
+    let (status, body) = call_as(
+        &app,
+        "/signer/decline",
+        json!({ "approvalId": approval, "participantId": participants[0] }),
+        Some(f.tokens.get(&participants[0]).expect("token")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        body["status"], "PENDING",
+        "one decline of three still leaves a reachable quorum"
+    );
+
+    // The second decline makes two-of-three impossible.
+    let (status, body) = call_as(
+        &app,
+        "/signer/decline",
+        json!({ "approvalId": approval, "participantId": participants[1] }),
+        Some(f.tokens.get(&participants[1]).expect("token")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["status"], "REJECTED", "the quorum is now unreachable");
+
+    let closing = body["events"]
+        .as_array()
+        .expect("events")
+        .iter()
+        .find(|e| e["errorCode"] == "QUORUM_UNREACHABLE")
+        .expect("a closing event explaining why");
+
+    // Declining is the system working. The log must not read as an accusation.
+    assert_eq!(closing["culpritDetected"], false);
+    let detail = closing["errorDetails"].as_str().unwrap_or_default();
+    assert!(detail.contains("no funds moved"), "{detail}");
+    assert!(
+        detail.contains("not a fault"),
+        "a decline is a decision, and the message should say so: {detail}"
+    );
+}

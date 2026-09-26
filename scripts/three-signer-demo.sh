@@ -15,6 +15,12 @@
 # a threshold of two, whichever pair answers first wins the race, so a
 # misbehaving third never gets to misbehave. Naming the pair makes the run
 # reproducible, which is what recording a demo requires.
+#
+# Signers auto-approve here. A real participant is asked, having been shown
+# what the transaction spends and from which vault — the gate is the product,
+# not decoration. A scripted run cannot pause for a keystroke, so this script
+# sets QUORUM_SIGNER_AUTO_APPROVE=1 and each signer says so in its log. Pass
+# AUTO_APPROVE=0 and run a signer by hand to see the prompt.
 
 set -euo pipefail
 
@@ -98,6 +104,7 @@ while read -r pid label token; do
     QUORUM_SIGNER_ID="$pid" \
     QUORUM_SIGNER_TOKEN="$token" \
     QUORUM_SIGNER_LABEL="$label" \
+    QUORUM_SIGNER_AUTO_APPROVE="${AUTO_APPROVE:-1}" \
     ${MIS:+QUORUM_SIGNER_MISBEHAVE=1} \
     "$BIN/quorum-signerd" >"$RUN/$label.log" 2>&1 &
   PIDS+=($!)
