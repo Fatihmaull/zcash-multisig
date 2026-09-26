@@ -117,6 +117,19 @@ pub struct SigningPackages {
     pub sighash_hex: String,
     pub actions: Vec<SigningAction>,
     pub signing_packages_hex: Vec<String>,
+    /// The transaction itself, so the signer need not believe us.
+    ///
+    /// Without this a signer signs the sighash it is handed, and a
+    /// compromised coordinator can hand it the sighash of a different
+    /// transaction spending the same vault. Every share would verify and the
+    /// funds would move. Sending the PCZT lets the signer derive the sighash
+    /// and the randomizers itself, and check that the actions spend from the
+    /// vault it actually holds a share of.
+    ///
+    /// It is not secret — the proposer built it and every participant is
+    /// entitled to see what they are being asked to authorize. That is the
+    /// entire point.
+    pub pczt_hex: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

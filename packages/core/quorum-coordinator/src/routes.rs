@@ -29,6 +29,7 @@ pub fn router(state: AppState) -> Router {
         )
         // ── SignerService — the signer binary's view. ──
         .route("/signer/pending", post(signer_pending))
+        .route("/signer/request", post(signer_request))
         .route("/signer/commit", post(signer_commit))
         .route("/signer/packages", post(signer_packages))
         .route("/signer/shares", post(signer_shares))
@@ -581,6 +582,47 @@ async fn signer_commit(
     ))
 }
 
+/// What a participant is being asked to authorize, before they authorize it.
+///
+/// Available in every phase, deliberately: committing to a nonce in round 1 is
+/// already a cryptographic act, so a signer that can only see the transaction
+/// at round 2 has already acted on trust.
+///
+/// `recipientAddress`, `amountZatoshi` and `memo` are **the proposer's claims**
+/// and are labelled as such. The authoritative answer is whatever the signer
+/// can read out of `pcztHex` for itself; a shielded output may carry its value
+/// in the clear or may not, and "we cannot tell" is a better answer than a
+/// number we were handed.
+async fn signer_request(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<Commitments>,
+) -> Reply {
+    let token = bearer(&headers).ok_or_else(unauthorized)?;
+    let inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    authorize(&inner, &req.approval_id, &req.participant_id, &token)?;
+    let a = inner
+        .approvals
+        .get(&req.approval_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such approval request"))?;
+    let vault = inner
+        .vaults
+        .get(&a.state.vault_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such vault"))?;
+
+    Ok(Json(json!({
+        "approvalId": a.state.id,
+        "vaultLabel": vault.label,
+        "vaultAddress": vault.address,
+        "threshold": vault.threshold,
+        "pcztHex": hex::encode(&a.pczt),
+        "claimedRecipient": a.state.recipient_address,
+        "claimedAmountZatoshi": a.state.amount_zatoshi.to_string(),
+        "claimedMemo": a.state.memo,
+        "note": "recipient, amount and memo are the proposer's claims. Read the PCZT yourself.",
+    })))
+}
+
 async fn signer_packages(
     State(st): State<AppState>,
     headers: HeaderMap,
@@ -611,6 +653,7 @@ async fn signer_packages(
         sighash_hex: hex::encode(a.job.sighash),
         actions: actions_to_wire(&a.job.actions),
         signing_packages_hex: packages,
+        pczt_hex: hex::encode(&a.pczt),
     })))
 }
 
@@ -773,6 +816,51 @@ async fn signer_decline(
         "INVALID",
         &now,
     );
+
+    // Can a quorum still be reached? Once enough participants are out, the
+    // request can never succeed, and leaving it PENDING until the deadline
+    // tells a treasurer to keep waiting for something that will not happen.
+    //
+    // Surfaced before the consent gate existed nothing ever declined in
+    // practice, so nothing ever sat in this state long enough to notice.
+    let still_possible = a
+        .state
+        .signer_statuses
+        .iter()
+        .filter(|s| matches!(s.status, SignerState::Pending | SignerState::Approved))
+        .count();
+
+    if still_possible < a.state.threshold as usize {
+        a.state.status = ApprovalStatus::Rejected;
+        a.phase = Phase::Failed;
+        let declined = a
+            .state
+            .signer_statuses
+            .iter()
+            .filter(|s| s.status == SignerState::Declined)
+            .count();
+        a.state.events.push(SigningRoundEvent {
+            id: new_id(),
+            approval_request_id: req.approval_id.clone(),
+            participant_id: String::new(),
+            participant_label: String::new(),
+            round_type: "COMMITMENT".into(),
+            status: "INVALID".into(),
+            // Nobody misbehaved. Declining is the system working, and the
+            // event log must not read as an accusation.
+            culprit_detected: false,
+            error_code: Some("QUORUM_UNREACHABLE".into()),
+            error_details: Some(format!(
+                "Closed — {declined} of {} signers declined, so the threshold of {} can no \
+                 longer be met. Nothing was signed and no funds moved. This is a decision, \
+                 not a fault: submit a new request if the terms should change.",
+                a.state.signer_statuses.len(),
+                a.state.threshold
+            )),
+            timestamp: now.clone(),
+        });
+    }
+
     Ok(Json(json!(a.state)))
 }
 
