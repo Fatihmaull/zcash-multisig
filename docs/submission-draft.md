@@ -238,11 +238,30 @@ whether something is audited, say we are unsure.
   signatures remain vulnerable to Shor's algorithm. See the point above for why our use is
   additionally uncertain.
 - **Release candidates.** Pinned to `pczt 0.8.0-rc.1` and `zcash_client_backend 0.24.0-rc.1`.
+- **The signers do not see what they are signing, and this is the most serious limitation
+  here.** `quorum-signerd` receives a sighash and a set of randomizers from the coordinator and
+  signs them. It never sees the transaction. So a compromised coordinator can serve the
+  sighash of a *different* transaction spending the same vault, collect a valid threshold
+  signature over it, and move the funds — the signers have no way to notice. The coordinator
+  checks that a transaction belongs to the vault before accepting it, but that check runs on
+  the coordinator, which is precisely the party it would need to defend against.
+  **This means the coordinator is currently trusted for *what* gets signed, even though it is
+  genuinely untrusted for key material.** The fix is for signers to derive the sighash from
+  the transaction themselves and show a human what it pays; it is specified and not yet built.
+- **There is no human approval step.** The signer daemon polls and signs. Nothing prompts the
+  participant, which means the "2-of-3 approval" is 2-of-3 machines consenting automatically
+  rather than two people deciding. The threshold arithmetic is real; the governance around it
+  is not yet.
 - **Authentication is a floor, not a ceiling.** Signer routes use per-participant bearer
   tokens. Participants already hold XEdDSA identities for `frostd`; challenge-response against
   those keys is the production answer and is not built.
 - **The web signing flow is simulated unless `COORDINATOR_URL` is set.** The interface says so
   on screen, and those labels stay.
+- **No reminders.** A signer who has not answered is tracked but not chased.
+- **The last mile is hand-run.** Aggregation produces an authorized transaction; proving and
+  broadcasting it are `zcash-devtool` commands a human runs. Both confirmed spends above went
+  out that way. `/api/broadcast` exists and is not wired to the coordinator's authorized-
+  transaction route.
 - **Not built, deliberately:** signer rotation and share repair (the libraries support both),
   hardware or air-gapped signers, mainnet, and any quorum policy beyond a fixed threshold.
 
