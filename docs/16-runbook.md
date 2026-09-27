@@ -152,7 +152,26 @@ transaction spends and from which vault — that gate is the product, not decora
 run cannot pause for a keystroke, so the script sets `QUORUM_SIGNER_AUTO_APPROVE=1` and each
 signer logs a warning saying so.
 
-To show the gate, run with `AUTO_APPROVE=0`:
+To show the gate — which is what the video should do, see
+[07-demo-script.md](07-demo-script.md) beat 4 — start the scripted pair first, then run the
+third signer by hand:
+
+```bash
+# two signers, scripted
+SIGNERS="Bob Carol" ./scripts/three-signer-demo.sh ./secrets/ceremony <pczt>
+
+# Alice, by hand, gate on. Take the id and token from the registration output.
+env QUORUM_COORDINATOR_URL=http://127.0.0.1:2745 \
+    QUORUM_SIGNER_SHARE=./secrets/ceremony/alice/share-1.bin \
+    QUORUM_SIGNER_PASSPHRASE="$QUORUM_DEV_PASSPHRASE" \
+    QUORUM_SIGNER_ID=<alice participant id> \
+    QUORUM_SIGNER_TOKEN=<alice token> \
+    QUORUM_SIGNER_LABEL=Alice \
+    packages/core/target/release/quorum-signerd
+```
+
+Or `AUTO_APPROVE=0` on the whole script, which prompts all three in one terminal — fine for
+testing, confusing on camera:
 
 ```
   APPROVAL REQUEST  99b6bf69-…

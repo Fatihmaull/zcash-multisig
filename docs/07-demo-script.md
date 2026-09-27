@@ -119,6 +119,53 @@ zcash-devtool wallet -w ./secrets/ceremony-watch list-tx
 
 That is also beat 6 arriving early, which is fine — it lets beat 6 be short.
 
+### Show one signer being asked — this needs a decision before the shoot
+
+Since 26 September `quorum-signerd` shows the participant what the transaction spends and
+refuses to sign without an explicit yes. **That gate is the difference between a 2-of-3
+approval and two machines saying yes**, and it is the closest thing in the product to the
+control a treasurer is being sold.
+
+A fully scripted run skips it. `three-signer-demo.sh` sets
+`QUORUM_SIGNER_AUTO_APPROVE=1` because a recording cannot pause for a keystroke, and each
+signer logs a warning when it does.
+
+**Recommended: run one signer by hand, and say that the others are scripted.**
+
+```bash
+# two signers, scripted, started first
+SIGNERS="Bob Carol" ./scripts/three-signer-demo.sh ./secrets/ceremony <pczt>
+
+# then Alice, by hand, with the gate on — this is the shot
+AUTO_APPROVE=0 ...   # see 16-runbook.md for the full invocation
+```
+
+What appears is two columns:
+
+```
+  FROM THE TRANSACTION — verified against your own share
+    output  Ironwood action 1  0.01000000 TAZ  to a named address
+
+  CLAIMED BY THE PROPOSER — not verified, and not verifiable here
+    to       utest1recipient
+    amount   0.01000000 TAZ
+
+  Approve and sign? [y/N]
+```
+
+> "Alice isn't clicking approve on a web page. Her machine read the transaction, checked it
+> spends from her vault and that the digest she's being asked to sign is that transaction's
+> own, and it's showing her what it can prove alongside what it's merely been told. Bob and
+> Carol are scripted here for timing — in a real round they'd each see this."
+
+**The last sentence is not optional.** Without it the shot implies three people decided, and
+two of them were `AUTO_APPROVE=1`.
+
+Say plainly what the gate cannot do: a shielded output need not state its value in the clear,
+so where the transaction is silent nobody — including Alice — can confirm the proposer's
+figure from the transaction alone. That limitation is in the submission text; it should not be
+a surprise to anyone who read it and then watched this.
+
 ### Two things that look like bugs on camera
 
 **The third signer stays `PENDING`.** Threshold is two, so whichever pair answers first wins
@@ -208,6 +255,8 @@ sounds certain everywhere reads as one that has not looked.
 - Show one real confirmation. One is enough; it is the whole proof.
 - Name the upstream work we depend on. Judges include people who wrote it.
 - Rehearse on a clean environment. Expect the first three takes to be unusable.
+- **Say when a signer is auto-approving.** Two of the three are, in any scripted run. A shot
+  that shows three signers completing without mentioning it implies three decisions were made.
 - **Label anything simulated, on screen, while it is on screen.** The UI already does this;
   do not crop it out. A judge who finds one unlabelled simulation stops believing the parts
   that are real, and we have a great deal that is real.
