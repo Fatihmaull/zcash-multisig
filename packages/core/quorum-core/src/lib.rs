@@ -10,6 +10,7 @@
 // on Zcash. See docs/04-technical-constraints.md §C4.
 
 pub mod dkg;
+pub mod transaction;
 pub mod transport;
 pub mod vault_key;
 

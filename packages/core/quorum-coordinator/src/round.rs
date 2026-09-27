@@ -30,16 +30,12 @@ use frost_core::{
 use frost_rerandomized::{RandomizedParams, Randomizer};
 use quorum_core::Ciphersuite;
 
-/// Which shielded bundle an action lives in.
+/// Which shielded pool an action belongs to.
 ///
-/// A v6 transaction carries both, and either may hold spends. They are
-/// reached through different entry points and **asking the wrong one returns
-/// no spends rather than an error**, so the pool travels with the index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShieldedPool {
-    Orchard,
-    Ironwood,
-}
+/// Defined in `quorum-core` because the signer needs it too: a signer that
+/// cannot read the transaction has to take the coordinator's word for what it
+/// is signing, which is the hole `quorum_core::transaction` closes.
+pub use quorum_core::transaction::ShieldedPool;
 
 /// One spend awaiting authorization.
 #[derive(Debug, Clone)]

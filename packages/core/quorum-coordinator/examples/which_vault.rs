@@ -46,7 +46,9 @@ fn main() {
                 "  {dir:22} ✓ MATCHES — {} action(s) to sign",
                 job.actions.len()
             ),
-            Err(quorum_coordinator::PcztError::WrongVault { .. }) => {
+            Err(quorum_coordinator::PcztError::Transaction(
+                quorum_core::transaction::TransactionError::WrongVault { .. },
+            )) => {
                 println!("  {dir:22} ✗ different vault")
             }
             Err(e) => println!("  {dir:22} ✗ {e}"),

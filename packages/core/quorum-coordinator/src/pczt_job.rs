@@ -23,10 +23,8 @@
 //! it would produce a signature that verifies under FROST and authorizes
 //! nothing on chain. Read `alpha` out of the action, always.
 
-use ff::PrimeField;
 use orchard::keys::SpendValidatingKey;
 use orchard::pczt::Bundle;
-use pasta_curves::pallas;
 use pczt::roles::low_level_signer::{OrchardParseError, Signer as LowLevelSigner};
 use pczt::roles::signer::Signer as SighashSigner;
 use pczt::Pczt;
@@ -35,52 +33,21 @@ use crate::round::{Action, ShieldedPool};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PcztError {
+    /// Reading the transaction failed, or it does not belong to this vault.
+    ///
+    /// Not flattened to a string: `WrongVault` and `SighashMismatch` are the
+    /// two an operator needs to be able to tell apart from a parse failure.
+    #[error(transparent)]
+    Transaction(#[from] quorum_core::transaction::TransactionError),
+
     #[error("could not parse the PCZT: {0}")]
     Parse(String),
 
     #[error("pczt rejected the operation: {0}")]
     Pczt(String),
 
-    /// No spend in this transaction is waiting for a signature.
-    ///
-    /// Not "nothing to do". A v6 transaction carries both an Orchard and an
-    /// Ironwood bundle, and querying the wrong one returns success with an
-    /// empty list — so an empty result is far more likely to mean we looked
-    /// in the wrong place than that the wallet handed us a transaction with
-    /// nothing to authorize.
-    #[error(
-        "no unsigned shielded spends found — wrong bundle, or a transaction with nothing to sign"
-    )]
-    NoSpends,
-
-    /// A spend is awaiting signature but carries no randomizer.
-    ///
-    /// Unsignable: without alpha there is no way to know which randomized key
-    /// the signature must verify against.
-    #[error("action {0} is unsigned but has no randomizer")]
-    MissingAlpha(usize),
-
     #[error("expected a signature for action {0}, none supplied")]
     MissingSignature(usize),
-
-    /// The transaction does not belong to this vault.
-    ///
-    /// Each action carries `rk`, the randomized key its signature must verify
-    /// against. For a vault, `rk` must equal the group's `ak` randomized by
-    /// that action's own `alpha`. When it does not, the PCZT was built for a
-    /// different vault — and this is the failure that does **not** announce
-    /// itself: the signers are handed alphas from the transaction, so FROST
-    /// completes happily, aggregation succeeds, and the coordinator reports a
-    /// quorum. The signature is valid. It authorizes nothing.
-    ///
-    /// Checked before any signer is asked to commit, because a participant
-    /// who has committed has burned a nonce.
-    #[error(
-        "action {index} belongs to a different vault: its rk is not this vault's ak randomized \
-         by the action's own alpha. Signing it would produce a valid FROST signature that \
-         authorizes nothing on chain. Check that the PCZT and the vault are the same vault."
-    )]
-    WrongVault { index: usize },
 
     /// The low-level signer could not read or write the bundle.
     ///
@@ -97,21 +64,8 @@ impl From<OrchardParseError> for PcztError {
     }
 }
 
-/// One unsigned spend, as the transaction describes itself.
-///
-/// Both fields are public data carried by the transaction. Together they say
-/// *which vault* must authorize this spend: `rk` is that vault's `ak`
-/// randomized by `alpha`, so a vault can check whether a transaction is its
-/// business without holding anything secret.
-#[derive(Debug, Clone)]
-pub struct SpendDescriptor {
-    pub pool: ShieldedPool,
-    pub index: usize,
-    /// The spend authorization randomizer the wallet fixed.
-    pub alpha: [u8; 32],
-    /// The randomized validating key the signature must verify against.
-    pub rk: [u8; 32],
-}
+/// Re-exported: reading a transaction is shared with the signer.
+pub use quorum_core::transaction::SpendDescriptor;
 
 /// Everything the FROST rounds need from a transaction.
 pub struct PcztSigningJob {
@@ -121,121 +75,35 @@ pub struct PcztSigningJob {
     pub actions: Vec<Action>,
 }
 
-/// Read the sighash and the unsigned spends out of a PCZT.
+/// Read the sighash and the unsigned spends out of a PCZT, for this vault.
 ///
-/// `vault_ak` is the vault's spend validating key — the FROST group verifying
-/// key, read as an Orchard `ak`. Every action is checked against it before
-/// anything is returned, so a PCZT belonging to another vault is rejected here
-/// rather than discovered on chain. See [`PcztError::WrongVault`].
+/// Delegates to [`quorum_core::transaction::summarize`], which is also what a
+/// signer calls. That is the point: before this was shared, the coordinator
+/// was the only party that ever read a transaction, and a signer had no way
+/// to know whether the sighash it was handed belonged to the transaction it
+/// was told about.
 pub fn inspect(
     pczt_bytes: &[u8],
     vault_ak: &SpendValidatingKey,
 ) -> Result<PcztSigningJob, PcztError> {
-    let pczt = Pczt::parse(pczt_bytes).map_err(|e| PcztError::Parse(format!("{e:?}")))?;
-
-    // The sighash covers the whole transaction, so it is the same for every
-    // action — which is why a signer can commit to all of them in one round 1.
-    let sighash = SighashSigner::new(pczt.clone())
-        .map_err(|e| PcztError::Pczt(format!("{e:?}")))?
-        .shielded_sighash();
-
-    let spends = walk(&pczt)?;
-    if spends.is_empty() {
-        return Err(PcztError::NoSpends);
-    }
-
-    // The binding check. `alpha` alone tells us which randomized key to sign
-    // under, but not whose. `rk` tells us whose, and both are already in the
-    // transaction — so this costs nothing and catches the one mistake FROST
-    // cannot: signing a stranger's transaction with our vault's shares,
-    // successfully. Done before anything is returned, because a participant
-    // who has committed has burned a nonce.
-    let mut actions = Vec::with_capacity(spends.len());
-    for spend in spends {
-        let alpha = pallas::Scalar::from_repr(spend.alpha)
-            .into_option()
-            .ok_or(PcztError::MissingAlpha(spend.index))?;
-        let expected: [u8; 32] = (&vault_ak.randomize(&alpha)).into();
-        if spend.rk != expected {
-            return Err(PcztError::WrongVault { index: spend.index });
-        }
-        actions.push(Action {
-            pool: spend.pool,
-            index: spend.index,
-            alpha: spend.alpha,
-        });
-    }
-
-    Ok(PcztSigningJob { sighash, actions })
+    let summary = quorum_core::transaction::summarize(pczt_bytes, vault_ak)?;
+    Ok(PcztSigningJob {
+        sighash: summary.sighash,
+        actions: summary
+            .spends
+            .into_iter()
+            .map(|s| Action {
+                pool: s.pool,
+                index: s.index,
+                alpha: s.alpha,
+            })
+            .collect(),
+    })
 }
 
 /// Every unsigned spend, described but not judged.
-///
-/// [`inspect`] is this plus the binding check. Exposed separately because
-/// "which vault is this transaction for?" is a useful question to be able to
-/// ask before you have an answer — see `examples/which_vault.rs` — and
-/// because a test needs to build a transaction that binds to the vault it
-/// just generated.
 pub fn spend_keys(pczt_bytes: &[u8]) -> Result<Vec<SpendDescriptor>, PcztError> {
-    let pczt = Pczt::parse(pczt_bytes).map_err(|e| PcztError::Parse(format!("{e:?}")))?;
-    walk(&pczt)
-}
-
-fn walk(pczt: &Pczt) -> Result<Vec<SpendDescriptor>, PcztError> {
-    let mut spends = Vec::new();
-    for (pool, tag) in [
-        (ShieldedPool::Ironwood, "ironwood"),
-        (ShieldedPool::Orchard, "orchard"),
-    ] {
-        collect(pczt, pool, tag, &mut spends)?;
-    }
-    Ok(spends)
-}
-
-/// Walk one bundle and record every spend still lacking a signature.
-fn collect(
-    pczt: &Pczt,
-    pool: ShieldedPool,
-    tag: &str,
-    out: &mut Vec<SpendDescriptor>,
-) -> Result<(), PcztError> {
-    let mut found: Vec<SpendDescriptor> = Vec::new();
-
-    let read = |_p: &Pczt, bundle: &mut Bundle, _n: &mut u8| -> Result<(), PcztError> {
-        for (index, action) in bundle.actions_mut().iter().enumerate() {
-            // A dummy spend is already signed by the IO finalizer during
-            // `pczt create`; only real spends still need us.
-            if action.spend().spend_auth_sig().is_some() {
-                continue;
-            }
-            let alpha = match action.spend().alpha() {
-                Some(alpha) => alpha,
-                None => return Err(PcztError::MissingAlpha(index)),
-            };
-            found.push(SpendDescriptor {
-                pool,
-                index,
-                alpha: alpha.to_repr(),
-                rk: action.spend().rk().into(),
-            });
-        }
-        Ok(())
-    };
-
-    let signer = LowLevelSigner::new(pczt.clone());
-    let outcome = match pool {
-        ShieldedPool::Ironwood => signer.sign_ironwood_with(read),
-        ShieldedPool::Orchard => signer.sign_orchard_with(read),
-    };
-
-    outcome.map_err(|e| match e {
-        PcztError::BundleAccess(inner) => {
-            PcztError::Pczt(format!("could not read the {tag} bundle: {inner:?}"))
-        }
-        other => other,
-    })?;
-    out.extend(found);
-    Ok(())
+    Ok(quorum_core::transaction::spend_keys(pczt_bytes)?)
 }
 
 /// Apply threshold signatures and return the updated PCZT.

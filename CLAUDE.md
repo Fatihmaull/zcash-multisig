@@ -195,6 +195,13 @@ Ironwood funds on testnet: txid
 only this one comes from a vault whose shares were never in the same process. `0ef1e964…`
 (block 4,383,363) stays on record as the first, which is what carried Gate B four days early.
 
+**The signers read the transaction themselves** (P3-A8, 26 Sep). They used to sign a sighash the
+coordinator handed them, which meant a compromised coordinator could get a quorum to authorize a
+transaction nobody saw. Reading lives in `quorum_core::transaction` now, shared by coordinator and
+signer; a signer derives the sighash and randomizers from the PCZT, checks each action's `rk`
+against its **own** group key, and refuses on disagreement. `quorum-signerd` also asks a human
+before signing — `QUORUM_SIGNER_AUTO_APPROVE=1` skips it for scripted runs and says so loudly.
+
 **A PCZT is checked against the vault before signing** (P3-A7). It was not, and the demo happily
 reported `APPROVED, 2 signatures` for another vault's transaction — real quorum, valid FROST
 signature, no authority over anything. `rk` must equal this vault's `ak` randomized by the

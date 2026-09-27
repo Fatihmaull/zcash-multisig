@@ -147,6 +147,34 @@ coordinator sees commitments and signature shares and never a share.
 Threshold is two, so whichever pair answers first wins and the third stays `PENDING`.
 That is correct behaviour and it looks like a bug on camera, so say it.
 
+**The script auto-approves.** A real participant is asked first, having been shown what the
+transaction spends and from which vault — that gate is the product, not decoration. A scripted
+run cannot pause for a keystroke, so the script sets `QUORUM_SIGNER_AUTO_APPROVE=1` and each
+signer logs a warning saying so.
+
+To show the gate, run with `AUTO_APPROVE=0`:
+
+```
+  APPROVAL REQUEST  99b6bf69-…
+  vault    Foundation Treasury
+  sighash  613a0b41f944e109…
+
+  FROM THE TRANSACTION — verified against your own share
+    spend   Ironwood action 0  — spends from this vault
+    output  Ironwood action 0  0.08990000 TAZ  to a named address
+    output  Ironwood action 1  0.01000000 TAZ  to a named address
+
+  CLAIMED BY THE PROPOSER — not verified, and not verifiable here
+    to       utest1recipient
+    amount   0.01000000 TAZ
+
+  Approve and sign? [y/N]
+```
+
+Two columns, because they are two kinds of fact. Anything but an explicit yes declines, and
+once enough participants decline the request closes as `REJECTED` with `QUORUM_UNREACHABLE`
+rather than waiting out its deadline.
+
 **For the misbehaving-signer beat, name the pair** — otherwise the culprit may never
 get a turn:
 

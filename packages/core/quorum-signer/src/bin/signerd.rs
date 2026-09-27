@@ -36,6 +36,7 @@
 use std::time::Duration;
 
 use frost_core::keys::KeyPackage;
+use orchard::keys::SpendValidatingKey;
 use quorum_core::Ciphersuite;
 use quorum_signer::{store::open, SigningSession};
 use serde_json::{json, Value};
@@ -43,6 +44,13 @@ use serde_json::{json, Value};
 struct Config {
     coordinator: String,
     share_path: String,
+    /// Sign without asking a human. **Scripted demos and tests only.**
+    ///
+    /// A daemon that signs whatever it is handed is not shared custody; it is
+    /// three machines saying yes. The gate is the product. This flag exists
+    /// because a recorded demo cannot pause for a keystroke, and it announces
+    /// itself loudly when set.
+    auto_approve: bool,
     passphrase: String,
     participant_id: String,
     token: String,
@@ -62,6 +70,7 @@ fn config() -> Config {
         coordinator: std::env::var("QUORUM_COORDINATOR_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:2745".into()),
         share_path: need("QUORUM_SIGNER_SHARE"),
+        auto_approve: std::env::var("QUORUM_SIGNER_AUTO_APPROVE").as_deref() == Ok("1"),
         passphrase: need("QUORUM_SIGNER_PASSPHRASE"),
         participant_id: need("QUORUM_SIGNER_ID"),
         token: need("QUORUM_SIGNER_TOKEN"),
@@ -95,6 +104,11 @@ async fn main() {
     });
 
     tracing::info!(label = %cfg.label, "signer ready");
+    if cfg.auto_approve {
+        tracing::warn!(
+            "AUTO-APPROVE — this signer will not ask before signing. Scripted runs only."
+        );
+    }
     if cfg.misbehave {
         tracing::warn!("MISBEHAVE MODE — this signer will submit shares that do not verify");
     }
@@ -176,20 +190,39 @@ async fn participate(
 ) -> Result<(), String> {
     let mut rng = rand::thread_rng();
 
-    // How many actions? Ask rather than assume — a transaction with two
-    // shielded inputs needs two complete rounds, and guessing one would
-    // sign the first input and silently drop the rest.
-    let probe = post(
+    // ── Read the transaction ourselves, before anything cryptographic ──
+    //
+    // Round 1 commits a nonce, which is already an act. So the transaction
+    // has to be examined first, and examined from the transaction — not from
+    // the coordinator's description of it.
+    let request = post(
         http,
         cfg,
-        "/signer/packages",
+        "/signer/request",
         json!({ "approvalId": approval_id, "participantId": cfg.participant_id, "commitmentsHex": [] }),
     )
-    .await;
-    let action_count = probe
-        .ok()
-        .and_then(|v| v["actions"].as_array().map(|a| a.len()))
-        .unwrap_or(1);
+    .await?;
+    let pczt = hex::decode(request["pcztHex"].as_str().unwrap_or_default())
+        .map_err(|e| format!("the coordinator sent an unreadable transaction: {e}"))?;
+
+    let ak = vault_ak(key_package)?;
+    let summary = quorum_core::transaction::summarize(&pczt, &ak).map_err(|e| e.to_string())?;
+
+    // How many actions? Counted from the transaction. Asking the coordinator
+    // would mean signing as many rounds as it asked for.
+    let action_count = summary.spends.len();
+
+    describe(approval_id, &request, &summary);
+    if !cfg.auto_approve && !consent()? {
+        post(
+            http,
+            cfg,
+            "/signer/decline",
+            json!({ "approvalId": approval_id, "participantId": cfg.participant_id }),
+        )
+        .await?;
+        return Err("declined by the participant".into());
+    }
 
     // ── Round 1 ──
     let session =
@@ -237,6 +270,19 @@ async fn participate(
                 .map_err(|_| "alpha is not 32 bytes".to_string())
         })
         .collect::<Result<_, String>>()?;
+
+    // ── The check that closes the hole ──
+    //
+    // The coordinator has now told us a sighash and a set of randomizers. We
+    // derived both from the transaction ourselves; if they disagree, someone
+    // is asking us to authorize something other than what we were shown.
+    let offered_sighash: [u8; 32] =
+        hex::decode(packages["sighashHex"].as_str().unwrap_or_default())
+            .map_err(|e| e.to_string())?
+            .try_into()
+            .map_err(|_| "the sighash offered is not 32 bytes".to_string())?;
+    quorum_core::transaction::verify_offer(&pczt, &ak, &offered_sighash, &randomizers)
+        .map_err(|e| e.to_string())?;
 
     let randomizers = if cfg.misbehave {
         // Flip one bit of each randomizer. The signer's own commitment is
@@ -301,4 +347,101 @@ async fn wait_for_packages(
         }
     }
     Err("threshold commitments never arrived".into())
+}
+
+/// This vault's spend validating key, from our own share.
+///
+/// Read from the key package rather than from anything the coordinator sent.
+/// It is the anchor of every other check: it says which vault we are a member
+/// of, and a transaction that does not spend from it is not ours to sign.
+fn vault_ak(key_package: &KeyPackage<Ciphersuite>) -> Result<SpendValidatingKey, String> {
+    let bytes = key_package
+        .verifying_key()
+        .serialize()
+        .map_err(|e| format!("unusable group key: {e}"))?;
+    SpendValidatingKey::from_bytes(&bytes)
+        .ok_or_else(|| "this vault's group key is not a valid Orchard ak".to_string())
+}
+
+/// Show the participant what they are being asked to authorize.
+///
+/// Two columns, because they are two different kinds of fact. What the
+/// transaction says is checked. What the proposer claims is not, and is
+/// labelled so a participant can see when the two do not agree.
+fn describe(approval_id: &str, request: &Value, summary: &quorum_core::transaction::Summary) {
+    let s = |k: &str| request[k].as_str().unwrap_or("—").to_string();
+    println!();
+    println!("  ────────────────────────────────────────────────────────────");
+    println!("  APPROVAL REQUEST  {approval_id}");
+    println!("  vault    {}", s("vaultLabel"));
+    println!("  sighash  {}", hex::encode(summary.sighash));
+    println!();
+    println!("  FROM THE TRANSACTION — verified against your own share");
+    for spend in &summary.spends {
+        println!(
+            "    spend   {:?} action {}  — spends from this vault",
+            spend.pool, spend.index
+        );
+    }
+    let mut stated = 0usize;
+    for out in &summary.outputs {
+        match out.value {
+            Some(v) => {
+                stated += 1;
+                println!(
+                    "    output  {:?} action {}  {}.{:08} TAZ{}",
+                    out.pool,
+                    out.index,
+                    v / 100_000_000,
+                    v % 100_000_000,
+                    if out.recipient_known {
+                        "  to a named address"
+                    } else {
+                        "  recipient not stated"
+                    }
+                );
+            }
+            None => println!(
+                "    output  {:?} action {}  value not stated in the transaction",
+                out.pool, out.index
+            ),
+        }
+    }
+    if stated == 0 {
+        println!("    (this transaction states no output values — see the caution below)");
+    }
+    println!();
+    println!("  CLAIMED BY THE PROPOSER — not verified, and not verifiable here");
+    println!("    to       {}", s("claimedRecipient"));
+    let claimed: u64 = request["claimedAmountZatoshi"]
+        .as_str()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    println!(
+        "    amount   {}.{:08} TAZ",
+        claimed / 100_000_000,
+        claimed % 100_000_000
+    );
+    if request["claimedMemo"].is_string() {
+        println!("    memo     {}", s("claimedMemo"));
+    }
+    println!();
+    println!("  What is checked: this transaction spends from YOUR vault, and the");
+    println!("  sighash and randomizers you will sign are this transaction's own.");
+    println!("  What is not: a shielded output need not state its value or recipient");
+    println!("  in the clear. Where the transaction is silent above, nobody — including");
+    println!("  you — can confirm the proposer's figure from this transaction alone.");
+    println!("  ────────────────────────────────────────────────────────────");
+}
+
+/// Ask. Anything but an explicit yes is a no.
+fn consent() -> Result<bool, String> {
+    use std::io::Write;
+    print!("  Approve and sign? [y/N] ");
+    std::io::stdout().flush().map_err(|e| e.to_string())?;
+    let mut line = String::new();
+    std::io::stdin()
+        .read_line(&mut line)
+        .map_err(|e| e.to_string())?;
+    Ok(matches!(line.trim(), "y" | "Y" | "yes" | "YES"))
 }

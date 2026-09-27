@@ -24,6 +24,9 @@ quorum-core = { path = "../quorum-core" }
 frost-core.workspace = true
 frost-rerandomized.workspace = true
 reddsa.workspace = true
+# The signer reads the transaction it is asked to sign and checks that it
+# spends from this vault. That needs the Orchard key type, not the coordinator.
+orchard.workspace = true
 argon2.workspace = true
 chacha20poly1305.workspace = true
 zeroize.workspace = true
