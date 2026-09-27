@@ -23,6 +23,37 @@ export interface OnchainWalletBalance {
 let balanceCache: { data: OnchainWalletBalance; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 10_000; // 10 seconds
 
+/**
+ * The Ironwood balance of one vault, or null when we cannot honestly say.
+ *
+ * **A shielded balance cannot be read from an address.** That is the point of
+ * a shielded pool: the chain does not tell you what an address holds. Reading
+ * a vault's balance needs that vault's viewing key, and scanning with it.
+ *
+ * So this returns a number only when the wallet we actually track *is* this
+ * vault — the operator's local `zcash-devtool` wallet, synced from a viewing
+ * key. For every other vault the honest answer is "we do not know", and it is
+ * returned as `null` rather than substituted with something plausible.
+ *
+ * This exists because the vault list used to call {@link getLiveWalletBalance}
+ * once and print that one figure under every vault card, labelled "Live
+ * Ironwood". Three vaults, three different addresses, one number — and for
+ * vaults created through the UI the address was a hardcoded placeholder, so
+ * the card claimed an on-chain balance for an address nobody controlled.
+ */
+export async function getVaultIronwoodBalance(
+  shieldedAddress: string | null | undefined
+): Promise<{ ironwood: string; height: number; source: string } | null> {
+  if (!shieldedAddress) return null;
+  const wallet = await getLiveWalletBalance();
+  if (!wallet.address || wallet.address !== shieldedAddress) return null;
+  return {
+    ironwood: wallet.ironwood,
+    height: wallet.height,
+    source: "local zcash-devtool wallet, synced from this vault's viewing key",
+  };
+}
+
 export async function getLiveWalletBalance(forceRefresh = false): Promise<OnchainWalletBalance> {
   const now = Date.now();
   if (!forceRefresh && balanceCache && balanceCache.expiresAt > now) {

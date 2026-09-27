@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { label, threshold, totalParticipants, shieldedAddress, participants, status } = body;
+    const { label, threshold, totalParticipants, participants } = body;
 
     if (!label || !threshold || !totalParticipants || !participants || !Array.isArray(participants)) {
       return NextResponse.json(
@@ -17,9 +17,23 @@ export async function POST(request: NextRequest) {
     }
 
     const vaultId = `vault-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
-    const finalAddress =
-      shieldedAddress ||
-      "utest1quqhwz3035hsf3z2pv4v24qce5r42qalfeqgzxslfjrys660kfg5m6spw4fahvcpw02y4x38t4j3ykh44lnvmvct3zkjuuugggr2k772lh6gvs52t62yv94m2gngu7n7t0yk0whue3rtk5y73w9xj2hssm4p46wvsw5n8rqctm6c63vwdl3df2t6t9aqpr42qgs90cpyup7zghh8482";
+
+    // A vault created here has no address, and cannot have one.
+    //
+    // A vault's shielded address is derived from a group key nobody holds
+    // alone plus a seed every participant agreed on. Neither exists until the
+    // ceremony has run, so there is nothing to write down yet.
+    //
+    // This used to fall back to a hardcoded address when none was supplied.
+    // Two vaults created that way shared an address, which is impossible for
+    // real vaults, and the list then showed them as ACTIVE with an on-chain
+    // balance — for an address neither of them controlled. The route now
+    // records what is true: a vault awaiting its ceremony.
+    //
+    // Run it with ./scripts/three-party-ceremony.sh, or drive it through
+    // POST /coordinator/ceremony/create; the vault becomes ACTIVE via
+    // /api/vaults/[id]/ceremony once every participant reports the same
+    // address and the coordinator has verified it.
 
     // 1. Save to local PostgreSQL (Prisma)
     const newVault = await prisma.vault.create({
@@ -28,14 +42,22 @@ export async function POST(request: NextRequest) {
         label,
         threshold: Number(threshold),
         totalParticipants: Number(totalParticipants),
-        shieldedAddress: finalAddress,
-        status: status === "PENDING_DKG" ? "PENDING_DKG" : "ACTIVE",
+        shieldedAddress: null,
+        // Not negotiable by the caller. A vault is ACTIVE when a ceremony has
+        // produced it, and that transition belongs to /api/vaults/[id]/ceremony
+        // where the coordinator's verification happens.
+        status: "PENDING_DKG",
         network: "TESTNET",
         participants: {
           create: participants.map((p: { name: string; role?: string }, index: number) => ({
             id: `part-${vaultId}-${index + 1}`,
             label: `${p.name} (${p.role || "Key Holder"})`,
-            publicKeyIdentifier: `02${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}00000000000000000000000000000000000000000000000000000000`,
+            // The schema says "Set after DKG completes", and it is right.
+            // A participant's FROST identifier comes out of the ceremony; the
+            // previous value here was `02` followed by random hex, which is
+            // not an identifier of anything and would have been used to
+            // attribute a signature to a person.
+            publicKeyIdentifier: null,
             isActive: true,
           })),
         },

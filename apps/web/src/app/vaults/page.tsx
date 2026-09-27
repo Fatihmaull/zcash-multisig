@@ -3,7 +3,7 @@ import { Shield, KeyRound, ArrowUpRight, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import type { Prisma } from "@prisma/client";
-import { getLiveWalletBalance } from "@/lib/onchain-balance";
+import { getVaultIronwoodBalance } from "@/lib/onchain-balance";
 import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,6 @@ type VaultWithRelations = Prisma.VaultGetPayload<{
 
 export default async function VaultsPage() {
   let vaults: VaultWithRelations[] = [];
-  const onchainBalance = await getLiveWalletBalance();
 
   try {
     vaults = await prisma.vault.findMany({
@@ -27,6 +26,17 @@ export default async function VaultsPage() {
   } catch (error) {
     console.error("Failed to load vaults from DB:", error);
   }
+
+  // One lookup per vault, keyed by vault id. Resolved here because the render
+  // below is synchronous.
+  const balances = new Map(
+    await Promise.all(
+      vaults.map(
+        async (v) =>
+          [v.id, await getVaultIronwoodBalance(v.shieldedAddress)] as const
+      )
+    )
+  );
 
 interface SbVaultParticipant {
   id: string;
@@ -153,6 +163,11 @@ interface SbVaultRecord {
         {/* Render Live Vaults from Database */}
         {vaults.map((vault) => {
           const isPendingDkg = vault.status === "PENDING_DKG";
+          // Per vault, by its own address — never one figure reused across
+          // cards. `null` means we cannot read this vault's balance, which is
+          // the normal case: a shielded balance needs that vault's viewing
+          // key, and the chain will not tell us from an address alone.
+          const balance = balances.get(vault.id) ?? null;
           const pendingApprovalsCount = vault.approvalRequests.filter(
             (a) => a.status === "PENDING"
           ).length;
@@ -223,14 +238,20 @@ interface SbVaultRecord {
                     <span className="text-[var(--text-muted)] block text-[11px]">Shielded Balance</span>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="font-bold text-[var(--text-primary)] font-mono text-sm">
-                        {isPendingDkg ? "0.0000" : onchainBalance.ironwood}
+                        {isPendingDkg ? "—" : balance?.ironwood ?? "—"}
                       </span>
-                      <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
+                      {!isPendingDkg && balance && (
+                        <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
+                      )}
                     </div>
                     <span className={`text-[9px] font-mono block mt-0.5 ${
-                      isPendingDkg ? "text-[var(--text-muted)]" : "text-emerald-600 dark:text-emerald-400"
+                      balance ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text-muted)]"
                     }`}>
-                      {isPendingDkg ? "○ Setup Required" : "● Live Ironwood"}
+                      {isPendingDkg
+                        ? "○ No ceremony yet"
+                        : balance
+                          ? "● Live Ironwood"
+                          : "○ Needs this vault's viewing key"}
                     </span>
                   </div>
                   <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
