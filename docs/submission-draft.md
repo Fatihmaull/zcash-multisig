@@ -238,20 +238,24 @@ whether something is audited, say we are unsure.
   signatures remain vulnerable to Shor's algorithm. See the point above for why our use is
   additionally uncertain.
 - **Release candidates.** Pinned to `pczt 0.8.0-rc.1` and `zcash_client_backend 0.24.0-rc.1`.
-- **The signers do not see what they are signing, and this is the most serious limitation
-  here.** `quorum-signerd` receives a sighash and a set of randomizers from the coordinator and
-  signs them. It never sees the transaction. So a compromised coordinator can serve the
-  sighash of a *different* transaction spending the same vault, collect a valid threshold
-  signature over it, and move the funds — the signers have no way to notice. The coordinator
-  checks that a transaction belongs to the vault before accepting it, but that check runs on
-  the coordinator, which is precisely the party it would need to defend against.
-  **This means the coordinator is currently trusted for *what* gets signed, even though it is
-  genuinely untrusted for key material.** The fix is for signers to derive the sighash from
-  the transaction themselves and show a human what it pays; it is specified and not yet built.
-- **There is no human approval step.** The signer daemon polls and signs. Nothing prompts the
-  participant, which means the "2-of-3 approval" is 2-of-3 machines consenting automatically
-  rather than two people deciding. The threshold arithmetic is real; the governance around it
-  is not yet.
+- **What a signer can verify, and what it cannot.** Signers derive the sighash and the
+  randomizers from the transaction themselves and check every action against their own group
+  key, so a coordinator cannot get a quorum to authorize something the signers did not see.
+  What they still cannot independently confirm is **what a shielded output pays and to whom**:
+  a PCZT may carry those in the clear and may not, and where it does not, the signer says so
+  rather than repeating the proposer's figure. So a dishonest *proposer* can still misdescribe
+  a transaction in the request metadata — the signer will show the discrepancy as unverifiable
+  rather than catch it.
+  > This was worse until 26 September. Signers signed a sighash the coordinator handed them,
+  > which meant a compromised coordinator could collect a valid threshold signature over a
+  > different transaction spending the same vault. We disclosed it before fixing it; the
+  > history is in [#42](https://github.com/Fatihmaull/zcash-multisig/pull/42) and
+  > [#43](https://github.com/Fatihmaull/zcash-multisig/pull/43).
+- **The human approval step is skippable, and our own demo skips it.** `quorum-signerd` shows
+  the participant what the transaction spends and refuses to sign without an explicit yes. But
+  `QUORUM_SIGNER_AUTO_APPROVE=1` bypasses it, and the scripted demo sets exactly that, because
+  a recording cannot pause for a keystroke. It logs a warning when it does. Treat any
+  screen-recorded run as machines consenting, not people.
 - **Authentication is a floor, not a ceiling.** Signer routes use per-participant bearer
   tokens. Participants already hold XEdDSA identities for `frostd`; challenge-response against
   those keys is the production answer and is not built.
