@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { decryptViewingKey } from "@/lib/viewing-key-crypto";
-import { getLiveWalletBalance } from "@/lib/onchain-balance";
+import { getVaultIronwoodBalance } from "@/lib/onchain-balance";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +66,9 @@ interface AuditExportPayload {
     }>;
   }>;
   onchainVerification: {
-    liveBalanceTAZ: string;
+    liveBalanceTAZ: string | null;
+    balanceSource: string | null;
+    howToVerify: string;
     pool: string;
     endpoint: string;
     reconciliationStatus: string;
@@ -278,7 +280,14 @@ export async function GET(
       }
     }
 
-    const liveBalance = await getLiveWalletBalance();
+    // This vault's balance, or nothing.
+    //
+    // It used to be getLiveWalletBalance() — the operator's local wallet,
+    // whichever vault this export was for. An audit export exists so a funder
+    // can check our figures against the chain; a figure belonging to a
+    // different wallet is worse than no figure, because the recipient has no
+    // way to know it is not theirs.
+    const vaultBalance = await getVaultIronwoodBalance(vault.shieldedAddress);
 
     // 3. Assemble Audit Export Data Structure
     const auditData: AuditExportPayload = {
@@ -329,10 +338,21 @@ export async function GET(
         };
       }),
       onchainVerification: {
-        liveBalanceTAZ: liveBalance.ironwood,
-        pool: "Ironwood (Nu6+ Testnet)",
+        liveBalanceTAZ: vaultBalance?.ironwood ?? null,
+        balanceSource: vaultBalance?.source ?? null,
+        pool: "Ironwood (Nu6.3 Testnet)",
         endpoint: "testnet.zec.rocks:443",
-        reconciliationStatus: "VERIFIED_ON_CHAIN",
+        // Said plainly, because this line is the whole point of the export.
+        // We did not reconcile anything: the event log below is ours, and a
+        // log its author vouches for is worth nothing. The viewing key above
+        // is what makes this checkable — scan the chain with it and compare.
+        reconciliationStatus: vaultBalance
+          ? "BALANCE_READ_FROM_CHAIN_FOR_THIS_VAULT"
+          : "NOT_RECONCILED_NO_VIEWING_KEY_AVAILABLE_HERE",
+        howToVerify:
+          "Import the viewing key above into a wallet, sync, and compare against the events " +
+          "below. This export is only as trustworthy as that comparison — the event log is " +
+          "ours, the chain is not.",
       },
     };
 
@@ -344,7 +364,14 @@ export async function GET(
       csvRows.push(`Network,${auditData.exportMetadata.network}`);
       csvRows.push(`Protocol,${auditData.exportMetadata.protocolVersion}`);
       csvRows.push(`FVK_Fingerprint,${auditData.exportMetadata.viewingKeyFingerprint}`);
-      csvRows.push(`LiveIronwoodBalance,${auditData.onchainVerification.liveBalanceTAZ} TAZ`);
+      csvRows.push(
+        `IronwoodBalance,${
+          auditData.onchainVerification.liveBalanceTAZ
+            ? `${auditData.onchainVerification.liveBalanceTAZ} TAZ`
+            : "not read — see ReconciliationStatus"
+        }`
+      );
+      csvRows.push(`ReconciliationStatus,${auditData.onchainVerification.reconciliationStatus}`);
       csvRows.push("");
 
       csvRows.push("--- VAULT CONFIGURATION ---");

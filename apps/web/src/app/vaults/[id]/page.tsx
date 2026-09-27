@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { KeyRound, ArrowLeft, Users, Send, CheckCircle2, FileDown } from "lucide-react";
 import { LiveBalanceCard } from "@/components/vaults/LiveBalanceCard";
-import { getLiveWalletBalance } from "@/lib/onchain-balance";
+import { getLiveWalletBalance, getVaultIronwoodBalance } from "@/lib/onchain-balance";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -106,7 +106,13 @@ export default async function VaultDetailPage({
         { id: "part-bob", label: "Bob (Finance Director)", isActive: true },
         { id: "part-carol", label: "Carol (Standby Signer)", isActive: true },
       ];
-  const vaultAddress = vault?.shieldedAddress || onchainBalance.address;
+  // No fallback. A vault without an address has not had its ceremony, and
+  // showing the operator's own wallet address in its place presents someone
+  // else's address as this vault's.
+  const vaultAddress = vault?.shieldedAddress ?? null;
+
+  // Non-null only when the wallet we can actually read is this vault's.
+  const vaultBalance = await getVaultIronwoodBalance(vaultAddress);
 
   const isPendingDkg = vault?.status === "PENDING_DKG";
 
@@ -245,14 +251,30 @@ export default async function VaultDetailPage({
         </div>
         <div className="bg-[var(--bg-secondary)] p-3 rounded-xl border border-[var(--border-subtle)] flex items-center justify-between gap-3">
           <p className="text-xs font-mono text-[var(--text-secondary)] break-all select-all leading-relaxed">
-            {vaultAddress}
+            {vaultAddress ?? "No address yet — this vault's ceremony has not run."}
           </p>
         </div>
       </div>
 
       {/* 3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
-        <LiveBalanceCard initialData={onchainBalance} />
+        {vaultBalance ? (
+          <LiveBalanceCard initialData={onchainBalance} />
+        ) : (
+          <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs flex flex-col justify-between">
+            <div>
+              <span className="text-xs text-[var(--text-muted)] font-medium">
+                Shielded Balance
+              </span>
+              <div className="text-2xl font-bold text-[var(--text-primary)] mt-1">—</div>
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)] leading-snug mt-2">
+              {isPendingDkg
+                ? "No ceremony has run for this vault, so it has no address and holds nothing."
+                : "A shielded balance cannot be read from an address — it needs this vault's viewing key, and this machine does not have it."}
+            </p>
+          </div>
+        )}
 
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs flex flex-col justify-between">
           <div>

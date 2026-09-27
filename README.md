@@ -101,6 +101,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 | [09-traction.md](docs/09-traction.md) | The one judging criterion we cannot earn by coding |
 | [13-phase-1-plan.md](docs/13-phase-1-plan.md) | **Phase 1 execution plan — day by day to Gate B** |
 | [16-runbook.md](docs/16-runbook.md) | **Clean machine to a confirmed spend — every command, verified** |
+| [17-loi-drafts.md](docs/17-loi-drafts.md) | Outreach drafts, ready to send, written against the R6 honesty rules |
 | [12-spike-s1-report.md](docs/12-spike-s1-report.md) | **Spike S1 findings — what actually works, what was broken, what is still open** |
 | [11-contract-review.md](docs/11-contract-review.md) | Open questions on the coordinator contract — resolve before 22 Sep, then delete |
 
