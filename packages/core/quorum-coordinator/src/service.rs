@@ -264,6 +264,52 @@ pub struct Approval {
 pub struct Inner {
     pub vaults: BTreeMap<String, Vault>,
     pub approvals: BTreeMap<String, Approval>,
+    pub ceremonies: BTreeMap<String, Ceremony>,
+}
+
+/// A key ceremony in progress.
+///
+/// The coordinator's role here is bookkeeping and refusal, nothing more. It
+/// hands out the roster every participant needs, collects what each of them
+/// independently derived, and **registers a vault only when all of them agree**.
+///
+/// It cannot run the ceremony and must not: a share the coordinator could see
+/// is a share it holds. What it can do is catch a disagreement, which is the
+/// failure that otherwise ends with funds at an address no quorum can spend.
+pub struct Ceremony {
+    pub id: String,
+    pub label: String,
+    pub threshold: u16,
+    /// Label, FROST identifier, and X25519 public key, as exchanged out of
+    /// band. **Every field is trusted absolutely** — `Noise_K` takes both
+    /// parties' static keys as given, so whoever controls this list controls
+    /// who ends up holding a share.
+    pub roster: Vec<RosterEntry>,
+    /// What each participant reported after finishing. Keyed by label.
+    pub reports: BTreeMap<String, CeremonyReport>,
+    /// Set once every participant has reported the same thing.
+    pub vault_id: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RosterEntry {
+    pub label: String,
+    /// FROST identifier, hex.
+    pub identifier: String,
+    /// X25519 static public key, hex. The frostd login and the Noise key.
+    pub pubkey: String,
+}
+
+/// One participant's account of the vault they just built.
+#[derive(Debug, Clone)]
+pub struct CeremonyReport {
+    pub label: String,
+    pub group_key: String,
+    pub address: String,
+    pub public_key_package: serde_json::Value,
+    pub at: String,
 }
 
 #[derive(Clone, Default)]

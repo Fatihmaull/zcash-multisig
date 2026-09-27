@@ -190,7 +190,10 @@ async function main() {
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (!msg.includes("different vault")) throw e;
+      // Coupled to the coordinator's prose, which moved once already when
+      // transaction reading was shared with the signer. Match the stable part:
+      // whatever the wording, the refusal is about the vault.
+      if (!/vault/i.test(msg) || !/authorizes nothing/i.test(msg)) throw e;
       console.log("✓ A PCZT from another vault is refused at submission");
     }
 

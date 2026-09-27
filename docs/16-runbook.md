@@ -216,9 +216,15 @@ Proving needs no authority — it is arithmetic over a transaction already autho
 It is also **slow enough to notice**, so do not do it live.
 
 ```bash
-python3 -c "import pathlib,sys; p=pathlib.Path('./secrets/pczt-ceremony'); \
-  (p/'signed.pczt').write_bytes(bytes.fromhex((p/'signed.hex').read_text().strip()))"
+DT=$DT ./scripts/prove-and-broadcast.sh \
+      ./secrets/pczt-ceremony/signed.hex ./secrets/ceremony-watch
+```
 
+One command: converts the hex, proves, broadcasts, waits for a block, prints the txid. It
+replaces four hand-run steps, which is four chances to fumble one on camera. The steps it wraps,
+if you need them individually:
+
+```bash
 $DT pczt prove ./secrets/pczt-ceremony/signed.pczt --output ./secrets/pczt-ceremony/proved.pczt
 $DT pczt -w ./secrets/ceremony-watch send ./secrets/pczt-ceremony/proved.pczt
 ```

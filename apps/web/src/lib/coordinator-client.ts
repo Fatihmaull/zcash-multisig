@@ -88,6 +88,51 @@ class CoordinatorClientAdapter implements CoordinatorService {
     return result;
   }
 
+  // ── Ceremony orchestration ───────────────────────────────
+  //
+  // The coordinator does not run a ceremony and neither does this app. Both
+  // hand out the roster and watch; the participants run `quorum-dkgd` on their
+  // own machines, and a share never reaches a browser or a server.
+
+  /**
+   * Ask the coordinator to verify a ceremony before anything is activated.
+   *
+   * Returns `null` in mock mode. The caller must treat that as "cannot
+   * verify" rather than "verified" — an unverified ceremony is how a vault
+   * ends up with an address nobody derived.
+   */
+  async getCeremonyStatus(ceremonyId: string): Promise<{
+    status: string;
+    vaultId: string | null;
+    reported: number;
+    expected: number;
+    participants: { label: string; reported: boolean }[];
+  } | null> {
+    if (!this.useLive) return null;
+    const res = await fetch(`${this.endpoint}/coordinator/ceremony/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ceremonyId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.message || `Ceremony status failed (${res.status})`);
+    }
+    return res.json();
+  }
+
+  /**
+   * The vault as the coordinator has it, or null if it has no such vault.
+   *
+   * Used to read an activated vault's address from the coordinator rather than
+   * from whatever the browser sent.
+   */
+  async findVault(vaultId: string): Promise<{ id: string; shieldedAddress: string } | null> {
+    if (!this.useLive) return null;
+    const vaults = await this.listVaults();
+    return (vaults.find((v) => v.id === vaultId) as never) ?? null;
+  }
+
   // ── Vault Management ─────────────────────────────────────
 
   async registerVault(request: VaultRegistrationRequest): Promise<VaultRegistrationResponse> {
