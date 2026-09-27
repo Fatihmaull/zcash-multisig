@@ -24,7 +24,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const { shieldedAddress, publicKeyPackage } = body;
+    const { shieldedAddress, ceremonyId } = body;
 
     // 1. Verify that the vault exists
     const existingVault = await prisma.vault.findUnique({
@@ -53,37 +53,89 @@ export async function POST(
 
     const validatedAddress = shieldedAddress.trim();
 
-    // 3. If live coordinator is active, register and cryptographically verify the vault
+    // 3. In live mode the vault is read from the coordinator, not asserted here
+    //
+    // A format-valid address is not the same as the right address, and this
+    // route cannot tell them apart: a vault's address comes from a group key
+    // nobody holds alone plus a seed every participant agreed on. Neither is a
+    // fact a browser is in a position to assert, and funds sent to a wrong
+    // one are unspendable by any quorum.
+    //
+    // So the browser no longer registers the vault. The participants do, by
+    // reporting what they each derived, and the coordinator registers it only
+    // once all of them agree. This route's job is to check that happened and
+    // copy the result.
+    //
+    // (The previous version fell back to a synthesised public key package —
+    // `{ verifyingKey: <participant id or 32 zero bytes> }` — when the browser
+    // sent none. A vault whose group key is a placeholder is a vault nobody
+    // can sign for, and it would have been marked ACTIVE.)
+    let verifiedAddress = validatedAddress;
     if (coordinatorClient.isLive()) {
-      try {
-        const regResult = await coordinatorClient.registerVault({
-          label: existingVault.label,
-          threshold: existingVault.threshold,
-          address: validatedAddress,
-          publicKeyPackage: publicKeyPackage || {
-            verifyingKey: existingVault.participants[0]?.publicKeyIdentifier || "00".repeat(32),
-          },
-          participants: existingVault.participants.map((p) => ({
-            id: p.publicKeyIdentifier || p.id,
-            label: p.label,
-          })),
-        });
-
-        console.log(
-          `Vault ${id} registered with live coordinator daemon (assigned: ${regResult.vaultId})`
-        );
-      } catch (coordErr) {
-        console.error("Live coordinator vault registration failed:", coordErr);
+      if (!ceremonyId) {
         return NextResponse.json(
           {
             success: false,
-            error: `Coordinator verification failed: ${
-              coordErr instanceof Error ? coordErr.message : "Registration rejected"
+            error:
+              "ceremonyId is required when a coordinator is configured. A vault is activated by " +
+              "a ceremony the coordinator verified, not by a request asserting one happened. " +
+              "Start one with POST /coordinator/ceremony/create.",
+          },
+          { status: 400 }
+        );
+      }
+
+      let ceremony;
+      try {
+        ceremony = await coordinatorClient.getCeremonyStatus(ceremonyId);
+      } catch (coordErr) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Could not reach the coordinator: ${
+              coordErr instanceof Error ? coordErr.message : "unknown error"
             }`,
           },
           { status: 502 }
         );
       }
+
+      if (!ceremony || ceremony.status !== "COMPLETE" || !ceremony.vaultId) {
+        const waiting = ceremony
+          ? `${ceremony.reported} of ${ceremony.expected} participants have reported`
+          : "the coordinator has no record of it";
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              `Ceremony ${ceremonyId} is not complete — ${waiting}. DKG has no threshold: every ` +
+              `participant must finish and report the same vault, or there is no vault.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      const vault = await coordinatorClient.findVault(ceremony.vaultId);
+      if (!vault?.shieldedAddress) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "The coordinator reported a complete ceremony but no vault address.",
+          },
+          { status: 502 }
+        );
+      }
+
+      if (vault.shieldedAddress !== validatedAddress) {
+        // Not fatal — the coordinator is authoritative and we take its answer
+        // — but a mismatch means the browser was working from stale or wrong
+        // data and somebody should know.
+        console.warn(
+          `Vault ${id}: the request claimed ${validatedAddress} but the ceremony produced ` +
+            `${vault.shieldedAddress}. Using the ceremony's.`
+        );
+      }
+      verifiedAddress = vault.shieldedAddress;
     }
 
     // 4. Update in local Prisma
@@ -91,7 +143,7 @@ export async function POST(
       where: { id },
       data: {
         status: "ACTIVE",
-        shieldedAddress: validatedAddress,
+        shieldedAddress: verifiedAddress,
       },
       include: {
         participants: true,
@@ -104,7 +156,7 @@ export async function POST(
         .from("vaults")
         .update({
           status: "ACTIVE",
-          shielded_address: validatedAddress,
+          shielded_address: verifiedAddress,
           updated_at: new Date().toISOString(),
         })
         .eq("id", id);

@@ -679,3 +679,213 @@ async fn declining_past_the_threshold_closes_the_request() {
         "a decline is a decision, and the message should say so: {detail}"
     );
 }
+
+// ── Ceremony orchestration ───────────────────────────────────
+//
+// The coordinator cannot run a ceremony — a share it could see is a share it
+// holds. What it can do is hand out the roster and refuse to register a vault
+// until every participant reports the same one. These cover the refusal.
+
+async fn ceremony_app() -> axum::Router {
+    router(AppState::new())
+}
+
+fn roster_body() -> Value {
+    json!({
+        "label": "Foundation Treasury",
+        "threshold": 2,
+        "participants": [
+            { "label": "Alice", "identifier": "01", "pubkey": "aa".repeat(32) },
+            { "label": "Bob",   "identifier": "02", "pubkey": "bb".repeat(32) },
+            { "label": "Carol", "identifier": "03", "pubkey": "cc".repeat(32) },
+        ],
+    })
+}
+
+#[tokio::test]
+async fn a_ceremony_hands_out_the_roster_and_runs_nothing_itself() {
+    let app = ceremony_app().await;
+    let (status, body) = call(&app, "/coordinator/ceremony/create", roster_body()).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    // Exactly one participant opens the frostd session and contributes the
+    // seed. Two contributors would mean silently picking an address.
+    let ps = body["participants"].as_array().expect("participants");
+    assert_eq!(ps.len(), 3);
+    assert_eq!(
+        ps.iter().filter(|p| p["createsSession"] == true).count(),
+        1,
+        "exactly one session creator"
+    );
+    assert_eq!(
+        ps.iter().filter(|p| p["seedRole"] == "contribute").count(),
+        1,
+        "exactly one seed contributor"
+    );
+
+    // No vault yet. Creating a ceremony is not creating a vault.
+    let (_, vaults) = call(&app, "/coordinator/vault/list", json!({})).await;
+    assert_eq!(vaults.as_array().map(|v| v.len()), Some(0));
+}
+
+#[tokio::test]
+async fn a_threshold_of_one_is_refused() {
+    let app = ceremony_app().await;
+    let mut body = roster_body();
+    body["threshold"] = json!(1);
+    let (status, err) = call(&app, "/coordinator/ceremony/create", body).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(
+        err["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("costume"),
+        "1-of-n is not shared control and the message should say why: {err}"
+    );
+}
+
+#[tokio::test]
+async fn a_vault_appears_only_when_every_participant_agrees() {
+    let app = ceremony_app().await;
+    let (_, created) = call(&app, "/coordinator/ceremony/create", roster_body()).await;
+    let id = created["ceremonyId"]
+        .as_str()
+        .expect("ceremonyId")
+        .to_string();
+
+    // A real public key package, so registration has something valid to store.
+    let mut rng = rand::thread_rng();
+    let (_shares, pubkeys) =
+        keys::generate_with_dealer::<Ciphersuite, _>(3, 2, IdentifierList::Default, &mut rng)
+            .expect("dealer keygen");
+    let pkp = serde_json::to_value(&pubkeys).expect("serialise");
+    let report = |label: &str, addr: &str| {
+        json!({
+            "ceremonyId": id,
+            "label": label,
+            "groupKey": "aa".repeat(32),
+            "address": addr,
+            "publicKeyPackage": pkp,
+        })
+    };
+
+    let (status, body) = call(
+        &app,
+        "/coordinator/ceremony/report",
+        report("Alice", "utest1same"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["status"], "AWAITING_PARTICIPANTS");
+
+    let (_, body) = call(
+        &app,
+        "/coordinator/ceremony/report",
+        report("Bob", "utest1same"),
+    )
+    .await;
+    assert_eq!(
+        body["status"], "AWAITING_PARTICIPANTS",
+        "two of three is not enough"
+    );
+
+    // DKG has no threshold: every participant must contribute or there is no
+    // vault. Two agreeing out of three is not a quorum, it is an incomplete
+    // ceremony.
+    let (_, vaults) = call(&app, "/coordinator/vault/list", json!({})).await;
+    assert_eq!(vaults.as_array().map(|v| v.len()), Some(0));
+
+    let (status, body) = call(
+        &app,
+        "/coordinator/ceremony/report",
+        report("Carol", "utest1same"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["status"], "COMPLETE");
+    assert!(body["vaultId"].is_string());
+    assert_eq!(
+        body["participantTokens"].as_array().map(|t| t.len()),
+        Some(3),
+        "tokens are minted at registration and only there"
+    );
+}
+
+/// One participant reporting a different address stops everything.
+///
+/// This is the seed-equivocation failure seen from the server: `ak` comes from
+/// FROST so the group key matches, but `nk` and `rivk` come from a seed, so the
+/// addresses diverge. FROST raises no objection and the participants all hold
+/// valid shares — of different vaults.
+#[tokio::test]
+async fn one_disagreeing_address_registers_no_vault() {
+    let app = ceremony_app().await;
+    let (_, created) = call(&app, "/coordinator/ceremony/create", roster_body()).await;
+    let id = created["ceremonyId"]
+        .as_str()
+        .expect("ceremonyId")
+        .to_string();
+
+    let mut rng = rand::thread_rng();
+    let (_shares, pubkeys) =
+        keys::generate_with_dealer::<Ciphersuite, _>(3, 2, IdentifierList::Default, &mut rng)
+            .expect("dealer keygen");
+    let pkp = serde_json::to_value(&pubkeys).expect("serialise");
+    let report = |label: &str, addr: &str| {
+        json!({
+            "ceremonyId": id, "label": label,
+            "groupKey": "aa".repeat(32), "address": addr, "publicKeyPackage": pkp,
+        })
+    };
+
+    call(
+        &app,
+        "/coordinator/ceremony/report",
+        report("Alice", "utest1alice"),
+    )
+    .await;
+    let (status, err) = call(
+        &app,
+        "/coordinator/ceremony/report",
+        report("Bob", "utest1bob"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    let msg = err["message"].as_str().unwrap_or_default();
+    assert!(msg.contains("DISAGREEMENT"), "{msg}");
+    assert!(
+        msg.contains("Do not fund either address"),
+        "the operator needs to be told not to fund either: {msg}"
+    );
+
+    let (_, vaults) = call(&app, "/coordinator/vault/list", json!({})).await;
+    assert_eq!(
+        vaults.as_array().map(|v| v.len()),
+        Some(0),
+        "a disagreement must leave no vault behind"
+    );
+}
+
+#[tokio::test]
+async fn a_stranger_cannot_report_into_a_ceremony() {
+    let app = ceremony_app().await;
+    let (_, created) = call(&app, "/coordinator/ceremony/create", roster_body()).await;
+    let (status, err) = call(
+        &app,
+        "/coordinator/ceremony/report",
+        json!({
+            "ceremonyId": created["ceremonyId"],
+            "label": "Mallory",
+            "groupKey": "aa".repeat(32),
+            "address": "utest1mallory",
+            "publicKeyPackage": {},
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(err["message"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("not in this ceremony's roster"));
+}

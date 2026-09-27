@@ -252,6 +252,64 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
         format!("{}\n", hex::encode(outcome.seed.as_bytes())).as_bytes(),
     )?;
 
+    // ── Report it, if a coordinator is orchestrating ──
+    //
+    // Optional on purpose: the ceremony is complete and the share is on disk
+    // whether or not anything is listening. Reporting lets a UI show progress
+    // and, more importantly, lets the coordinator refuse to register a vault
+    // until every participant reports the same group key and address.
+    //
+    // What is sent is public: the group key, the address, and the public key
+    // package. The share is not, the seed is not, and nothing here would let
+    // the coordinator sign.
+    if let (Ok(url), Ok(ceremony_id)) = (
+        std::env::var("QUORUM_CEREMONY_URL"),
+        std::env::var("QUORUM_CEREMONY_ID"),
+    ) {
+        let group_key = hex::encode(
+            outcome
+                .public_key_package
+                .verifying_key()
+                .serialize()
+                .map_err(|e| format!("unusable group key: {e}"))?,
+        );
+        let body = serde_json::json!({
+            "ceremonyId": ceremony_id,
+            "label": std::env::var("QUORUM_CEREMONY_LABEL").unwrap_or_else(|_| me.label.clone()),
+            "groupKey": group_key,
+            "address": outcome.address,
+            "publicKeyPackage": serde_json::to_value(&outcome.public_key_package)?,
+        });
+        let res = reqwest::Client::new()
+            .post(format!(
+                "{}/coordinator/ceremony/report",
+                url.trim_end_matches('/')
+            ))
+            .json(&body)
+            .send()
+            .await;
+        match res {
+            Ok(r) if r.status().is_success() => {
+                let v: serde_json::Value = r.json().await.unwrap_or_default();
+                println!("  reported to the coordinator — {}", v["status"]);
+                if let Some(vault) = v["vaultId"].as_str() {
+                    println!("  vault registered: {vault}");
+                }
+            }
+            Ok(r) => {
+                // A refusal here is usually a disagreement, and that is worth
+                // shouting about rather than logging quietly: the share on
+                // disk may belong to a vault the others did not build.
+                let v: serde_json::Value = r.json().await.unwrap_or_default();
+                eprintln!();
+                eprintln!("  ⚠ THE COORDINATOR REFUSED THIS REPORT");
+                eprintln!("  {}", v["message"].as_str().unwrap_or("no detail"));
+                eprintln!();
+            }
+            Err(e) => eprintln!("  could not reach the coordinator to report: {e}"),
+        }
+    }
+
     if creates_session {
         let _ = client.close_session(session).await;
     }

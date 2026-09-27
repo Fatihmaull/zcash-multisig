@@ -4,6 +4,8 @@
 //! load-bearing, not cosmetic: nothing under `/coordinator` can produce a
 //! signature, and the web app is only ever given that base path.
 
+use std::collections::BTreeMap;
+
 use axum::{
     extract::State, http::HeaderMap, http::StatusCode, response::IntoResponse, routing::post, Json,
     Router,
@@ -19,6 +21,9 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         // ── CoordinatorService — the browser's view. No signing. ──
         .route("/coordinator/vault/register", post(vault_register))
+        .route("/coordinator/ceremony/create", post(ceremony_create))
+        .route("/coordinator/ceremony/status", post(ceremony_status))
+        .route("/coordinator/ceremony/report", post(ceremony_report))
         .route("/coordinator/vault/list", post(vault_list))
         .route("/coordinator/vault/audit", post(vault_audit))
         .route("/coordinator/approval/submit", post(approval_submit))
@@ -133,6 +138,255 @@ struct ParticipantIn {
     /// Hex FROST identifier.
     id: String,
     label: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateCeremony {
+    label: String,
+    threshold: u16,
+    participants: Vec<RosterEntry>,
+}
+
+/// Open a ceremony and hand back what each participant needs to run it.
+///
+/// **The coordinator does not perform the ceremony.** It cannot: a share it
+/// could see is a share it holds. What it returns is the roster and the exact
+/// command each participant runs on their own machine, so the guided
+/// experience lives in a UI while the key material never leaves the
+/// participant.
+///
+/// The roster is trusted absolutely by `Noise_K`. Whoever supplies these
+/// public keys decides who holds a share, so verifying them out of band is a
+/// step the participants perform deliberately — not setup chrome, and not
+/// something this endpoint can check for them.
+async fn ceremony_create(State(st): State<AppState>, Json(req): Json<CreateCeremony>) -> Reply {
+    if req.threshold < 2 {
+        return Err(bad(
+            "INVALID_ARGUMENT",
+            "threshold must be at least 2; 1-of-n is a single point of failure in a costume",
+        ));
+    }
+    if req.participants.len() < req.threshold as usize {
+        return Err(bad(
+            "INVALID_ARGUMENT",
+            "fewer participants than the threshold requires",
+        ));
+    }
+    for p in &req.participants {
+        if hex::decode(&p.pubkey).map(|b| b.len()) != Ok(32) {
+            return Err(bad(
+                "INVALID_ARGUMENT",
+                format!("{}: pubkey must be 32 bytes of hex", p.label),
+            ));
+        }
+        if hex::decode(&p.identifier).is_err() {
+            return Err(bad(
+                "INVALID_ARGUMENT",
+                format!("{}: identifier must be hex", p.label),
+            ));
+        }
+    }
+
+    let id = new_id();
+    let ceremony = Ceremony {
+        id: id.clone(),
+        label: req.label,
+        threshold: req.threshold,
+        roster: req.participants,
+        reports: BTreeMap::new(),
+        vault_id: None,
+        created_at: now_iso(),
+    };
+    let roster_json = json!({
+        "threshold": ceremony.threshold,
+        "participants": ceremony.roster,
+    });
+    let instructions: Vec<_> = ceremony
+        .roster
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            json!({
+                "label": p.label,
+                // One participant opens the frostd session and contributes the
+                // vault seed. Neither is authority — the session coordinator
+                // only routes, and the seed is a value everyone ends up
+                // holding. What stops equivocation is the confirmation round.
+                "createsSession": i == 0,
+                "seedRole": if i == 0 { "contribute" } else { "await" },
+                "env": {
+                    "QUORUM_DKG_ROSTER": "./roster.json",
+                    "QUORUM_DKG_IDENTITY": format!("./{}.key", p.label.to_lowercase()),
+                    "QUORUM_DKG_OUT": "./vault",
+                    "QUORUM_CEREMONY_URL": "<this coordinator>",
+                    "QUORUM_CEREMONY_ID": id,
+                    "QUORUM_CEREMONY_LABEL": p.label,
+                },
+            })
+        })
+        .collect();
+
+    st.0.lock()
+        .map_err(|_| lock_poisoned())?
+        .ceremonies
+        .insert(id.clone(), ceremony);
+
+    Ok(Json(json!({
+        "ceremonyId": id,
+        "roster": roster_json,
+        "participants": instructions,
+        "note": "Each participant runs quorum-dkgd on their own machine. The coordinator \
+    never sees a share, and will not register a vault until every participant reports the same \
+    group key and address.",
+    })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CeremonyRef {
+    ceremony_id: String,
+}
+
+async fn ceremony_status(State(st): State<AppState>, Json(req): Json<CeremonyRef>) -> Reply {
+    let inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    let c = inner
+        .ceremonies
+        .get(&req.ceremony_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such ceremony"))?;
+
+    let participants: Vec<_> = c
+        .roster
+        .iter()
+        .map(|p| {
+            json!({
+                "label": p.label,
+                "reported": c.reports.contains_key(&p.label),
+                "at": c.reports.get(&p.label).map(|r| r.at.clone()),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "ceremonyId": c.id,
+        "label": c.label,
+        "threshold": c.threshold,
+        "expected": c.roster.len(),
+        "reported": c.reports.len(),
+        "participants": participants,
+        "vaultId": c.vault_id,
+        "status": if c.vault_id.is_some() { "COMPLETE" } else { "AWAITING_PARTICIPANTS" },
+    })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReportCeremony {
+    ceremony_id: String,
+    label: String,
+    group_key: String,
+    address: String,
+    public_key_package: serde_json::Value,
+}
+
+/// A participant reports the vault they derived.
+///
+/// The coordinator compares reports and **registers nothing until they all
+/// agree**. A disagreement here is the failure that matters: `ak` comes from
+/// FROST, but `nk` and `rivk` come from a seed, and a participant who sent a
+/// different seed to each peer produces one group key and several addresses.
+/// FROST raises no objection. Funds sent to the wrong one are unspendable by
+/// any quorum, and we have lost testnet funds to exactly this.
+///
+/// The participants already check each other directly during the ceremony's
+/// own confirmation round. This is the second pair of eyes, on the server, so
+/// a UI cannot activate a vault on one participant's word.
+async fn ceremony_report(State(st): State<AppState>, Json(req): Json<ReportCeremony>) -> Reply {
+    let mut inner = st.0.lock().map_err(|_| lock_poisoned())?;
+    let c = inner
+        .ceremonies
+        .get_mut(&req.ceremony_id)
+        .ok_or_else(|| bad("SESSION_NOT_FOUND", "no such ceremony"))?;
+
+    if !c.roster.iter().any(|p| p.label == req.label) {
+        return Err(bad(
+            "INVALID_ARGUMENT",
+            format!("{} is not in this ceremony's roster", req.label),
+        ));
+    }
+
+    // Disagree with anyone already in, and nobody gets a vault.
+    if let Some((other, first)) = c
+        .reports
+        .iter()
+        .find(|(_, r)| r.group_key != req.group_key || r.address != req.address)
+        .map(|(k, v)| (k.clone(), v.clone()))
+    {
+        return Err(bad(
+            "INVALID_ARGUMENT",
+            format!(
+                "DISAGREEMENT — {} derived group key {} at {}, {} derived {} at {}. No vault has \
+                 been registered. Do not fund either address; restart the ceremony with a \
+                 verified roster.",
+                req.label, req.group_key, req.address, other, first.group_key, first.address
+            ),
+        ));
+    }
+
+    c.reports.insert(
+        req.label.clone(),
+        CeremonyReport {
+            label: req.label.clone(),
+            group_key: req.group_key,
+            address: req.address.clone(),
+            public_key_package: req.public_key_package.clone(),
+            at: now_iso(),
+        },
+    );
+
+    // Everyone in, and everyone agreeing. Only now does a vault exist.
+    if c.reports.len() == c.roster.len() && c.vault_id.is_none() {
+        let pubkeys = serde_json::from_value(req.public_key_package)
+            .map_err(|e| bad("INVALID_ARGUMENT", format!("public key package: {e}")))?;
+        let participants: Vec<Participant> = c
+            .roster
+            .iter()
+            .map(|p| Participant {
+                id: p.identifier.clone(),
+                label: p.label.clone(),
+                token: new_id(),
+            })
+            .collect();
+        let tokens: Vec<_> = participants
+            .iter()
+            .map(|p| json!({ "participantId": p.id, "label": p.label, "token": p.token }))
+            .collect();
+        let vault_id = new_id();
+        let vault = Vault {
+            id: vault_id.clone(),
+            label: c.label.clone(),
+            threshold: c.threshold,
+            address: req.address,
+            pubkeys,
+            participants,
+        };
+        c.vault_id = Some(vault_id.clone());
+        inner.vaults.insert(vault_id.clone(), vault);
+        return Ok(Json(json!({
+            "ceremonyId": req.ceremony_id,
+            "status": "COMPLETE",
+            "vaultId": vault_id,
+            "participantTokens": tokens,
+        })));
+    }
+
+    let (reported, expected) = (c.reports.len(), c.roster.len());
+    Ok(Json(json!({
+        "ceremonyId": req.ceremony_id,
+        "status": "AWAITING_PARTICIPANTS",
+        "reported": reported,
+        "expected": expected,
+    })))
 }
 
 async fn vault_register(State(st): State<AppState>, Json(req): Json<RegisterVault>) -> Reply {
