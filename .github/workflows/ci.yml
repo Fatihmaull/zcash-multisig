@@ -90,7 +90,11 @@ jobs:
           echo "No mainnet references. OK."
 
   web:
-    name: Web — typecheck, lint and build
+    # Name kept exactly as branch protection requires it. Renaming a required
+    # check silently blocks every PR — the check it waits for stops reporting
+    # and never arrives. The build step below is inside this job, so a build
+    # failure still fails the required check; only the label is understated.
+    name: Web — typecheck and lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
