@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { getLiveWalletBalance } from "@/lib/onchain-balance";
+import { getVaultIronwoodBalance } from "@/lib/onchain-balance";
 import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,12 @@ export default async function DashboardPage() {
   let approvalsCount = 0;
   let activeVault: DashboardVault | null = null;
   let latestApproval: DashboardApproval | null = null;
-  const onchainBalance = await getLiveWalletBalance();
+  // Summed across the vaults whose balance we can actually read, with a count
+  // of how many we cannot. Never one wallet's figure presented as the treasury.
+  let treasuryZat = 0;
+  let readable = 0;
+  let unreadable = 0;
+  let atHeight = 0;
 
   try {
     const [vaults, approvals] = await Promise.all([
@@ -70,6 +75,23 @@ export default async function DashboardPage() {
 
     vaultsCount = vaults.length;
     approvalsCount = approvals.length;
+
+    // A shielded balance needs the vault's viewing key; an address will not
+    // do. So this tile adds up what is genuinely readable and says how many
+    // vaults are not, rather than printing a number that covers for them.
+    //
+    // It used to show getLiveWalletBalance() — the operator's own devtool
+    // wallet — labelled "Shielded Treasury" with a live indicator beside it.
+    for (const v of vaults) {
+      const b = await getVaultIronwoodBalance(v.shieldedAddress);
+      if (b) {
+        treasuryZat += Math.round(parseFloat(b.ironwood) * 100_000_000);
+        atHeight = Math.max(atHeight, b.height);
+        readable += 1;
+      } else {
+        unreadable += 1;
+      }
+    }
     if (vaults[0]) {
       activeVault = {
         id: vaults[0].id,
@@ -234,19 +256,29 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Metric 3: Live Shielded Balance */}
+        {/* Metric 3: Shielded balance, across the vaults we can read */}
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-[var(--text-muted)]">Shielded Treasury</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live On-Chain" />
+            {readable > 0 && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Read from chain" />
+            )}
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1.5">
-            <span>{onchainBalance.ironwood}</span>
-            <span className="text-xs font-bold text-[var(--zcash-gold)]">TAZ</span>
+          <div className={`text-2xl font-bold font-mono flex items-baseline gap-1.5 ${
+            readable > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text-muted)]"
+          }`}>
+            <span>{readable > 0 ? (treasuryZat / 100_000_000).toFixed(8) : "—"}</span>
+            {readable > 0 && (
+              <span className="text-xs font-bold text-[var(--zcash-gold)]">TAZ</span>
+            )}
           </div>
-          <div className="text-xs text-[var(--text-muted)] flex items-center justify-between">
-            <span>Pool: {onchainBalance.pool}</span>
-            <span className="font-mono text-[10px]">#{onchainBalance.height}</span>
+          <div className="text-xs text-[var(--text-muted)] flex items-center justify-between gap-2">
+            <span>
+              {readable > 0
+                ? `Ironwood · ${readable} of ${readable + unreadable} vault${readable + unreadable === 1 ? "" : "s"}`
+                : "Needs each vault's viewing key"}
+            </span>
+            {atHeight > 0 && <span className="font-mono text-[10px]">#{atHeight}</span>}
           </div>
         </div>
 

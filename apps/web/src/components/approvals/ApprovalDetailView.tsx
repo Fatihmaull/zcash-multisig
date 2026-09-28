@@ -34,14 +34,22 @@ interface ApprovalDetailViewProps {
   requestId?: string;
   showMisbehavior?: boolean;
   initialData?: ApprovalInitialData;
-  liveBalance?: string;
+  /**
+   * This vault's Ironwood balance, or null when it cannot be read.
+   *
+   * Null is the normal case: a shielded balance needs the vault's viewing
+   * key, and an address alone will not do. When it is null the sufficiency
+   * check below is skipped entirely — you cannot warn someone about a
+   * shortfall you have not measured.
+   */
+  liveBalance?: string | null;
 }
 
 export function ApprovalDetailView({
   requestId = "req-demo-001",
   showMisbehavior: propShowMisbehavior,
   initialData,
-  liveBalance = "0.10000000",
+  liveBalance = null,
 }: ApprovalDetailViewProps) {
   const { activeScenario, setActiveScenario } = useUI();
   
@@ -91,8 +99,13 @@ export function ApprovalDetailView({
   };
 
   const proposalAmount = parseFloat(initialData?.amountZec || "2.50000000");
-  const availableBalance = parseFloat(liveBalance || "0.10000000");
-  const isInsufficient = availableBalance < proposalAmount;
+  // Only a number when it is this vault's. It used to default to a literal
+  // 0.10000000 and, before that, arrived as the operator's own devtool wallet
+  // balance — so this gate could block a legitimate approval, or wave through
+  // one the vault could never cover, while the message claimed to be quoting
+  // the vault.
+  const availableBalance = liveBalance === null ? null : parseFloat(liveBalance);
+  const isInsufficient = availableBalance !== null && availableBalance < proposalAmount;
 
   // Compute quorum counts
   let collectedSignatures = 1; // Alice signed
@@ -112,7 +125,7 @@ export function ApprovalDetailView({
     if (isInsufficient) {
       showToast(
         "Persetujuan Gagal — Saldo Tidak Mencukupi",
-        `Saldo shielded vault saat ini (${availableBalance.toFixed(8)} TAZ) tidak mencukupi untuk transfer sebesar ${proposalAmount.toFixed(8)} TAZ.`
+        `Saldo shielded vault saat ini (${availableBalance?.toFixed(8)} TAZ) tidak mencukupi untuk transfer sebesar ${proposalAmount.toFixed(8)} TAZ.`
       );
       return;
     }
@@ -144,7 +157,7 @@ export function ApprovalDetailView({
     if (isInsufficient) {
       showToast(
         "Persetujuan Gagal — Saldo Tidak Mencukupi",
-        `Saldo shielded vault saat ini (${availableBalance.toFixed(8)} TAZ) tidak mencukupi untuk transfer sebesar ${proposalAmount.toFixed(8)} TAZ.`
+        `Saldo shielded vault saat ini (${availableBalance?.toFixed(8)} TAZ) tidak mencukupi untuk transfer sebesar ${proposalAmount.toFixed(8)} TAZ.`
       );
       return;
     }
@@ -251,7 +264,7 @@ export function ApprovalDetailView({
           <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
-              Peringatan Saldo: Proposal memerlukan <strong>{proposalAmount.toFixed(8)} TAZ</strong>, tetapi saldo live di Ironwood vault hanya <strong>{availableBalance.toFixed(8)} TAZ</strong>.
+              Peringatan Saldo: Proposal memerlukan <strong>{proposalAmount.toFixed(8)} TAZ</strong>, tetapi saldo live di Ironwood vault hanya <strong>{availableBalance?.toFixed(8)} TAZ</strong>.
             </span>
           </div>
           <span className="font-mono text-[10px] uppercase font-bold text-rose-500 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 shrink-0">
