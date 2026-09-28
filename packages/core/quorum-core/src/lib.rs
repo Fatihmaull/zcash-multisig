@@ -1,9 +1,19 @@
-// quorum-core — FROST wrapper types and DKG orchestration
-//
-// Placeholder: Dev A implements this after spike S1.
-// See docs/10-roadmap.md P1-A1.
-//
-// The ciphersuite binding below is deliberately NOT a placeholder. It is
+//! quorum-core — the parts both sides of the trust boundary need.
+//!
+//! - [`dkg`] — distributed key generation as a typestate. Moves no bytes;
+//!   delivery is the caller's business, which is what lets the protocol be
+//!   tested exhaustively with no node and no network.
+//! - [`transport`] — our own `frostd` client: XEdDSA login, sessions, and
+//!   `Noise_K` end to end so the relay carries ciphertext it cannot read.
+//! - [`transaction`] — reading a PCZT. Shared deliberately: a signer that
+//!   cannot read the transaction has to take the coordinator's word for what
+//!   it is signing. Writing signatures back stays in the coordinator.
+//! - [`vault_key`] — the vault's viewing key, derived from a group key nobody
+//!   holds the spending key for.
+//!
+//! Nothing here holds a share. `quorum-signer` does, and only ever one.
+
+// The ciphersuite binding below is deliberately load-bearing. It is
 // the compile-time proof that the RedPallas wiring is correct — without
 // it, a wrong ciphersuite in Cargo.toml stays invisible until someone
 // writes signing code and discovers their signatures authorize nothing

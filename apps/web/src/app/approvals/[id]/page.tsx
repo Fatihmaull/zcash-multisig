@@ -1,7 +1,7 @@
 import { ApprovalDetailView } from "@/components/approvals/ApprovalDetailView";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
-import { getLiveWalletBalance } from "@/lib/onchain-balance";
+import { getVaultIronwoodBalance } from "@/lib/onchain-balance";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,8 @@ type ApprovalDetailRecord = {
   vault?: {
     label: string;
     threshold: number;
+    /// Null until a ceremony has produced one.
+    shieldedAddress?: string | null;
     participants?: unknown[];
   } | null;
   signatureRoundEvents?: unknown[];
@@ -26,7 +28,6 @@ export default async function ApprovalDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const onchainBalance = await getLiveWalletBalance();
 
   let dbApproval: ApprovalDetailRecord | null = null;
   try {
@@ -91,12 +92,23 @@ export default async function ApprovalDetailPage({
       }
     : undefined;
 
+  // This approval's own vault, or null. The sufficiency warning inside the
+  // view is skipped when it is null, because a shortfall you have not
+  // measured is not a shortfall you can warn about.
+  //
+  // This used to be getLiveWalletBalance() — the operator's local devtool
+  // wallet, whichever vault the approval belonged to. It gated signing and
+  // told the user it was quoting "saldo shielded vault".
+  const vaultBalance = await getVaultIronwoodBalance(
+    dbApproval?.vault?.shieldedAddress ?? null
+  );
+
   return (
     <div className="space-y-6">
       <ApprovalDetailView 
         requestId={id} 
         initialData={initialData} 
-        liveBalance={onchainBalance.ironwood} 
+        liveBalance={vaultBalance?.ironwood ?? null} 
       />
     </div>
   );

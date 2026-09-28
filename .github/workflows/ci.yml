@@ -90,7 +90,7 @@ jobs:
           echo "No mainnet references. OK."
 
   web:
-    name: Web — typecheck and lint
+    name: Web — typecheck, lint and build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -115,3 +115,14 @@ jobs:
 
       - name: Lint
         run: pnpm --filter web run lint
+
+      # `tsc --noEmit` does not evaluate a module's top level, so a file that
+      # throws on import — src/lib/supabase.ts does, without its variables —
+      # typechecks cleanly and then fails the build. That reached a fresh
+      # clone on 27 Sep and not CI. These values are placeholders and reach
+      # nothing; the build only needs them to be present.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-not-a-real-key
+        run: pnpm --filter web run build
