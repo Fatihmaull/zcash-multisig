@@ -15,6 +15,37 @@ Zcash shielded funds, submitted to the Colosseum Crypto World's Fair **Zcash tra
 It is judged partly on *communication*, and the judge's entire experience of the
 product is this video.
 
+**You own the production end to end.** Setup, capture, the live run, editing, overlays,
+the self-audit. Four things come back to a human and they are listed at the bottom
+under *What is not yours*; everything else is yours to decide within the rules here.
+
+### You need nothing secret from us — build your own vault
+
+This is the part that makes full delegation possible, and it is worth understanding
+rather than just following.
+
+`./scripts/three-party-ceremony.sh` **generates fresh identities and fresh key shares on
+the machine that runs it.** Run it yourself and you own a complete vault: three shares,
+a seed, a viewing key, an address — all created on your machine, none of them ours.
+
+So you can run the entire product end to end without being sent anything:
+
+| You need | Where it comes from |
+|---|---|
+| The code | Public repo |
+| `frostd`, `zcash-devtool` | Public, build instructions in [`16-runbook.md`](16-runbook.md) |
+| A vault | You create it, in beat 3, on camera |
+| Funds | Testnet faucet, into **your** vault |
+| A recipient address | Any testnet address, including one you make |
+| A viewing key | **Yours**, derived from **your** vault |
+
+This is stronger than filming ours. It means every live beat in the video was
+reproduced from a clean clone by someone who was not on the team — which is a claim the
+video can make, and a claim worth more than borrowed footage.
+
+**Only the three historical txids in beat 2 are ours**, and they are public values
+already in this file. Nothing else needs to travel.
+
 **You are not designing this video. You are executing an existing shot list inside an
 existing design language, and auditing your own output against both.**
 
@@ -65,10 +96,13 @@ shares to the person filming it, refutes the thing it is filming. It is also for
 outright: *no key material leaves a participant's machine, for any network, under any
 framing.*
 
-**You do not need them.** The demo script assigns beat 4 as *Dev B directs; Dev A
-operates the terminals.* Whoever holds a share runs the command; you record the screen.
-If that is impossible for your setup, the answer is **Dev A records beat 4 and hands
-you the footage** — never that a share travels.
+**You do not need them, and the section above says why**: run the ceremony yourself and
+the shares you sign with are ones you made. The only situation where our shares would
+matter is filming *our* vault, and there is no reason to.
+
+If you ever do film ours — the fallback in beat 3 allows it — then whoever holds the
+share runs the command and you record the screen, or they record and hand you footage.
+The share still does not travel.
 
 The same applies to the passphrase, the sealed `share-*.bin` files, the vault seed, and
 any `secrets/` directory. If a plan requires one of these to move, the plan is wrong,
@@ -412,6 +446,8 @@ Three of these cost minutes each and none is interesting to film. All are in
 | 20 | Anything simulated is labelled on screen while it is on screen | | |
 | 21 | Beat 3's vault and beat 4's vault are the same vault | name it | |
 | 22 | No key share, passphrase, seed or `secrets/` file was requested, received or stored | | |
+| 23 | Every live beat used a vault you created; only beat 2's txids are ours | | |
+| 24 | The narration is a human voice | | |
 
 ---
 
@@ -430,6 +466,27 @@ than trusted to judgement under the pressure of a take.
 A rule you disagree with is a message to Fatih, not a decision to make.
 
 ---
+
+## What is not yours
+
+Four things, and only four.
+
+**1 · The faucet.** Funding your vault needs a browser, proof-of-work and patience, and
+it is rate-limited. Ask before automating it against a public faucet — it is a shared
+resource and hammering it is not ours to do.
+
+**2 · The narration voice.** The script specifies **live voice-over**. A synthetic voice
+over a three-minute technical demo is the loudest generated-content signal available,
+louder than any visual choice in this file, and it would undo the restraint everything
+else here buys. **Do not generate one.** If no human voice is available, say so and
+stop — silent captioned cuts are a better answer than a synthetic read, and that is a
+decision for Fatih.
+
+**3 · The claim review before publication.** The risk register requires one named person
+to re-read every external claim. Your self-audit table feeds that review; it does not
+replace it.
+
+**4 · Any rule here you think is wrong.** Say so and stop.
 
 ## Why this file exists
 
