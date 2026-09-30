@@ -2,6 +2,12 @@
 
 **Recording begins 5 October. This is a gate, not a suggestion.**
 
+> **Handing the recording to someone else — or to an agent?** Give them
+> [18-video-agent-master-prompt.md](18-video-agent-master-prompt.md), which carries the
+> design language, the real figures, the claims we do not make, and a self-audit. This
+> file stays the authority on **what is shown, in what order**; that one settles **how
+> it may look and what it may say**.
+
 Communication is an explicit Colosseum judging criterion, and the judge's entire experience of
 the product is this video. Target **3 minutes**; absolute ceiling 4.
 
