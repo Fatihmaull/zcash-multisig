@@ -21,6 +21,14 @@
 # not decoration. A scripted run cannot pause for a keystroke, so this script
 # sets QUORUM_SIGNER_AUTO_APPROVE=1 and each signer says so in its log. Pass
 # AUTO_APPROVE=0 and run a signer by hand to see the prompt.
+#
+# Pass HAND=<label> to leave that signer to a person: the script writes its
+# credentials to $QUORUM_DEMO_LOGS/<label>.env (mode 0600, never printed), and
+# the person starts quorum-signerd in their own terminal with the prompt on.
+# Combine with SIGNERS naming the scripted signer(s), e.g.
+#   HAND=Alice SIGNERS="Bob" QUORUM_DEMO_LOGS=/tmp/q-beat4 ./scripts/three-signer-demo.sh <vault> <pczt>
+#   # other terminal:  set -a; . /tmp/q-beat4/Alice.env; set +a
+#   #                  QUORUM_SIGNER_PASSPHRASE="$QUORUM_DEV_PASSPHRASE" packages/core/target/release/quorum-signerd
 
 set -euo pipefail
 
@@ -79,6 +87,21 @@ say "Starting three signers, one process each"
 i=0
 while read -r pid label token; do
   i=$((i+1))
+  # HAND=<label>: this participant is run by a person, in their own terminal,
+  # with the approval prompt on. The script does not start it; it writes the
+  # participant's coordinator credentials to a 0600 file instead of printing
+  # them, so the bearer token never appears on screen.
+  if [ -n "${HAND:-}" ] && printf '%s' " ${HAND} " | grep -q " ${label} "; then
+    SHARE="$VAULT/share-$i.bin"
+    PER_PARTY="$VAULT/$(printf '%s' "$label" | tr 'A-Z' 'a-z')/share-$i.bin"
+    [ -f "$PER_PARTY" ] && SHARE="$PER_PARTY"
+    ENVF="$RUN/$label.env"
+    ( umask 077
+      printf 'QUORUM_COORDINATOR_URL=%s\nQUORUM_SIGNER_SHARE=%s\nQUORUM_SIGNER_ID=%s\nQUORUM_SIGNER_TOKEN=%s\nQUORUM_SIGNER_LABEL=%s\n' \
+        "$URL" "$SHARE" "$pid" "$token" "$label" >"$ENVF" )
+    printf '  %-6s by hand, prompt on — credentials in %s (not printed)\n' "$label" "$ENVF"
+    continue
+  fi
   if [ -n "${SIGNERS:-}" ] && ! printf '%s' " ${SIGNERS} " | grep -q " ${label} "; then
     printf '  %-6s offline (not in SIGNERS)\n' "$label"
     continue
@@ -119,11 +142,13 @@ sleep 1
 
 say "Submitting an approval request"
 APPROVAL=$(python3 - "$VAULT_ID" "$PCZT" <<'PY'
-import json, sys, urllib.request, urllib.error, pathlib
+import json, os, sys, urllib.request, urllib.error, pathlib
+# What the proposer CLAIMS. Signers show it in the "not verified" column; set
+# it to what the PCZT was actually built with so the two columns agree.
 body = {
     "vaultId": sys.argv[1],
-    "recipientAddress": "utest1recipient",
-    "amountZatoshi": "1000000",
+    "recipientAddress": os.environ.get("CLAIMED_RECIPIENT", "utest1recipient"),
+    "amountZatoshi": os.environ.get("CLAIMED_AMOUNT_ZAT", "1000000"),
     "pcztHex": pathlib.Path(sys.argv[2]).read_bytes().hex(),
     "signerDeadlineSecs": 120,
 }
