@@ -208,14 +208,13 @@ export function Header() {
               />
             </div>
 
-            {/* No figure unless it was read with a vault viewing key. This chip is not a vault. */}
+            {/* This chip is not a vault, so it does not report a balance or a key. */}
             <span
               className="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--bg-secondary)]/70 border border-[var(--border-subtle)] text-xs"
-              title="A shielded balance needs that vault's viewing key. None is shown here."
+              title="Balances are shown on each vault."
             >
               <Wallet className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
               <span className="font-mono font-bold text-[var(--text-primary)]">—</span>
-              <span className="text-[10px] text-[var(--text-muted)] font-mono">no viewing key</span>
             </span>
 
             {/* Theme Toggle Button */}

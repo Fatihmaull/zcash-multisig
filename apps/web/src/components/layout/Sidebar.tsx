@@ -269,7 +269,7 @@ export function Sidebar() {
           <span>Keys Held By You</span>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-          Private key shares never leave your device.
+          Spend key shares stay on each signer&apos;s machine. A stored viewing key can read balances and cannot spend.
         </p>
       </div>
     </div>

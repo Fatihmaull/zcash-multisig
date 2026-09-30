@@ -177,7 +177,7 @@ export default async function ApprovalsPage() {
                   </div>
 
                   <h3 className="text-base font-semibold text-[var(--text-primary)]">
-                    Send {amountZec} TAZ
+                    Send <span className="font-mono">{amountZec}</span> TAZ
                   </h3>
 
                   {req.memo && (

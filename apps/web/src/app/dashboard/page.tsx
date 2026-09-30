@@ -449,7 +449,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--text-muted)]">Key Custody:</span>
-                  <span className="font-medium" style={{ color: "var(--success-text)" }}>On-device</span>
+                  <span className="font-medium text-right" style={{ color: "var(--success-text)" }}>Spend shares on signers</span>
                 </div>
               </div>
 
