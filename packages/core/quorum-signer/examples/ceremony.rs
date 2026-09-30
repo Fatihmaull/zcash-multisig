@@ -143,7 +143,15 @@ fn main() {
                 .try_into()
                 .expect("identifier is at least 2 bytes"),
         );
-        fs::write(out.join(format!("share-{index}.bin")), &sealed).expect("write share");
+        let share_path = out.join(format!("share-{index}.bin"));
+        fs::write(&share_path, &sealed).expect("write share");
+        // Ciphertext, and still a share. Owner-only, matching quorum-dkgd.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&share_path, fs::Permissions::from_mode(0o600))
+                .expect("share mode 0600");
+        }
     }
     fs::write(
         out.join("public-key-package.json"),

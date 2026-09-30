@@ -57,10 +57,13 @@
 //! does not mean the others do: a peer can still be one poll (250 ms) away
 //! from reading the confirmation we already counted. Closing in that window
 //! makes frostd answer `session was not found` and that peer writes no share.
-//! So a peer's last act on the relay is a ready acknowledgement, sent only
-//! after its own confirmation round is done, and the opener's [`run`] does
-//! not return — the point at which the caller may close — until every peer
-//! has sent one.
+//!
+//! [`run`] returns once the address check has succeeded, so the caller can
+//! persist its share before anyone waits on the relay. A peer then
+//! [`CeremonyDone::acknowledge`]s — its last use of the session — and the
+//! opener [`CeremonyDone::wait_for_peers`] before closing. That wait is
+//! short and is not what makes the share real: a peer who never answers
+//! costs a warning and a closed session, not the share already on disk.
 //!
 //! See `docs/03-architecture.md` §2 and constraint C5.
 
@@ -85,6 +88,15 @@ use zcash_protocol::consensus::TEST_NETWORK;
 /// DKG has no threshold: every participant must answer or there is no vault.
 /// A timeout here means restart the ceremony, not proceed with fewer.
 pub const DEFAULT_ROUND_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// How long the opener waits, after the address check, for every peer to
+/// say it has finished reading the relay.
+///
+/// Distinct from [`DEFAULT_ROUND_TIMEOUT`]. The share is already persisted
+/// before this wait starts. Fifteen seconds covers a peer that is still
+/// flushing its last poll and writing its own share; it does not cover a
+/// peer that has gone away, and it is not meant to.
+pub const READY_ACK_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// How often to ask the relay for new messages. `frostd` does not block.
 const POLL_INTERVAL: Duration = Duration::from_millis(250);
@@ -259,22 +271,6 @@ fn parse_identifier(hex_str: &str) -> Result<VaultIdentifier, String> {
 
 /// Whether this participant generates the vault seed or waits for it.
 ///
-/// Who is allowed to close the frostd session, which is an operational
-/// fact about the relay and not an authority over the vault.
-///
-/// Exactly one participant opens the session and must be the one to close
-/// it. See the module docs on why that close waits for every peer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CloseRole {
-    /// Opened the session. [`run`] returns only once every peer has
-    /// acknowledged that it is finished with the relay; the caller then
-    /// closes.
-    Opener,
-    /// Did not open the session. After our own confirmation round succeeds,
-    /// tell the others we are finished and return. Do not close.
-    Peer,
-}
-
 /// Exactly one participant in a ceremony contributes; the rest wait. Two
 /// contributors is an error rather than a tie-break, because silently
 /// picking one would mean silently picking an address.
@@ -306,6 +302,69 @@ pub struct Outcome {
     pub seed: VaultSeed,
     /// Testnet unified address, Orchard receiver only.
     pub address: String,
+}
+
+/// A ceremony whose address check succeeded.
+///
+/// [`outcome`](Self::outcome) is final and should be persisted before
+/// either of the relay methods below. Those methods only coordinate
+/// closing the frostd session; they do not decide whether the share is real.
+pub struct CeremonyDone {
+    pub outcome: Outcome,
+    tail: RelayTail,
+}
+
+/// Noise state and anything already parked, so a ready acknowledgement
+/// stays on the same session as the confirmation that preceded it.
+struct RelayTail {
+    cipher: Cipher,
+    mailbox: Mailbox,
+    parsed: Parsed,
+    session: SessionId,
+}
+
+impl CeremonyDone {
+    /// Tell every other participant that we will not read the relay again.
+    ///
+    /// A peer's last relay call. Sent on the ceremony's Noise session, after
+    /// the confirmation round, so the opener can decrypt it in order.
+    pub async fn acknowledge(&mut self, client: &FrostdClient) -> Result<(), CeremonyError> {
+        let ready = Envelope::Ready {};
+        for peer in &self.tail.parsed.peers {
+            send_sealed(
+                client,
+                &mut self.tail.cipher,
+                self.tail.session,
+                peer,
+                &ready,
+            )
+            .await?;
+        }
+        Ok(())
+    }
+
+    /// Wait until every peer has [`acknowledge`](Self::acknowledge)d.
+    ///
+    /// A timeout here means a peer never said it was finished reading. The
+    /// caller's share is unaffected — that was settled when [`run`] returned.
+    pub async fn wait_for_peers(
+        &mut self,
+        client: &FrostdClient,
+        timeout: Duration,
+    ) -> Result<(), CeremonyError> {
+        collect(
+            client,
+            &mut self.tail.cipher,
+            self.tail.session,
+            &self.tail.parsed,
+            &mut self.tail.mailbox,
+            timeout,
+            "ready",
+            |m| m.ready.len(),
+            |m| m.ready.iter().copied().collect(),
+        )
+        .await
+    }
 }
 
 // ── Wire format ──────────────────────────────────────────────
@@ -394,20 +453,19 @@ struct Mailbox {
 /// the caller's business, because who opens the session is a deployment
 /// question and carries no authority over the vault either way.
 ///
-/// `close_role` is that deployment question. [`CloseRole::Opener`] does not
-/// return until every peer has finished reading, so the caller can close
-/// the session at that point without pulling it out from under them.
-#[allow(clippy::too_many_arguments)]
+/// Returns when the address check has succeeded, before any ready
+/// acknowledgement. Persist [`CeremonyDone::outcome`] before calling
+/// [`CeremonyDone::wait_for_peers`] or closing the session: a peer who
+/// never acknowledges must not take this participant's share with it.
 pub async fn run<R: RngCore + CryptoRng>(
     identity: &Identity,
     roster: &Roster,
     client: &FrostdClient,
     session: SessionId,
     seed_role: SeedRole,
-    close_role: CloseRole,
     timeout: Duration,
     mut rng: R,
-) -> Result<Outcome, CeremonyError> {
+) -> Result<CeremonyDone, CeremonyError> {
     let parsed = roster.parse(identity.public_key())?;
     let peer_keys: Vec<PeerPublicKey> = parsed.peers.iter().map(|p| p.pubkey.clone()).collect();
     let mut cipher = Cipher::new(identity.private_key(), &peer_keys)?;
@@ -549,39 +607,23 @@ pub async fn run<R: RngCore + CryptoRng>(
         }
     }
 
-    // The confirmation round being done *here* is not the same fact as it
-    // being done everywhere. A peer still polling would lose the session if
-    // the opener closed now. Peers say they are finished; the opener waits
-    // until it has heard that from each of them, and only then returns to
-    // the caller who closes.
-    match close_role {
-        CloseRole::Peer => {
-            let ready = Envelope::Ready {};
-            for peer in &parsed.peers {
-                send_sealed(client, &mut cipher, session, peer, &ready).await?;
-            }
-        }
-        CloseRole::Opener => {
-            collect(
-                client,
-                &mut cipher,
-                session,
-                &parsed,
-                &mut mailbox,
-                timeout,
-                "ready",
-                |m| m.ready.len(),
-                |m| m.ready.iter().copied().collect(),
-            )
-            .await?;
-        }
-    }
-
-    Ok(Outcome {
-        key_package: finished.key_package,
-        public_key_package: finished.public_key_package,
-        seed,
-        address,
+    // The address check passed. The share is real from this point, whether
+    // or not every peer later says it has finished reading. The caller
+    // persists `outcome` before `wait_for_peers`, and a peer sends its
+    // ready acknowledgement from the same Noise state we hand back here.
+    Ok(CeremonyDone {
+        outcome: Outcome {
+            key_package: finished.key_package,
+            public_key_package: finished.public_key_package,
+            seed,
+            address,
+        },
+        tail: RelayTail {
+            cipher,
+            mailbox,
+            parsed,
+            session,
+        },
     })
 }
 

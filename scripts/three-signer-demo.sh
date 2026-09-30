@@ -64,9 +64,10 @@ done
 echo "  coordinator pid ${PIDS[0]} on $ADDR — holds no key material"
 
 say "Registering the vault"
-REG=$(python3 - "$VAULT" <<'PY'
+REG=$(python3 - "$VAULT" "$URL" <<'PY'
 import json, sys, urllib.request, pathlib
 d = pathlib.Path(sys.argv[1])
+base = sys.argv[2].rstrip("/")
 body = {
     "label": "Foundation Treasury",
     "threshold": 2,
@@ -74,7 +75,7 @@ body = {
     "publicKeyPackage": json.loads((d / "public-key-package.json").read_text()),
     "participants": json.loads((d / "participants.json").read_text()),
 }
-req = urllib.request.Request("http://127.0.0.1:2745/coordinator/vault/register",
+req = urllib.request.Request(base + "/coordinator/vault/register",
                              data=json.dumps(body).encode(),
                              headers={"content-type": "application/json"})
 print(urllib.request.urlopen(req).read().decode())
@@ -95,10 +96,14 @@ while read -r pid label token; do
     SHARE="$VAULT/share-$i.bin"
     PER_PARTY="$VAULT/$(printf '%s' "$label" | tr 'A-Z' 'a-z')/share-$i.bin"
     [ -f "$PER_PARTY" ] && SHARE="$PER_PARTY"
+    # Absolute, so the hand-run signer does not depend on the directory it
+    # is started from. The scripted signers stay relative: they are children
+    # of this process and inherit its cwd.
+    SHARE_ABS="$(CDPATH= cd "$(dirname "$SHARE")" && pwd)/$(basename "$SHARE")"
     ENVF="$RUN/$label.env"
     ( umask 077
       printf 'QUORUM_COORDINATOR_URL=%s\nQUORUM_SIGNER_SHARE=%s\nQUORUM_SIGNER_ID=%s\nQUORUM_SIGNER_TOKEN=%s\nQUORUM_SIGNER_LABEL=%s\n' \
-        "$URL" "$SHARE" "$pid" "$token" "$label" >"$ENVF" )
+        "$URL" "$SHARE_ABS" "$pid" "$token" "$label" >"$ENVF" )
     printf '  %-6s by hand, prompt on — credentials in %s (not printed)\n' "$label" "$ENVF"
     continue
   fi
@@ -141,10 +146,11 @@ for p in json.loads(sys.argv[1])['participantTokens']:
 sleep 1
 
 say "Submitting an approval request"
-APPROVAL=$(python3 - "$VAULT_ID" "$PCZT" <<'PY'
+APPROVAL=$(python3 - "$VAULT_ID" "$PCZT" "$URL" <<'PY'
 import json, os, sys, urllib.request, urllib.error, pathlib
 # What the proposer CLAIMS. Signers show it in the "not verified" column; set
 # it to what the PCZT was actually built with so the two columns agree.
+base = sys.argv[3].rstrip("/")
 body = {
     "vaultId": sys.argv[1],
     "recipientAddress": os.environ.get("CLAIMED_RECIPIENT", "utest1recipient"),
@@ -152,7 +158,7 @@ body = {
     "pcztHex": pathlib.Path(sys.argv[2]).read_bytes().hex(),
     "signerDeadlineSecs": 120,
 }
-req = urllib.request.Request("http://127.0.0.1:2745/coordinator/approval/submit",
+req = urllib.request.Request(base + "/coordinator/approval/submit",
                              data=json.dumps(body).encode(),
                              headers={"content-type": "application/json"})
 try:
@@ -169,9 +175,10 @@ echo "  request $APPROVAL"
 
 say "Waiting — the signers are polling"
 for _ in $(seq 1 60); do
-  STATUS=$(python3 - "$APPROVAL" <<'PY'
+  STATUS=$(python3 - "$APPROVAL" "$URL" <<'PY'
 import json, sys, urllib.request
-req = urllib.request.Request("http://127.0.0.1:2745/coordinator/approval/status",
+base = sys.argv[2].rstrip("/")
+req = urllib.request.Request(base + "/coordinator/approval/status",
                              data=json.dumps({"approvalId": sys.argv[1]}).encode(),
                              headers={"content-type": "application/json"})
 s = json.loads(urllib.request.urlopen(req).read())
@@ -187,9 +194,10 @@ done
 echo "  logs: $RUN"
 
 say "Event log"
-python3 - "$APPROVAL" <<'PY'
+python3 - "$APPROVAL" "$URL" <<'PY'
 import json, sys, urllib.request, textwrap
-req = urllib.request.Request("http://127.0.0.1:2745/coordinator/approval/status",
+base = sys.argv[2].rstrip("/")
+req = urllib.request.Request(base + "/coordinator/approval/status",
                              data=json.dumps({"approvalId": sys.argv[1]}).encode(),
                              headers={"content-type": "application/json"})
 s = json.loads(urllib.request.urlopen(req).read())
@@ -206,9 +214,10 @@ PY
 # ends at "APPROVED" and the transaction never leaves the coordinator.
 if [ -n "${AUTHORIZED_OUT:-}" ]; then
   say "Authorized transaction"
-  python3 - "$APPROVAL" "$AUTHORIZED_OUT" <<'PY'
+  python3 - "$APPROVAL" "$AUTHORIZED_OUT" "$URL" <<'PY'
 import json, sys, urllib.request, urllib.error
-req = urllib.request.Request("http://127.0.0.1:2745/coordinator/approval/authorized",
+base = sys.argv[3].rstrip("/")
+req = urllib.request.Request(base + "/coordinator/approval/authorized",
                              data=json.dumps({"approvalId": sys.argv[1]}).encode(),
                              headers={"content-type": "application/json"})
 try:

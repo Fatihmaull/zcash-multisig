@@ -20,6 +20,9 @@
 //! against the real server.
 
 use std::collections::HashMap;
+use std::io::Read;
+use std::path::Path;
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -29,7 +32,7 @@ use axum::routing::post;
 use axum::{Json, Router};
 use quorum_core::dkg::VaultIdentifier;
 use quorum_core::transport::{FrostdClient, FrostdError, Identity, PeerPublicKey};
-use quorum_signer::ceremony::{self, CeremonyError, CloseRole, Member, Roster, SeedRole};
+use quorum_signer::ceremony::{self, CeremonyError, Member, Roster, SeedRole};
 use serde_json::{json, Value};
 
 // ── A relay that speaks frostd, trusts nobody, and remembers everything ──
@@ -326,7 +329,6 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
             &clients[0],
             session,
             SeedRole::Contribute,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -336,7 +338,6 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
             &clients[1],
             session,
             SeedRole::Await,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -346,7 +347,6 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
             &clients[2],
             session,
             SeedRole::Await,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -354,9 +354,9 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
     .await;
 
     let (a, b, c) = (
-        outcomes.0.expect("alice"),
-        outcomes.1.expect("bob"),
-        outcomes.2.expect("carol"),
+        outcomes.0.expect("alice").outcome,
+        outcomes.1.expect("bob").outcome,
+        outcomes.2.expect("carol").outcome,
     );
 
     // One vault, agreed without anyone being told to agree.
@@ -405,7 +405,6 @@ async fn the_relay_carries_only_ciphertext() {
             &clients[0],
             session,
             SeedRole::Contribute,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -415,7 +414,6 @@ async fn the_relay_carries_only_ciphertext() {
             &clients[1],
             session,
             SeedRole::Await,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -425,13 +423,12 @@ async fn the_relay_carries_only_ciphertext() {
             &clients[2],
             session,
             SeedRole::Await,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
     )
     .await;
-    let seed_hex = hex::encode(outcomes.0.expect("alice").seed.as_bytes());
+    let seed_hex = hex::encode(outcomes.0.expect("alice").outcome.seed.as_bytes());
 
     let carried = &relay.lock().unwrap().carried;
     assert!(
@@ -482,7 +479,6 @@ async fn an_equivocated_seed_aborts_before_anything_is_written() {
             &clients[0],
             session,
             SeedRole::ContributeInconsistently,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -492,7 +488,6 @@ async fn an_equivocated_seed_aborts_before_anything_is_written() {
             &clients[1],
             session,
             SeedRole::Await,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -502,7 +497,6 @@ async fn an_equivocated_seed_aborts_before_anything_is_written() {
             &clients[2],
             session,
             SeedRole::Await,
-            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -571,7 +565,6 @@ async fn a_sender_outside_the_roster_aborts_the_ceremony() {
         &clients[0],
         session,
         SeedRole::Contribute,
-        CloseRole::Peer,
         Duration::from_secs(3),
         rand::thread_rng(),
     )
@@ -592,11 +585,12 @@ async fn a_sender_outside_the_roster_aborts_the_ceremony() {
 /// The peers here are one poll behind the opener, which is the window that
 /// failed 7 of 10 runs of `three-party-ceremony.sh` against a real frostd:
 /// the opener closed, frostd dropped the session, and the peer's next read
-/// was `session was not found` (code 3). [`CloseRole::Opener`] must not
-/// return until those peers have sent their ready acknowledgement, which
-/// they send only after reading their own last confirmation — so the close
-/// below happens too late to hit them. A `run` that ignored `CloseRole`
-/// would close inside that window and Bob or Carol would fail.
+/// was `session was not found` (code 3). `run` returns at the address
+/// check, while a lagged peer may still be reading. The close below is
+/// after [`ceremony::CeremonyDone::wait_for_peers`], which returns only
+/// once each peer has [`acknowledge`](ceremony::CeremonyDone::acknowledge)d
+/// — and they acknowledge only after that read. Closing when `run` returns,
+/// before the wait, drops the session under Bob or Carol.
 #[tokio::test]
 async fn the_opener_closes_only_after_every_peer_has_finished() {
     let (url, _relay) = spawn_relay_with(true).await;
@@ -608,51 +602,64 @@ async fn the_opener_closes_only_after_every_peer_has_finished() {
 
     let outcomes = futures_join3(
         async {
-            let outcome = ceremony::run(
+            let mut done = ceremony::run(
                 &alice,
                 &roster,
                 &clients[0],
                 session,
                 SeedRole::Contribute,
-                CloseRole::Opener,
                 TIMEOUT,
                 rand::thread_rng(),
             )
-            .await;
+            .await
+            .expect("alice");
+            done.wait_for_peers(&clients[0], TIMEOUT)
+                .await
+                .expect("peers finished reading before close");
             clients[0]
                 .close_session(session)
                 .await
-                .expect("the opener closes once run has returned");
-            outcome
+                .expect("the opener closes once every peer has acknowledged");
+            done.outcome
         },
-        ceremony::run(
-            &bob,
-            &roster,
-            &clients[1],
-            session,
-            SeedRole::Await,
-            CloseRole::Peer,
-            TIMEOUT,
-            rand::thread_rng(),
-        ),
-        ceremony::run(
-            &carol,
-            &roster,
-            &clients[2],
-            session,
-            SeedRole::Await,
-            CloseRole::Peer,
-            TIMEOUT,
-            rand::thread_rng(),
-        ),
+        async {
+            let mut done = ceremony::run(
+                &bob,
+                &roster,
+                &clients[1],
+                session,
+                SeedRole::Await,
+                TIMEOUT,
+                rand::thread_rng(),
+            )
+            .await
+            .expect("bob");
+            done.acknowledge(&clients[1])
+                .await
+                .expect("bob tells the opener it has finished reading");
+            done.outcome
+        },
+        async {
+            let mut done = ceremony::run(
+                &carol,
+                &roster,
+                &clients[2],
+                session,
+                SeedRole::Await,
+                TIMEOUT,
+                rand::thread_rng(),
+            )
+            .await
+            .expect("carol");
+            done.acknowledge(&clients[2])
+                .await
+                .expect("carol tells the opener it has finished reading");
+            done.outcome
+        },
     )
     .await;
 
-    let (a, b, c) = (
-        outcomes.0.expect("alice"),
-        outcomes.1.expect("bob"),
-        outcomes.2.expect("carol"),
-    );
+    let (a, b, c) = (outcomes.0, outcomes.1, outcomes.2);
     assert_eq!(a.address, b.address);
     assert_eq!(b.address, c.address);
 
@@ -664,6 +671,226 @@ async fn the_opener_closes_only_after_every_peer_has_finished() {
         }
         Err(other) => panic!("expected session-not-found after close, got {other}"),
         Ok(_) => panic!("receive succeeded on a session the opener had closed"),
+    }
+}
+
+/// A peer who never says it has finished reading must not cost the opener
+/// the share it already agreed.
+///
+/// Carol completes the address check and then goes silent. `quorum-dkgd`,
+/// as the opener, writes Alice's share before waiting for ready
+/// acknowledgements, warns when Carol does not answer, and exits without
+/// treating that as a failed ceremony.
+#[tokio::test]
+async fn a_peer_who_never_acks_does_not_cost_the_opener_its_share() {
+    let (url, _relay) = spawn_relay().await;
+    let alice = Identity::generate().expect("keypair");
+    let bob = Identity::generate().expect("keypair");
+    let carol = Identity::generate().expect("keypair");
+    let roster = roster_of(&[("Alice", &alice), ("Bob", &bob), ("Carol", &carol)]);
+
+    let dir = std::env::temp_dir().join(format!(
+        "quorum-dkg-ack-{}-{}",
+        std::process::id(),
+        uuid::Uuid::new_v4()
+    ));
+    std::fs::create_dir_all(&dir).expect("temp dir");
+    // The directory holds Alice's relay identity. Remove it on every exit,
+    // including a panic, so a failed test does not leave that key in /tmp.
+    let _remove_dir = RemoveDir(dir.clone());
+    let identity_path = dir.join("alice.key");
+    std::fs::write(
+        &identity_path,
+        format!("{}\n", hex::encode(alice.private_key().as_bytes())),
+    )
+    .expect("identity");
+    let roster_path = dir.join("roster.json");
+    std::fs::write(
+        &roster_path,
+        serde_json::to_vec_pretty(&roster).expect("roster json"),
+    )
+    .expect("roster");
+
+    let passphrase = "ceremony-test-passphrase";
+    // `cargo test` passes CARGO_BIN_EXE_* and builds the binary. Clippy does
+    // not always export that variable; the fallback is the binary next to
+    // this test's own executable (`target/<profile>/quorum-dkgd`).
+    let bin = option_env!("CARGO_BIN_EXE_quorum_dkgd")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(quorum_dkgd_beside_tests);
+    let mut child = Command::new(&bin)
+        .env("QUORUM_FROSTD_URL", &url)
+        .env("QUORUM_DKG_ROSTER", &roster_path)
+        .env("QUORUM_DKG_IDENTITY", &identity_path)
+        .env("QUORUM_DKG_OUT", &dir)
+        .env("QUORUM_DKG_PASSPHRASE", passphrase)
+        .env("QUORUM_DKG_CREATE_SESSION", "1")
+        .env("QUORUM_DKG_SEED", "contribute")
+        .env("QUORUM_DKG_TIMEOUT_SECS", "20")
+        .env("QUORUM_DKG_ACK_TIMEOUT_SECS", "2")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("spawn {}: {e}", bin.display()));
+
+    let bob_task = async {
+        let mut client = FrostdClient::new(&url);
+        client
+            .login(&bob, rand::thread_rng())
+            .await
+            .expect("bob login");
+        let session = wait_for_one_session(&client).await;
+        let mut done = ceremony::run(
+            &bob,
+            &roster,
+            &client,
+            session,
+            SeedRole::Await,
+            TIMEOUT,
+            rand::thread_rng(),
+        )
+        .await
+        .expect("bob");
+        done.acknowledge(&client).await.expect("bob acknowledges");
+    };
+    let carol_task = async {
+        let mut client = FrostdClient::new(&url);
+        client
+            .login(&carol, rand::thread_rng())
+            .await
+            .expect("carol login");
+        let session = wait_for_one_session(&client).await;
+        // Address check succeeds. No ready acknowledgement follows.
+        ceremony::run(
+            &carol,
+            &roster,
+            &client,
+            session,
+            SeedRole::Await,
+            TIMEOUT,
+            rand::thread_rng(),
+        )
+        .await
+        .expect("carol");
+    };
+
+    let ((), (), status) = futures_join3(bob_task, carol_task, async {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
+        loop {
+            if tokio::time::Instant::now() > deadline {
+                let _ = child.kill();
+                panic!("quorum-dkgd did not exit");
+            }
+            if let Some(status) = child.try_wait().expect("wait for quorum-dkgd") {
+                return status;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await;
+
+    let mut stdout = String::new();
+    let mut stderr = String::new();
+    child
+        .stdout
+        .take()
+        .expect("stdout")
+        .read_to_string(&mut stdout)
+        .expect("read stdout");
+    child
+        .stderr
+        .take()
+        .expect("stderr")
+        .read_to_string(&mut stderr)
+        .expect("read stderr");
+
+    assert!(
+        status.success(),
+        "opener exited {} — a missing ready acknowledgement is a warning, not a failed ceremony\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        status
+    );
+    assert!(
+        stderr.contains("Carol"),
+        "warning should name the peer who never acknowledged\n{stderr}"
+    );
+    assert!(
+        stderr.contains("This participant's share has been saved. Closing the session anyway."),
+        "warning should say the share was kept and the session closed\n{stderr}"
+    );
+    assert!(
+        !stdout.contains(passphrase) && !stderr.contains(passphrase),
+        "the opener printed its passphrase"
+    );
+
+    let share = share_file(&dir.join("alice"));
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&share)
+            .expect("share metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(mode, 0o600, "sealed share should be owner-read/write only");
+    }
+    let sealed = std::fs::read(&share).expect("read share");
+    assert!(
+        !sealed.is_empty(),
+        "the opener's share file should not be empty"
+    );
+    quorum_signer::open(&sealed, passphrase).expect("the sealed share opens");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `target/<profile>/quorum-dkgd`, given this test lives in `target/<profile>/deps/`.
+/// Deletes a directory when dropped. Used so a test identity does not
+/// outlive the test that generated it.
+struct RemoveDir(std::path::PathBuf);
+
+impl Drop for RemoveDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn quorum_dkgd_beside_tests() -> std::path::PathBuf {
+    let mut path = std::env::current_exe().expect("test executable");
+    path.pop();
+    path.pop();
+    path.push("quorum-dkgd");
+    path
+}
+
+fn share_file(dir: &Path) -> std::path::PathBuf {
+    let mut shares: Vec<_> = std::fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("no share directory {}: {e}", dir.display()))
+        .map(|e| e.expect("read dir").path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("share-") && n.ends_with(".bin"))
+        })
+        .collect();
+    assert_eq!(
+        shares.len(),
+        1,
+        "expected one share in {}, found {shares:?}",
+        dir.display()
+    );
+    shares.pop().expect("one share")
+}
+
+async fn wait_for_one_session(client: &FrostdClient) -> quorum_core::transport::SessionId {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+    loop {
+        let sessions = client.list_sessions().await.expect("list sessions");
+        if sessions.len() == 1 {
+            return sessions[0];
+        }
+        if tokio::time::Instant::now() > deadline {
+            panic!("opener never created a session");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
 }
 
