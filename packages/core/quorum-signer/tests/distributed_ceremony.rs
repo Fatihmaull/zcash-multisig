@@ -24,12 +24,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use axum::extract::State;
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use axum::routing::post;
 use axum::{Json, Router};
 use quorum_core::dkg::VaultIdentifier;
-use quorum_core::transport::{FrostdClient, Identity, PeerPublicKey};
-use quorum_signer::ceremony::{self, CeremonyError, Member, Roster, SeedRole};
+use quorum_core::transport::{FrostdClient, FrostdError, Identity, PeerPublicKey};
+use quorum_signer::ceremony::{self, CeremonyError, CloseRole, Member, Roster, SeedRole};
 use serde_json::{json, Value};
 
 // ── A relay that speaks frostd, trusts nobody, and remembers everything ──
@@ -45,6 +45,10 @@ struct Relay {
     /// reads this: if a round-2 package is in here in the clear, the whole
     /// design is decoration.
     carried: Vec<Vec<u8>>,
+    /// When set, a non-coordinator `receive` is one poll behind. The close
+    /// regression uses this so "the opener finished" and "a peer has read
+    /// its last message" are different events, which is the race.
+    lag_peers: bool,
 }
 
 #[derive(Default)]
@@ -52,6 +56,8 @@ struct Session {
     coordinator: String,
     pubkeys: Vec<String>,
     queues: HashMap<String, Vec<(String, String)>>,
+    /// Messages already taken off `queues` and due on the next lagged receive.
+    held: HashMap<String, Vec<(String, String)>>,
 }
 
 type Shared = Arc<Mutex<Relay>>;
@@ -69,8 +75,25 @@ fn caller(headers: &HeaderMap, relay: &Relay) -> String {
         .unwrap_or_else(|| panic!("a call arrived without a valid token"))
 }
 
+/// frostd's code 3. The real server deletes the session on `close_session`
+/// and answers this to anyone still reading; a relay that ignores close
+/// cannot catch the ceremony race.
+fn session_not_found() -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(json!({ "code": 3, "msg": "session was not found" })),
+    )
+}
+
 async fn spawn_relay() -> (String, Shared) {
-    let state: Shared = Arc::new(Mutex::new(Relay::default()));
+    spawn_relay_with(false).await
+}
+
+async fn spawn_relay_with(lag_peers: bool) -> (String, Shared) {
+    let state: Shared = Arc::new(Mutex::new(Relay {
+        lag_peers,
+        ..Relay::default()
+    }));
 
     let app = Router::new()
         .route(
@@ -116,6 +139,7 @@ async fn spawn_relay() -> (String, Shared) {
                             coordinator: me,
                             pubkeys,
                             queues: HashMap::new(),
+                            held: HashMap::new(),
                         },
                     );
                     Json(json!({ "session_id": id }))
@@ -144,6 +168,9 @@ async fn spawn_relay() -> (String, Shared) {
                     let me = caller(&headers, &relay);
                     let id = body["session_id"].as_str().expect("session").to_string();
                     let msg = body["msg"].as_str().expect("msg").to_string();
+                    if !relay.sessions.contains_key(&id) {
+                        return Err(session_not_found());
+                    }
                     relay.carried.push(hex::decode(&msg).expect("hex payload"));
 
                     let recipients: Vec<String> = body["recipients"]
@@ -168,7 +195,7 @@ async fn spawn_relay() -> (String, Shared) {
                             .or_default()
                             .push((me.clone(), msg.clone()));
                     }
-                    Json(json!(null))
+                    Ok(Json(json!(null)))
                 },
             ),
         )
@@ -179,19 +206,46 @@ async fn spawn_relay() -> (String, Shared) {
                     let mut relay = s.lock().unwrap();
                     let me = caller(&headers, &relay);
                     let id = body["session_id"].as_str().expect("session").to_string();
-                    let session = relay.sessions.get_mut(&id).expect("session exists");
-                    let msgs: Vec<Value> = session
-                        .queues
-                        .entry(me)
-                        .or_default()
-                        .drain(..)
+                    let lag = relay.lag_peers;
+                    let Some(session) = relay.sessions.get_mut(&id) else {
+                        return Err(session_not_found());
+                    };
+                    // One poll behind the coordinator: return what was held
+                    // last time, and hold what is queued now. An opener who
+                    // closes the moment their own round completes therefore
+                    // closes while this participant's last message is still
+                    // unread — unless they waited for a ready acknowledgement,
+                    // which this participant only sends after reading it.
+                    let queued = if lag && session.coordinator != me {
+                        let ready = session.held.remove(&me).unwrap_or_default();
+                        let incoming = session.queues.remove(&me).unwrap_or_default();
+                        session.held.insert(me.clone(), incoming);
+                        ready
+                    } else {
+                        session.queues.remove(&me).unwrap_or_default()
+                    };
+                    let msgs: Vec<Value> = queued
+                        .into_iter()
                         .map(|(sender, msg)| json!({ "sender": sender, "msg": msg }))
                         .collect();
-                    Json(json!({ "msgs": msgs }))
+                    Ok(Json(json!({ "msgs": msgs })))
                 },
             ),
         )
-        .route("/close_session", post(|| async { Json(json!(null)) }))
+        .route(
+            "/close_session",
+            post(
+                |State(s): State<Shared>, headers: HeaderMap, Json(body): Json<Value>| async move {
+                    let mut relay = s.lock().unwrap();
+                    let _me = caller(&headers, &relay);
+                    let id = body["session_id"].as_str().unwrap_or("").to_string();
+                    if relay.sessions.remove(&id).is_none() {
+                        return Err(session_not_found());
+                    }
+                    Ok(Json(json!(null)))
+                },
+            ),
+        )
         .route("/logout", post(|| async { Json(json!(null)) }))
         .with_state(state.clone());
 
@@ -272,6 +326,7 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
             &clients[0],
             session,
             SeedRole::Contribute,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -281,6 +336,7 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
             &clients[1],
             session,
             SeedRole::Await,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -290,6 +346,7 @@ async fn three_participants_each_end_up_with_exactly_one_share() {
             &clients[2],
             session,
             SeedRole::Await,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -348,6 +405,7 @@ async fn the_relay_carries_only_ciphertext() {
             &clients[0],
             session,
             SeedRole::Contribute,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -357,6 +415,7 @@ async fn the_relay_carries_only_ciphertext() {
             &clients[1],
             session,
             SeedRole::Await,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -366,6 +425,7 @@ async fn the_relay_carries_only_ciphertext() {
             &clients[2],
             session,
             SeedRole::Await,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -422,6 +482,7 @@ async fn an_equivocated_seed_aborts_before_anything_is_written() {
             &clients[0],
             session,
             SeedRole::ContributeInconsistently,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -431,6 +492,7 @@ async fn an_equivocated_seed_aborts_before_anything_is_written() {
             &clients[1],
             session,
             SeedRole::Await,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -440,6 +502,7 @@ async fn an_equivocated_seed_aborts_before_anything_is_written() {
             &clients[2],
             session,
             SeedRole::Await,
+            CloseRole::Peer,
             TIMEOUT,
             rand::thread_rng(),
         ),
@@ -508,6 +571,7 @@ async fn a_sender_outside_the_roster_aborts_the_ceremony() {
         &clients[0],
         session,
         SeedRole::Contribute,
+        CloseRole::Peer,
         Duration::from_secs(3),
         rand::thread_rng(),
     )
@@ -519,6 +583,87 @@ async fn a_sender_outside_the_roster_aborts_the_ceremony() {
         }
         Err(other) => panic!("aborted for the wrong reason: {other}"),
         Ok(_) => panic!("a ceremony completed with an unknown participant in the session"),
+    }
+}
+
+/// Closing the session is something the opener does, and doing it as soon
+/// as *they* hold every confirmation strands a slower peer.
+///
+/// The peers here are one poll behind the opener, which is the window that
+/// failed 7 of 10 runs of `three-party-ceremony.sh` against a real frostd:
+/// the opener closed, frostd dropped the session, and the peer's next read
+/// was `session was not found` (code 3). [`CloseRole::Opener`] must not
+/// return until those peers have sent their ready acknowledgement, which
+/// they send only after reading their own last confirmation — so the close
+/// below happens too late to hit them. A `run` that ignored `CloseRole`
+/// would close inside that window and Bob or Carol would fail.
+#[tokio::test]
+async fn the_opener_closes_only_after_every_peer_has_finished() {
+    let (url, _relay) = spawn_relay_with(true).await;
+    let alice = Identity::generate().expect("keypair");
+    let bob = Identity::generate().expect("keypair");
+    let carol = Identity::generate().expect("keypair");
+    let roster = roster_of(&[("Alice", &alice), ("Bob", &bob), ("Carol", &carol)]);
+    let (clients, session) = session_for(&url, &[&alice, &bob, &carol]).await;
+
+    let outcomes = futures_join3(
+        async {
+            let outcome = ceremony::run(
+                &alice,
+                &roster,
+                &clients[0],
+                session,
+                SeedRole::Contribute,
+                CloseRole::Opener,
+                TIMEOUT,
+                rand::thread_rng(),
+            )
+            .await;
+            clients[0]
+                .close_session(session)
+                .await
+                .expect("the opener closes once run has returned");
+            outcome
+        },
+        ceremony::run(
+            &bob,
+            &roster,
+            &clients[1],
+            session,
+            SeedRole::Await,
+            CloseRole::Peer,
+            TIMEOUT,
+            rand::thread_rng(),
+        ),
+        ceremony::run(
+            &carol,
+            &roster,
+            &clients[2],
+            session,
+            SeedRole::Await,
+            CloseRole::Peer,
+            TIMEOUT,
+            rand::thread_rng(),
+        ),
+    )
+    .await;
+
+    let (a, b, c) = (
+        outcomes.0.expect("alice"),
+        outcomes.1.expect("bob"),
+        outcomes.2.expect("carol"),
+    );
+    assert_eq!(a.address, b.address);
+    assert_eq!(b.address, c.address);
+
+    // The close took effect. A later read is the same rejection the race
+    // produced, which is what a peer still inside `run` would have hit.
+    match clients[1].receive(session, false).await {
+        Err(FrostdError::Rejected { code: 3, message }) => {
+            assert!(message.contains("session was not found"), "{message}");
+        }
+        Err(other) => panic!("expected session-not-found after close, got {other}"),
+        Ok(_) => panic!("receive succeeded on a session the opener had closed"),
     }
 }
 

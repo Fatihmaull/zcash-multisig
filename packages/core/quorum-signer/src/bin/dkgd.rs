@@ -204,12 +204,22 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("  running the ceremony — three rounds and a confirmation");
+    // The opener must not return from `run` — and so must not reach
+    // `close_session` below — until every peer has acknowledged that its
+    // own confirmation round is done. Closing on our confirmations alone
+    // drops the session under a peer that is still one poll away.
+    let close_role = if creates_session {
+        ceremony::CloseRole::Opener
+    } else {
+        ceremony::CloseRole::Peer
+    };
     let outcome = ceremony::run(
         &identity,
         &roster,
         &client,
         session,
         seed_role,
+        close_role,
         timeout,
         rand::thread_rng(),
     )
@@ -311,6 +321,9 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if creates_session {
+        // Safe only because `CloseRole::Opener` waited for every peer's
+        // ready acknowledgement before `run` returned. Each peer's last
+        // relay call was sending that acknowledgement.
         let _ = client.close_session(session).await;
     }
     let _ = client.logout().await;

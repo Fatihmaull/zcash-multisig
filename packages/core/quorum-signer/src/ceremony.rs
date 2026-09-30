@@ -50,9 +50,21 @@
 //! The single-process fixture can assert this trivially; distributed, it is
 //! the only thing standing between a disagreement and a stranded vault.
 //!
+//! # Closing the relay session
+//!
+//! The participant who opened the frostd session is the one who closes it,
+//! and closing deletes the session for everyone. "I hold every confirmation"
+//! does not mean the others do: a peer can still be one poll (250 ms) away
+//! from reading the confirmation we already counted. Closing in that window
+//! makes frostd answer `session was not found` and that peer writes no share.
+//! So a peer's last act on the relay is a ready acknowledgement, sent only
+//! after its own confirmation round is done, and the opener's [`run`] does
+//! not return — the point at which the caller may close — until every peer
+//! has sent one.
+//!
 //! See `docs/03-architecture.md` §2 and constraint C5.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use frost_core::keys::dkg::{round1, round2};
@@ -247,6 +259,22 @@ fn parse_identifier(hex_str: &str) -> Result<VaultIdentifier, String> {
 
 /// Whether this participant generates the vault seed or waits for it.
 ///
+/// Who is allowed to close the frostd session, which is an operational
+/// fact about the relay and not an authority over the vault.
+///
+/// Exactly one participant opens the session and must be the one to close
+/// it. See the module docs on why that close waits for every peer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CloseRole {
+    /// Opened the session. [`run`] returns only once every peer has
+    /// acknowledged that it is finished with the relay; the caller then
+    /// closes.
+    Opener,
+    /// Did not open the session. After our own confirmation round succeeds,
+    /// tell the others we are finished and return. Do not close.
+    Peer,
+}
+
 /// Exactly one participant in a ceremony contributes; the rest wait. Two
 /// contributors is an error rather than a tie-break, because silently
 /// picking one would mean silently picking an address.
@@ -301,6 +329,11 @@ enum Envelope {
         group_key: String,
         address: String,
     },
+    /// "I have every confirmation and I will not touch the relay again."
+    ///
+    /// An empty struct rather than a unit variant because this enum is
+    /// internally tagged, and serde cannot represent a tagged unit variant.
+    Ready {},
 }
 
 impl Envelope {
@@ -309,6 +342,7 @@ impl Envelope {
             Envelope::Round1 { .. } => "round 1",
             Envelope::Round2 { .. } => "round 2",
             Envelope::Confirm { .. } => "confirmation",
+            Envelope::Ready {} => "ready",
         }
     }
 
@@ -316,9 +350,11 @@ impl Envelope {
     /// collecting `phase`.
     ///
     /// Only *forward* skew is legitimate. A peer cannot send round 2 before
-    /// it has our round 1, nor a confirmation before it has our round 2, so
-    /// anything from an earlier phase than the one we are in is either a
-    /// replay or a peer that is not running this protocol.
+    /// it has our round 1, nor a confirmation before it has our round 2, nor
+    /// a ready acknowledgement before it has our confirmation — that is sent
+    /// only after their confirmation round, which needs ours. Anything from
+    /// an earlier phase is either a replay or a peer that is not running
+    /// this protocol.
     fn may_arrive_during(&self, phase: &str) -> bool {
         matches!(
             (phase, self),
@@ -327,7 +363,11 @@ impl Envelope {
                     "round 2",
                     Envelope::Round2 { .. } | Envelope::Confirm { .. }
                 )
-                | ("confirmation", Envelope::Confirm { .. })
+                | (
+                    "confirmation",
+                    Envelope::Confirm { .. } | Envelope::Ready {}
+                )
+                | ("ready", Envelope::Ready {})
         )
     }
 }
@@ -344,6 +384,7 @@ struct Mailbox {
     round1: BTreeMap<VaultIdentifier, round1::Package<Ciphersuite>>,
     round2: BTreeMap<VaultIdentifier, round2::Package<Ciphersuite>>,
     confirm: BTreeMap<VaultIdentifier, (String, String)>,
+    ready: BTreeSet<VaultIdentifier>,
     seed: Option<VaultSeed>,
 }
 
@@ -352,12 +393,18 @@ struct Mailbox {
 /// `session` must already exist on the relay — creating and joining it is
 /// the caller's business, because who opens the session is a deployment
 /// question and carries no authority over the vault either way.
+///
+/// `close_role` is that deployment question. [`CloseRole::Opener`] does not
+/// return until every peer has finished reading, so the caller can close
+/// the session at that point without pulling it out from under them.
+#[allow(clippy::too_many_arguments)]
 pub async fn run<R: RngCore + CryptoRng>(
     identity: &Identity,
     roster: &Roster,
     client: &FrostdClient,
     session: SessionId,
     seed_role: SeedRole,
+    close_role: CloseRole,
     timeout: Duration,
     mut rng: R,
 ) -> Result<Outcome, CeremonyError> {
@@ -502,6 +549,34 @@ pub async fn run<R: RngCore + CryptoRng>(
         }
     }
 
+    // The confirmation round being done *here* is not the same fact as it
+    // being done everywhere. A peer still polling would lose the session if
+    // the opener closed now. Peers say they are finished; the opener waits
+    // until it has heard that from each of them, and only then returns to
+    // the caller who closes.
+    match close_role {
+        CloseRole::Peer => {
+            let ready = Envelope::Ready {};
+            for peer in &parsed.peers {
+                send_sealed(client, &mut cipher, session, peer, &ready).await?;
+            }
+        }
+        CloseRole::Opener => {
+            collect(
+                client,
+                &mut cipher,
+                session,
+                &parsed,
+                &mut mailbox,
+                timeout,
+                "ready",
+                |m| m.ready.len(),
+                |m| m.ready.iter().copied().collect(),
+            )
+            .await?;
+        }
+    }
+
     Ok(Outcome {
         key_package: finished.key_package,
         public_key_package: finished.public_key_package,
@@ -622,6 +697,9 @@ async fn collect(
                     mailbox
                         .confirm
                         .insert(peer.identifier, (group_key, address));
+                }
+                Envelope::Ready {} => {
+                    mailbox.ready.insert(peer.identifier);
                 }
             }
         }
