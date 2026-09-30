@@ -77,6 +77,34 @@ Run the real thing:
 ./scripts/three-party-ceremony.sh ./secrets/ceremony
 ```
 
+> ### 🔴 The vault you film here must be the vault you spend in beat 4
+>
+> A ceremony produces a vault with **no funds**. Beat 4 cannot spend from it, because a
+> signer refuses any transaction that does not spend from its own vault — correctly.
+>
+> So filming a ceremony that creates vault X and then a spend from vault Y puts two
+> different vaults in one film, and any narration that glides over the join implies
+> they are the same one. That is the same family of error as the 🔴 block at the top.
+>
+> **The fix is scheduling, not narration.** Record in this order:
+>
+> 1. film beat 3 — the ceremony creates the vault
+> 2. **fund that vault from the faucet** and wait for confirmation
+> 3. film beat 4 from the same vault, later, in a second session
+>
+> The film is edited; the gap does not show. The result is **one vault from ceremony to
+> confirmation**, which is stronger than what this script originally implied and removes
+> the seam rather than narrating around it.
+>
+> Consequence: **the txid in beat 4 is a new one**, produced on the recording days. The
+> 25 Sep txid stays in beat 2 as the record of the first distributed-ceremony spend.
+>
+> **Fallback if the faucet is unreliable on the day:** spend from the existing ceremony
+> vault, which still holds funds, and add one sentence — *"this vault was created by the
+> same script last week, and funded."* Honest, and it costs one line. Do not instead
+> skip the broadcast: beat 4 is the proof beat, and a spend without a confirmation is
+> the one thing in this video that cannot be replaced.
+
 Three terminals side by side. Each prints one share path and the same vault address:
 
 ```
@@ -106,10 +134,17 @@ unlabelled, cut it.**
 Proposer creates an approval request for a shielded Ironwood spend. Two of three approve. The
 transaction confirms on testnet.
 
+**This must be the vault whose ceremony you filmed in beat 3**, funded between the two
+sessions. See the 🔴 block there.
+
 ```
-txid   259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61
-block  4,390,493
+txid   ⟦SLOT — produced on the recording day, from the beat 3 vault⟧
+block  ⟦SLOT⟧
 ```
+
+⟦Read the txid off the terminal and put that on screen. **Do not reuse a txid from
+another vault here** — the 25 Sep and 27 Sep transactions belong in beat 2, where they
+are labelled with which vault produced them.⟧
 
 Say "testnet" out loud, and put it on screen.
 

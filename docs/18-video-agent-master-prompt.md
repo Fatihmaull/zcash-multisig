@@ -55,6 +55,28 @@ claim.
 **Never put the two txids on screen as interchangeable evidence.** If both appear, each
 carries which vault it belongs to.
 
+### 🔴 You will never be sent a key share. Do not ask again.
+
+This has already been asked once, in good faith, by someone planning beat 4.
+
+**The answer is no, and the reason is the product.** Quorum's claim is that a key share
+never leaves the machine that made it. A video of that claim, made by emailing key
+shares to the person filming it, refutes the thing it is filming. It is also forbidden
+outright: *no key material leaves a participant's machine, for any network, under any
+framing.*
+
+**You do not need them.** The demo script assigns beat 4 as *Dev B directs; Dev A
+operates the terminals.* Whoever holds a share runs the command; you record the screen.
+If that is impossible for your setup, the answer is **Dev A records beat 4 and hands
+you the footage** — never that a share travels.
+
+The same applies to the passphrase, the sealed `share-*.bin` files, the vault seed, and
+any `secrets/` directory. If a plan requires one of these to move, the plan is wrong,
+not the rule.
+
+**A viewing key is different and may be sent** — see the numbers section. It reveals
+history and grants no authority. That distinction is the product; do not let it blur.
+
 ### The second thing, and it is in the same family
 
 **In any scripted run, two of the three signers auto-approve.**
@@ -270,9 +292,14 @@ Every figure below is measured and verifiable. **Rounding one is the fastest way
 make this look like every other submission**, and a fabricated one is the fastest way
 to lose the track.
 
+**One figure here is deliberately not final.** The transaction in beat 4 is produced on
+the recording days, from the vault whose ceremony you filmed in beat 3 — it does not
+exist yet and cannot. Everything else below is fixed forever.
+
 | Figure | What it is |
 |---|---|
-| `259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61` | **The lead txid.** 2-of-3 threshold-signed shielded Ironwood spend, from the vault whose shares were never co-resident |
+| ⟦**SLOT** — beat 4 txid and block⟧ | Produced on the recording day. Read it off the terminal. **Do not substitute another vault's txid here** |
+| `259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61` | **The lead txid for beat 2.** 2-of-3 threshold-signed shielded Ironwood spend, from the vault whose shares were never co-resident |
 | **4,390,493** | The block it was mined in, 25 Sep 2026 |
 | `bcaba4235fc9b63b93ff706c099a61a7abee916bd697a614de45d98ff8489454` | Same vault, 27 Sep — the run where quorum-to-chain was two commands |
 | **4,400,816** | That block |
@@ -340,7 +367,8 @@ Three of these cost minutes each and none is interesting to film. All are in
 
 | | |
 |---|---|
-| **Fund the vault an hour early** | The faucet is the long pole, not the code. Rate-limited, proof-of-work gated, occasionally down |
+| **The beat 3 vault must be funded before beat 4 is filmed** | A ceremony produces a vault with no funds, and a signer refuses a transaction that does not spend from its own vault. Film the ceremony, fund it, film the spend in a second session — the film is edited and the gap does not show. See the 🔴 block in beat 3 of the script |
+| **Fund an hour early** | The faucet is the long pole, not the code. Rate-limited, proof-of-work gated, occasionally down |
 | **Check the PCZT belongs to the vault** | `cargo run -p quorum-coordinator --example which_vault -- <pczt>`. A demo once ran to *APPROVED, 2 signatures* against another vault's transaction — real quorum, valid signature, authorizing nothing |
 | **Prove off camera** | Slow, and it needs no authority |
 | **Build `frostd` and `zcash-devtool` first** | Neither is vendored. Both are other people's tools, deliberately |
@@ -382,6 +410,8 @@ Three of these cost minutes each and none is interesting to film. All are in
 | 18 | Nothing implies mainnet, an audit, or a trustless system | | |
 | 19 | The web ceremony wizard is never presented as the ceremony | | |
 | 20 | Anything simulated is labelled on screen while it is on screen | | |
+| 21 | Beat 3's vault and beat 4's vault are the same vault | name it | |
+| 22 | No key share, passphrase, seed or `secrets/` file was requested, received or stored | | |
 
 ---
 
