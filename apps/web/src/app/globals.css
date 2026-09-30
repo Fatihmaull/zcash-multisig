@@ -160,7 +160,14 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* App pages: colour only. No transform, shadow, or opacity easing. */
+.transition-palette {
+  transition-property: background-color, color;
+  transition-duration: 0.25s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Ambient Background Patterns ────────────────────────────── */
@@ -183,13 +190,12 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   box-shadow: var(--card-shadow);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-panel-hover:hover {
   border-color: var(--zcash-gold-border);
   box-shadow: var(--card-hover-shadow);
-  transform: translateY(-1px);
 }
 
 /* ── Badges ─────────────────────────────────────────────────── */

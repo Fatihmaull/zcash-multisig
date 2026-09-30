@@ -115,7 +115,7 @@ export default async function ApprovalsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
@@ -157,7 +157,7 @@ export default async function ApprovalsPage() {
             return (
               <div 
                 key={req.id}
-                className="p-5 sm:p-6 hover:bg-[var(--bg-surface-hover)] transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-5 sm:p-6 hover:bg-[var(--bg-surface-hover)] transition-palette flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-2 max-w-xl">
                   <div className="flex flex-wrap items-center gap-2">

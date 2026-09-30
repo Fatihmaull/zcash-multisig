@@ -25,14 +25,14 @@ interface KeyCeremonyViewProps {
 
 export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
   const [step, setStep] = useState<CeremonyStep>(1);
-  const [vaultName, setVaultName] = useState("Dev Treasury");
+  const [vaultName, setVaultName] = useState("");
   const [threshold, setThreshold] = useState(2);
   const [isSaving, setIsSaving] = useState(false);
 
   const [participants, setParticipants] = useState<Participant[]>([
-    { name: "Alice", role: "Lead Treasurer" },
-    { name: "Bob", role: "Finance Director" },
-    { name: "Carol", role: "Auditor (Standby)" },
+    { name: "Alice", role: "" },
+    { name: "Bob", role: "" },
+    { name: "Carol", role: "" },
   ]);
 
   // If vaultId is provided, load existing vault from DB
@@ -50,7 +50,7 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
             setParticipants(
               v.participants.map((p: { label: string }) => ({
                 name: p.label.split(" (")[0] || p.label,
-                role: p.label.includes("(") ? p.label.split("(")[1].replace(")", "") : "Key Holder",
+                role: p.label.includes("(") ? p.label.split("(")[1].replace(")", "") : "",
               }))
             );
           }
@@ -61,10 +61,9 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
 
   const handleAddParticipant = () => {
     if (participants.length >= 5) return;
-    const newIndex = participants.length + 1;
     setParticipants([
       ...participants,
-      { name: `Signer ${newIndex}`, role: "Key Holder" },
+      { name: "", role: "" },
     ]);
   };
 
@@ -125,7 +124,7 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Wizard Step Navigation */}
       <div className="p-4 sm:p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs">
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -199,7 +198,7 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
                   value={vaultName}
                   onChange={(e) => setVaultName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--zcash-gold)]"
-                  placeholder="e.g. Foundation Treasury"
+                  placeholder="Vault name"
                 />
               </div>
 
@@ -248,9 +247,11 @@ export function KeyCeremonyView({ vaultId }: KeyCeremonyViewProps = {}) {
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3">
-                    <span className="text-xs text-[var(--text-secondary)] px-2.5 py-1 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)]">
-                      {p.role}
-                    </span>
+                    {p.role ? (
+                      <span className="text-xs text-[var(--text-secondary)] px-2.5 py-1 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)]">
+                        {p.role}
+                      </span>
+                    ) : null}
                     {participants.length > 2 && (
                       <button
                         onClick={() => handleRemoveParticipant(idx)}

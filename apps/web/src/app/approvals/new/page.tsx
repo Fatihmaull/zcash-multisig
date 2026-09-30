@@ -43,11 +43,11 @@ export default function NewProposalPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <Link
           href="/approvals"
-          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition mb-3 cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-palette mb-3 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Approvals
         </Link>
@@ -97,7 +97,6 @@ export default function NewProposalPage() {
               value={amountZec}
               onChange={(e) => setAmountZec(e.target.value)}
               required
-              placeholder="0.05000000"
               className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:border-[var(--zcash-gold)]"
             />
             <span className="absolute right-3.5 top-2.5 text-xs font-bold text-[var(--zcash-gold)]">

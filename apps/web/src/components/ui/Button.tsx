@@ -53,7 +53,7 @@ export function buttonVariants({
 }) {
   // Base classes: strictly boxy (rounded-none), sharp crisp borders, modern typography
   const base =
-    "inline-flex items-center justify-center font-heading tracking-tight select-none cursor-pointer rounded-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--zcash-gold)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none transition-[background-color,color,border-color] duration-250 ease";
+    "inline-flex items-center justify-center font-heading tracking-tight select-none cursor-pointer rounded-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--zcash-gold)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none transition-palette";
 
   const variants: Record<ButtonVariant, string> = {
     // Primary: Solid cypherpunk Zcash gold button with white text
@@ -62,15 +62,13 @@ export function buttonVariants({
     
     // Outline: Adapts to Light (dark text & slate border) and Dark (white text & translucent white border)
     outline:
-      "border border-slate-300 dark:border-white/20 bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 hover:border-slate-400 dark:hover:border-white/40 text-slate-900 dark:text-white font-medium",
-    
-    // Secondary: Filled card surface adapting to light/dark backgrounds
+      "border border-[var(--border-strong)] bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium",
+
     secondary:
-      "border border-slate-200 dark:border-[var(--border-default)] bg-slate-100 dark:bg-[var(--bg-secondary)] hover:bg-slate-200/80 dark:hover:bg-[var(--bg-surface-hover)] hover:border-slate-300 dark:hover:border-[var(--border-strong)] text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white font-medium",
-    
-    // Ghost: Transparent borderless button adapting to light/dark hover
+      "border border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] font-medium",
+
     ghost:
-      "border border-transparent bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-medium",
+      "border border-transparent bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium",
     
     // Danger: Red alert action adapting to light/dark
     danger:

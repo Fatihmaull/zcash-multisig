@@ -113,15 +113,14 @@ export function Sidebar() {
         ? `/vaults/${stats.activeVault.id}/ceremony`
         : "/vaults",
       icon: KeyRound,
-      badge: "Demo",
-      badgeVariant: "default" as const,
+      badge: null,
     },
   ];
 
   const renderNavContent = () => (
-    <div className="flex flex-col h-full bg-[var(--bg-card)] rounded-xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.08),0_4px_14px_-2px_rgba(0,0,0,0.04)] dark:shadow-[0_20px_45px_-10px_rgba(0,0,0,0.65),0_0_15px_rgba(0,0,0,0.3)] border-0 text-[var(--text-primary)] transition-all duration-200 overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--bg-card)] rounded-xl border-0 text-[var(--text-primary)] overflow-hidden" style={{ boxShadow: "var(--card-shadow)" }}>
       {/* Brand Header */}
-      <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)]/40 flex items-center justify-between">
+      <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between">
         <button 
           onClick={() => {
             closeMobileMenu();
@@ -135,7 +134,7 @@ export function Sidebar() {
         {/* Mobile Close Button */}
         <button
           onClick={closeMobileMenu}
-          className="lg:hidden p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)]/60 transition"
+          className="lg:hidden p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)]/60 transition-palette"
           aria-label="Close menu"
         >
           <X className="w-5 h-5" />
@@ -143,7 +142,7 @@ export function Sidebar() {
       </div>
 
       {/* Network Indicator */}
-      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)]/40 bg-[var(--bg-secondary)]/50 text-xs">
+      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 text-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span
@@ -175,7 +174,7 @@ export function Sidebar() {
                   closeMobileMenu();
                   triggerSplashNavigation("/");
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-palette cursor-pointer ${
                   isActive
                     ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] font-semibold shadow-xs"
                     : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)]/50"
@@ -194,7 +193,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               onClick={closeMobileMenu}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-palette ${
                 isActive
                   ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] font-semibold shadow-xs"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)]/50"
@@ -206,12 +205,12 @@ export function Sidebar() {
               </div>
               {item.badge && (
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-md font-medium tracking-tight font-mono transition-colors ${
-                    item.badgeVariant === "approval" && item.hasPendingAlert
-                      ? "bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]"
-                      : isActive
-                        ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] border border-[var(--zcash-gold-border)]"
-                        : "bg-[var(--border-subtle)]/70 text-[var(--text-muted)] border border-transparent"
+                  className={`text-[10px] px-2 py-0.5 rounded-md font-medium tracking-tight font-mono transition-palette ${
+                    item.badgeVariant === "vault"
+                      ? "bg-[var(--info-bg)] text-[var(--info)] border border-[var(--info-border)]"
+                      : item.badgeVariant === "approval" && item.hasPendingAlert
+                        ? "bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]"
+                        : "bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-subtle)]"
                   }`}
                 >
                   {item.badge}
@@ -229,10 +228,10 @@ export function Sidebar() {
         <Link
           href={stats?.activeVault?.id ? `/vaults/${stats.activeVault.id}` : "/vaults"}
           onClick={closeMobileMenu}
-          className="group block p-3 rounded-lg border border-[var(--border-subtle)]/50 bg-[var(--bg-secondary)]/50 hover:bg-[var(--bg-secondary)] hover:border-[var(--zcash-gold-border)]/50 transition-all space-y-2"
+          className="group block p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-secondary)]/50 hover:bg-[var(--bg-secondary)] hover:border-[var(--zcash-gold-border)] transition-palette space-y-2"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-[var(--zcash-gold)] transition-colors truncate max-w-[130px]">
+            <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-[var(--zcash-gold)] transition-palette truncate max-w-[130px]">
               {isLoadingStats ? (
                 <span className="inline-block w-20 h-3.5 bg-[var(--border-subtle)] rounded"></span>
               ) : (
@@ -264,13 +263,13 @@ export function Sidebar() {
       </div>
 
       {/* Zero Custody Proof Footer */}
-      <div className="p-4 border-t border-[var(--border-subtle)]/40 bg-[var(--bg-secondary)]/40 space-y-1.5">
+      <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]/40 space-y-1.5">
         <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--success-text)" }}>
           <Lock className="w-3.5 h-3.5 shrink-0" />
           <span>Keys Held By You</span>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-          Private key shares never leave your device. Zero custody cryptographic proof.
+          Private key shares never leave your device.
         </p>
       </div>
     </div>
@@ -288,7 +287,7 @@ export function Sidebar() {
         <div className="fixed inset-0 z-50 lg:hidden">
           <div 
             onClick={closeMobileMenu}
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
           />
           <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] p-3 z-10">
             {renderNavContent()}

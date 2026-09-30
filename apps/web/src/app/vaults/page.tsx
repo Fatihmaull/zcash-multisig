@@ -126,7 +126,7 @@ interface SbVaultRecord {
   const pendingDkgCount = vaults.filter((v) => v.status === "PENDING_DKG").length;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ interface SbVaultRecord {
           return (
             <div 
               key={vault.id}
-              className={`p-6 rounded-2xl border bg-[var(--bg-card)] shadow-xs transition flex flex-col justify-between space-y-4 ${
+              className={`p-6 rounded-2xl border bg-[var(--bg-card)] shadow-xs transition-palette flex flex-col justify-between space-y-4 ${
                 isPendingDkg
                   ? "border-[var(--warning-border)]"
                   : "border-[var(--border-default)] hover:border-[var(--zcash-gold-border)]"
@@ -324,7 +324,7 @@ interface SbVaultRecord {
                       variant="ghost"
                       size="sm"
                       href={`/vaults/${vault.id}/ceremony`}
-                      icon={<KeyRound className="w-3.5 h-3.5 text-[var(--zcash-gold)]" />}
+                      icon={<KeyRound className="w-3.5 h-3.5" />}
                     >
                       Simulate Ceremony
                     </Button>
@@ -347,7 +347,7 @@ interface SbVaultRecord {
         {/* Create New Vault Placeholder Card */}
         <Link
           href="/vaults/new"
-          className="p-8 rounded-2xl border border-dashed border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] bg-[var(--bg-secondary)] hover:bg-[var(--zcash-gold-dim)] transition flex flex-col items-center justify-center text-center group min-h-[260px] space-y-3 cursor-pointer"
+          className="p-8 rounded-2xl border border-dashed border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] bg-[var(--bg-secondary)] hover:bg-[var(--zcash-gold-dim)] transition-palette flex flex-col items-center justify-center text-center group min-h-[260px] space-y-3 cursor-pointer"
         >
           <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] group-hover:bg-[var(--zcash-gold-dim)] group-hover:border-[var(--zcash-gold-border)] border border-[var(--border-default)] flex items-center justify-center text-[var(--text-muted)] group-hover:text-[var(--zcash-gold)] shadow-xs">
             <Plus className="w-6 h-6" />

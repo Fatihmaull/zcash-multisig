@@ -93,7 +93,7 @@ export function Header() {
 
     if (segments[0] === "approvals") {
       if (segments.length === 1) {
-        return { section: "Approvals", sectionHref: "/approvals", page: null, badge: "MPC Proposals" };
+        return { section: "Approvals", sectionHref: "/approvals", page: null, badge: "Proposals" };
       }
       if (segments[1] === "new") {
         return { section: "Approvals", sectionHref: "/approvals", page: "New Proposal" };
@@ -110,15 +110,15 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-20 pt-3 px-3 sm:px-4 lg:pl-0 lg:pr-3 transition-colors duration-200">
-        <div className="h-14 sm:h-15 bg-[var(--bg-card)]/95 backdrop-blur-xl rounded-xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.08),0_4px_14px_-2px_rgba(0,0,0,0.04)] dark:shadow-[0_20px_45px_-10px_rgba(0,0,0,0.65),0_0_15px_rgba(0,0,0,0.3)] border border-[var(--border-subtle)]/60 px-3.5 sm:px-4 flex items-center justify-between gap-3 transition-all">
+      <header className="sticky top-0 z-20 pt-3 px-3 sm:px-4 lg:pl-0 lg:pr-3">
+        <div className="h-14 sm:h-15 bg-[var(--bg-card)]/95 backdrop-blur-xl rounded-xl border border-[var(--border-default)] px-3.5 sm:px-4 flex items-center justify-between gap-3" style={{ boxShadow: "var(--card-shadow)" }}>
           {/* Left: Mobile Toggle + Breadcrumb Navigation */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile Drawer Button */}
             <button
               type="button"
               onClick={toggleMobileMenu}
-              className="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/60 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer shrink-0"
+              className="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/60 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-palette cursor-pointer shrink-0"
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
@@ -135,7 +135,7 @@ export function Header() {
                     router.push(breadcrumb.sectionHref);
                   }
                 }}
-                className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/60 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer shrink-0"
+                className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/60 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-palette cursor-pointer shrink-0"
                 title="Kembali"
                 aria-label="Kembali"
               >
@@ -149,7 +149,7 @@ export function Header() {
               onClick={() => triggerSplashNavigation("/")}
               title="Ke Landing Page"
               aria-label="Ke Landing Page"
-              className="h-9 w-9 hidden sm:flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/40 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)]/70 hover:border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--zcash-gold)] transition cursor-pointer shrink-0"
+              className="h-9 w-9 hidden sm:flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/40 hover:bg-[var(--bg-secondary)] border border-[var(--border-default)] hover:border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--zcash-gold)] transition-palette cursor-pointer shrink-0"
             >
               <Home className="w-4 h-4" />
             </button>
@@ -168,7 +168,7 @@ export function Header() {
                 <>
                   <Link
                     href={breadcrumb.sectionHref}
-                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition shrink-0"
+                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-palette shrink-0"
                   >
                     {breadcrumb.section}
                   </Link>
@@ -183,7 +183,7 @@ export function Header() {
                     {breadcrumb.section}
                   </span>
                   {breadcrumb.badge && (
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-[var(--zcash-gold)] bg-[var(--zcash-gold-dim)]/40 border border-[var(--zcash-gold-border)]/40">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-[var(--zcash-gold)] bg-[var(--zcash-gold-dim)] border border-[var(--zcash-gold-border)]">
                       <Shield className="w-2.5 h-2.5" />
                       {breadcrumb.badge}
                     </span>
@@ -222,7 +222,7 @@ export function Header() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/70 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition shadow-xs cursor-pointer shrink-0"
+              className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--bg-secondary)]/70 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-palette cursor-pointer shrink-0"
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
@@ -234,7 +234,7 @@ export function Header() {
             </button>
 
             {/* Status Pills */}
-            <div className="hidden xl:flex items-center gap-2 pl-2 border-l border-[var(--border-subtle)]/70">
+            <div className="hidden xl:flex items-center gap-2 pl-2 border-l border-[var(--border-default)]">
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border"
                 style={{
@@ -245,9 +245,6 @@ export function Header() {
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Non-Custodial</span>
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg-secondary)]/80 border border-[var(--border-subtle)]/70">
-                Demo
               </span>
             </div>
           </div>

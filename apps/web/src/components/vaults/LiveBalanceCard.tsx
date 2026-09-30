@@ -6,11 +6,14 @@ import type { OnchainWalletBalance } from "@/lib/onchain-balance";
 
 interface LiveBalanceCardProps {
   initialData?: OnchainWalletBalance | null;
+  /** When set, a refresh is shown only if the wallet address is still this vault's. */
+  vaultAddress?: string | null;
 }
 
-export function LiveBalanceCard({ initialData }: LiveBalanceCardProps) {
+export function LiveBalanceCard({ initialData, vaultAddress }: LiveBalanceCardProps) {
   const [data, setData] = useState<OnchainWalletBalance | null>(initialData ?? null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [addressMismatch, setAddressMismatch] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -18,7 +21,14 @@ export function LiveBalanceCard({ initialData }: LiveBalanceCardProps) {
       const res = await fetch("/api/wallet/balance?refresh=true");
       const json = await res.json();
       if (json.success) {
-        setData(json.data ?? null);
+        const next = (json.data ?? null) as OnchainWalletBalance | null;
+        if (vaultAddress && next && next.address !== vaultAddress) {
+          setData(null);
+          setAddressMismatch(true);
+        } else {
+          setData(next);
+          setAddressMismatch(false);
+        }
       }
     } catch (err) {
       console.error("Failed to refresh balance:", err);
@@ -59,6 +69,8 @@ export function LiveBalanceCard({ initialData }: LiveBalanceCardProps) {
             {data.pool}
             {data.height != null ? ` · height ${data.height.toLocaleString("en-US")}` : ""}
           </span>
+        ) : addressMismatch ? (
+          <span>This wallet address is not this vault&apos;s address, so its balance is not shown.</span>
         ) : (
           <span>No viewing-key reading on this machine.</span>
         )}

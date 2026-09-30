@@ -58,6 +58,13 @@ interface ApprovalDetailViewProps {
 
 const NOT_RECORDED = "not recorded";
 
+function isRecordedAddress(value: string | null | undefined): value is string {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!trimmed || /not recorded/i.test(trimmed)) return false;
+  return trimmed.startsWith("utest1") || trimmed.startsWith("u1");
+}
+
 function policyLabel(threshold: number | null | undefined, total: number | null | undefined): string {
   if (threshold == null || total == null) return NOT_RECORDED;
   return `${threshold} of ${total}`;
@@ -343,9 +350,9 @@ export function ApprovalDetailView({
                 <span className="text-xs text-[var(--text-muted)] font-medium">
                   Recipient Address (Shielded / Private)
                 </span>
-                {initialData?.recipientAddress && (
+                {isRecordedAddress(initialData?.recipientAddress) && (
                   <button
-                    onClick={() => copyToClipboard(initialData.recipientAddress!)}
+                    onClick={() => copyToClipboard(initialData.recipientAddress as string)}
                     className="inline-flex items-center gap-1 text-xs text-[var(--zcash-gold)] hover:underline font-medium cursor-pointer"
                   >
                     {copied ? <Check className="w-3.5 h-3.5" style={{ color: "var(--success)" }} /> : <Copy className="w-3.5 h-3.5" />}
@@ -363,8 +370,13 @@ export function ApprovalDetailView({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-semibold">
-                  Signer Approvals (
-                  {threshold != null ? `${collectedSignatures} of ${threshold} recorded` : NOT_RECORDED})
+                  {isBroadcast && recordedShares.length === 0
+                    ? "Signatures: not recorded"
+                    : `Signer Approvals (${
+                        threshold != null
+                          ? `${collectedSignatures} of ${threshold} recorded`
+                          : NOT_RECORDED
+                      })`}
                 </h2>
                 {!isBroadcast && (
                   <span
@@ -575,7 +587,15 @@ export function ApprovalDetailView({
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Current Status:</span>
-                <span style={{ color: isQuorumMet ? "var(--success-text)" : "var(--warning-text)" }}>
+                <span
+                  style={{
+                    color: isBroadcast
+                      ? "var(--success-text)"
+                      : isQuorumMet
+                        ? "var(--success-text)"
+                        : "var(--warning-text)",
+                  }}
+                >
                   {isBroadcast
                     ? "Broadcast recorded"
                     : isQuorumMet

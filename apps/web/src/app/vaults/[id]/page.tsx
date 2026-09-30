@@ -118,12 +118,12 @@ export default async function VaultDetailPage({
   const isPendingDkg = vault?.status === "PENDING_DKG";
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link
             href="/vaults"
-            className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition mb-2"
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-palette mb-2"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Vaults
           </Link>
@@ -165,7 +165,7 @@ export default async function VaultDetailPage({
               variant="outline"
               size="sm"
               href={`/vaults/${id}/ceremony`}
-              icon={<KeyRound className="w-4 h-4 text-[var(--text-secondary)]" />}
+              icon={<KeyRound className="w-4 h-4" />}
             >
               Simulate Key Ceremony
             </Button>
@@ -183,7 +183,7 @@ export default async function VaultDetailPage({
               <a
                 href={`/api/vaults/${id}/audit-export?format=json`}
                 download
-                className="px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-between transition-colors"
+                className="px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-between transition-palette"
               >
                 <span>Export JSON</span>
                 <span className="font-mono text-[10px] text-[var(--text-muted)]">.json</span>
@@ -191,7 +191,7 @@ export default async function VaultDetailPage({
               <a
                 href={`/api/vaults/${id}/audit-export?format=csv`}
                 download
-                className="px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-between transition-colors"
+                className="px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-between transition-palette"
               >
                 <span>Export CSV</span>
                 <span className="font-mono text-[10px] text-[var(--text-muted)]">.csv</span>
@@ -268,7 +268,7 @@ export default async function VaultDetailPage({
       {/* 3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
         {vaultBalance && onchainBalance ? (
-          <LiveBalanceCard initialData={onchainBalance} />
+          <LiveBalanceCard initialData={onchainBalance} vaultAddress={vaultAddress} />
         ) : (
           <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs flex flex-col justify-between">
             <div>

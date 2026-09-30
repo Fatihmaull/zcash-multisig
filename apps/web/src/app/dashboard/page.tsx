@@ -182,13 +182,13 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto">
       {/* Hero Welcome Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 sm:p-8 lg:p-10 shadow-xs">
         <div className="relative z-10 max-w-2xl space-y-3.5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--zcash-gold-dim)] border border-[var(--zcash-gold-border)] text-xs text-[var(--text-primary)] font-medium">
             <Shield className="w-3.5 h-3.5 text-[var(--zcash-gold)]" />
-            <span>Zcash Shielded Multisig • Zero Custody</span>
+            <span>Zcash Shielded Multisig</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--text-primary)] leading-snug">
@@ -317,7 +317,7 @@ export default async function DashboardPage() {
             </h2>
             <Link
               href="/approvals"
-              className="text-xs text-[var(--zcash-gold)] hover:underline inline-flex items-center gap-1 transition"
+              className="text-xs text-[var(--zcash-gold)] hover:underline inline-flex items-center gap-1 transition-palette"
             >
               <span>View all</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -325,7 +325,7 @@ export default async function DashboardPage() {
           </div>
 
           {latestApproval ? (
-            <div className="p-5 sm:p-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-4 hover:border-[var(--zcash-gold-border)] transition">
+            <div className="p-5 sm:p-6 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-4 hover:border-[var(--zcash-gold-border)] transition-palette">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -398,7 +398,7 @@ export default async function DashboardPage() {
             </h2>
             <Link
               href="/vaults"
-              className="text-xs text-[var(--zcash-gold)] hover:underline inline-flex items-center gap-1 transition"
+              className="text-xs text-[var(--zcash-gold)] hover:underline inline-flex items-center gap-1 transition-palette"
             >
               <span>All Vaults</span>
               <ChevronRight className="w-3.5 h-3.5" />

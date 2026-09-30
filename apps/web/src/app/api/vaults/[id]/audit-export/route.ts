@@ -395,7 +395,7 @@ export async function GET(
       csvRows.push("");
 
       csvRows.push("--- SPEND APPROVAL AUDIT LOG ---");
-      csvRows.push("ApprovalID,CreatedAt,RecipientAddress,AmountZEC,Status,TxID,AnchorBlock,Memo");
+      csvRows.push("ApprovalID,CreatedAt,RecipientAddress,AmountTAZ,Status,TxID,AnchorBlock,Memo");
       auditData.approvalRequests.forEach((a) => {
         csvRows.push(`"${a.id}","${a.createdAt}","${a.recipientAddress}","${a.amountZEC}","${a.status}","${a.txid || ""}","${a.anchorBlock || ""}","${(a.memo || "").replace(/"/g, '""')}"`);
       });
