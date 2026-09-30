@@ -69,6 +69,11 @@ Carol  pid 76979  → ./secrets/ceremony/carol/share-3.bin
 **This is the beat the whole security claim rests on.** No process ever held a second
 share, including during key generation. Say it once, plainly, and move on.
 
+Each `share-N.bin` is mode `0600`. Once the address check has succeeded, that
+participant writes its share before waiting on the relay. If a peer never confirms
+it has finished reading (15 seconds), the opener says so, keeps the share it already
+wrote, and closes the session anyway.
+
 To show the failure mode instead — a seed contributor telling each peer a different
 story, which FROST does not object to and which silently produces three vaults:
 
@@ -168,8 +173,9 @@ To show the gate — which is what the video should do, see
 [07-demo-script.md](07-demo-script.md) beat 4 — leave one signer to a person and script
 only one of the others. Threshold is two, so `SIGNERS="Bob Carol"` reaches quorum before
 Alice is ever asked. `HAND=Alice` does not start Alice; it writes her coordinator
-credentials to `$QUORUM_DEMO_LOGS/Alice.env` (mode 0600) and prints that path, not the
-token.
+credentials to `$QUORUM_DEMO_LOGS/Alice.env` (mode 0600). The share path in that file
+is absolute, so the hand-run signer does not depend on which directory it is started
+from. The script prints the file's path, not the token.
 
 ```bash
 HAND=Alice SIGNERS="Bob" QUORUM_DEMO_LOGS=/tmp/q-beat4 \
@@ -185,11 +191,12 @@ QUORUM_SIGNER_PASSPHRASE="$QUORUM_DEV_PASSPHRASE" \
 the whole script does not put the prompt in the terminal you are watching: those signers
 are backgrounded and their stdout goes to log files.
 
-The prompt itself:
+The prompt itself. The vault line is `VAULT_LABEL`, or the vault directory's
+basename when that is unset — `ceremony` for `./secrets/ceremony`:
 
 ```
   APPROVAL REQUEST  99b6bf69-…
-  vault    Foundation Treasury
+  vault    ceremony
   sighash  613a0b41f944e109…
 
   FROM THE TRANSACTION — verified against your own share

@@ -116,7 +116,7 @@ Carol  pid 76979  → ./secrets/ceremony/carol/share-3.bin
 Three processes. One share each. The same address from all three, which is the confirmation
 round agreeing rather than us asserting.
 
-> "These are three separate processes on three machines. Each one generates exactly one share
+> "These are three separate processes. Each one generates exactly one share
 > and never sends it anywhere — what crosses the network is encrypted to one named recipient.
 > Nobody in this ceremony, including us, ever holds the full spending key. Not while signing,
 > and not while it was being created."
@@ -158,6 +158,10 @@ zcash-devtool wallet -w ./secrets/ceremony-watch sync
 zcash-devtool wallet -w ./secrets/ceremony-watch list-tx
 ```
 
+The 0.01000000 TAZ output is back to this same vault, and `list-tx` labels it
+`(Change)`. The only amount that leaves the vault is the 0.00010000 TAZ fee.
+Do not narrate it as a payment to someone else.
+
 That is also beat 6 arriving early, which is fine — it lets beat 6 be short.
 
 ### Show one signer being asked — this needs a decision before the shoot
@@ -171,14 +175,21 @@ A fully scripted run skips it. `three-signer-demo.sh` sets
 `QUORUM_SIGNER_AUTO_APPROVE=1` because a recording cannot pause for a keystroke, and each
 signer logs a warning when it does.
 
-**Recommended: run one signer by hand, and say that the others are scripted.**
+**Recommended: Alice by hand, Bob scripted, Carol offline.** Threshold is two, so
+starting Bob and Carol reaches quorum before Alice is asked. `HAND=Alice` does not
+start her. `CLAIMED_RECIPIENT` and `CLAIMED_AMOUNT_ZAT` are this spend's real values:
+0.01000000 TAZ (1000000 zatoshis) back to the same vault.
 
 ```bash
-# two signers, scripted, started first
-SIGNERS="Bob Carol" ./scripts/three-signer-demo.sh ./secrets/ceremony <pczt>
+HAND=Alice SIGNERS="Bob" QUORUM_DEMO_LOGS=/tmp/q-beat4 \
+  CLAIMED_RECIPIENT="$(tr -d '[:space:]' < ./secrets/ceremony/vault-address.txt)" \
+  CLAIMED_AMOUNT_ZAT=1000000 \
+  ./scripts/three-signer-demo.sh ./secrets/ceremony <pczt>
 
-# then Alice, by hand, with the gate on — this is the shot
-AUTO_APPROVE=0 ...   # see 16-runbook.md for the full invocation
+# other terminal — the prompt is on, because this signer is not auto-approved
+set -a; . /tmp/q-beat4/Alice.env; set +a
+QUORUM_SIGNER_PASSPHRASE="$QUORUM_DEV_PASSPHRASE" \
+  packages/core/target/release/quorum-signerd
 ```
 
 What appears is two columns:
@@ -188,7 +199,7 @@ What appears is two columns:
     output  Ironwood action 1  0.01000000 TAZ  to a named address
 
   CLAIMED BY THE PROPOSER — not verified, and not verifiable here
-    to       utest1recipient
+    to       <this vault's own address>
     amount   0.01000000 TAZ
 
   Approve and sign? [y/N]
@@ -196,11 +207,11 @@ What appears is two columns:
 
 > "Alice isn't clicking approve on a web page. Her machine read the transaction, checked it
 > spends from her vault and that the digest she's being asked to sign is that transaction's
-> own, and it's showing her what it can prove alongside what it's merely been told. Bob and
-> Carol are scripted here for timing — in a real round they'd each see this."
+> own, and it's showing her what it can prove alongside what it's merely been told.
+> Bob is scripted here for timing, and Carol is offline — in a real round each of them would see this."
 
-**The last sentence is not optional.** Without it the shot implies three people decided, and
-two of them were `AUTO_APPROVE=1`.
+**The last sentence is not optional.** Without it the shot implies three people decided.
+Bob is scripted (`AUTO_APPROVE=1`) and Carol is offline.
 
 Say plainly what the gate cannot do: a shielded output need not state its value in the clear,
 so where the transaction is silent nobody — including Alice — can confirm the proposer's
@@ -209,8 +220,8 @@ a surprise to anyone who read it and then watched this.
 
 ### Two things that look like bugs on camera
 
-**The third signer stays `PENDING`.** Threshold is two, so whichever pair answers first wins
-and the third never gets asked. Correct, and it reads as a hang if unexplained. One sentence:
+**Carol stays `PENDING`.** She is offline, and threshold is two, so the round closes
+without her. Correct, and it reads as a hang if unexplained. One sentence:
 *"Carol was never needed — two was the threshold, and the round closed without her."*
 
 **Proving takes long enough to notice.** Do it between takes. It needs no authority and

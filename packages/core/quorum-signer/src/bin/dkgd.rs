@@ -151,6 +151,14 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|s| s.parse().ok())
         .map(Duration::from_secs)
         .unwrap_or(DEFAULT_ROUND_TIMEOUT);
+    // Shorter than the ceremony timeout on purpose. The share is already on
+    // disk before this wait; it only covers a peer still flushing its last
+    // poll, not one that has disappeared.
+    let ack_timeout = std::env::var("QUORUM_DKG_ACK_TIMEOUT_SECS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .map(Duration::from_secs)
+        .unwrap_or(ceremony::READY_ACK_TIMEOUT);
 
     let identity = load_identity(&identity_path);
     let roster: Roster = serde_json::from_slice(&fs::read(&roster_path)?)?;
@@ -204,37 +212,35 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("  running the ceremony — three rounds and a confirmation");
-    // The opener must not return from `run` — and so must not reach
-    // `close_session` below — until every peer has acknowledged that its
-    // own confirmation round is done. Closing on our confirmations alone
-    // drops the session under a peer that is still one poll away.
-    let close_role = if creates_session {
-        ceremony::CloseRole::Opener
-    } else {
-        ceremony::CloseRole::Peer
-    };
-    let outcome = ceremony::run(
+    let mut done = ceremony::run(
         &identity,
         &roster,
         &client,
         session,
         seed_role,
-        close_role,
         timeout,
         rand::thread_rng(),
     )
     .await?;
 
     // ── Persist. Our share goes in our own directory and nowhere else. ──
+    //
+    // Before any ready-acknowledgement wait. The address check has already
+    // succeeded, so this share matches the vault the others confirmed. A
+    // peer who disappears now must not cost us the share.
     let index = u16::from_le_bytes(
-        outcome.key_package.identifier().serialize()[..2]
+        done.outcome.key_package.identifier().serialize()[..2]
             .try_into()
             .expect("identifier is at least 2 bytes"),
     );
     let mine = out.join(me.label.to_lowercase());
     fs::create_dir_all(&mine)?;
-    let sealed = seal(&outcome.key_package, &passphrase, &mut rand::thread_rng())?;
-    fs::write(mine.join(format!("share-{index}.bin")), &sealed)?;
+    let sealed = seal(
+        &done.outcome.key_package,
+        &passphrase,
+        &mut rand::thread_rng(),
+    )?;
+    write_private(&mine.join(format!("share-{index}.bin")), &sealed)?;
 
     // Public artifacts are identical for everyone — the confirmation round
     // is what makes that true rather than hoped for. Written atomically
@@ -242,11 +248,11 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(&out)?;
     write_atomic(
         &out.join("public-key-package.json"),
-        &serde_json::to_vec_pretty(&outcome.public_key_package)?,
+        &serde_json::to_vec_pretty(&done.outcome.public_key_package)?,
     )?;
     write_atomic(
         &out.join("vault-address.txt"),
-        format!("{}\n", outcome.address).as_bytes(),
+        format!("{}\n", done.outcome.address).as_bytes(),
     )?;
     let coordinator_roster: Vec<_> = roster
         .participants
@@ -259,7 +265,7 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     write_atomic(
         &out.join("vault-seed.hex"),
-        format!("{}\n", hex::encode(outcome.seed.as_bytes())).as_bytes(),
+        format!("{}\n", hex::encode(done.outcome.seed.as_bytes())).as_bytes(),
     )?;
 
     // ── Report it, if a coordinator is orchestrating ──
@@ -277,7 +283,7 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::var("QUORUM_CEREMONY_ID"),
     ) {
         let group_key = hex::encode(
-            outcome
+            done.outcome
                 .public_key_package
                 .verifying_key()
                 .serialize()
@@ -287,8 +293,8 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
             "ceremonyId": ceremony_id,
             "label": std::env::var("QUORUM_CEREMONY_LABEL").unwrap_or_else(|_| me.label.clone()),
             "groupKey": group_key,
-            "address": outcome.address,
-            "publicKeyPackage": serde_json::to_value(&outcome.public_key_package)?,
+            "address": done.outcome.address,
+            "publicKeyPackage": serde_json::to_value(&done.outcome.public_key_package)?,
         });
         let res = reqwest::Client::new()
             .post(format!(
@@ -321,10 +327,32 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if creates_session {
-        // Safe only because `CloseRole::Opener` waited for every peer's
-        // ready acknowledgement before `run` returned. Each peer's last
-        // relay call was sending that acknowledgement.
+        // Peers send their ready acknowledgement only after they have
+        // finished reading. Close after that, not after our own
+        // confirmations — a peer can still be one poll behind. If one
+        // never answers, the share above is already on disk; warn and
+        // close anyway rather than waiting out the ceremony timeout.
+        match done.wait_for_peers(&client, ack_timeout).await {
+            Ok(()) => {}
+            Err(ceremony::CeremonyError::Timeout {
+                missing, timeout, ..
+            }) => {
+                eprintln!();
+                eprintln!("  ⚠ {missing} did not confirm they had finished with the relay");
+                eprintln!(
+                    "    within {}s of the address check. Their shares may be missing.",
+                    timeout.as_secs()
+                );
+                eprintln!(
+                    "    This participant's share has been saved. Closing the session anyway."
+                );
+                eprintln!();
+            }
+            Err(e) => return Err(e.into()),
+        }
         let _ = client.close_session(session).await;
+    } else {
+        done.acknowledge(&client).await?;
     }
     let _ = client.logout().await;
 
@@ -333,7 +361,7 @@ async fn ceremony_main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  ------------------------------------------------------------");
     println!("  Address (testnet):");
     println!();
-    println!("    {}", outcome.address);
+    println!("    {}", done.outcome.address);
     println!();
     println!("  {}/share-{index}.bin", mine.display());
     println!("      your share, sealed. This process is the only one that has");
@@ -381,6 +409,18 @@ async fn await_session(
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
+}
+
+/// A sealed share is ciphertext, and it is still this participant's share.
+/// `0600`, same as the identity file and the hand-run credential file.
+fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    fs::write(path, bytes)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(())
 }
 
 /// Write via a temporary file and rename, so a concurrent reader never sees
