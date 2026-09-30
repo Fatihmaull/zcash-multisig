@@ -26,7 +26,7 @@ interface AuditExportPayload {
     generatedAt: string;
     network: string;
     protocolVersion: string;
-    viewingKeyScope: string;
+    viewingKeyScope: string | null;
     /**
      * First 16 and last 8 characters of the decrypted viewing key.
      * A truncation, not a hash and not a fingerprint.
@@ -52,7 +52,7 @@ interface AuditExportPayload {
   approvalRequests: Array<{
     id: string;
     recipientAddress: string;
-    amountZEC: string;
+    amountTAZ: string;
     amountZatoshi: string;
     memo: string | null;
     status: string;
@@ -301,7 +301,10 @@ export async function GET(
         generatedAt: new Date().toISOString(),
         network: vault.network,
         protocolVersion: "ZIP-312 / FROST-RedPallas v3 (Ironwood Pool)",
-        viewingKeyScope: vault.viewingKeys?.[0]?.scope || "FULL_VIEWING",
+        viewingKeyScope:
+          vault.viewingKeys && vault.viewingKeys.length > 0
+            ? vault.viewingKeys[0].scope ?? null
+            : null,
         truncatedViewingKey,
         disclaimer,
       },
@@ -321,11 +324,11 @@ export async function GET(
         isActive: p.isActive,
       })),
       approvalRequests: vault.approvalRequests.map((a) => {
-        const amountZEC = (Number(a.amountZatoshi) / 100_000_000).toFixed(8);
+        const amountTAZ = (Number(a.amountZatoshi) / 100_000_000).toFixed(8);
         return {
           id: a.id,
           recipientAddress: a.recipientAddress,
-          amountZEC,
+          amountTAZ,
           amountZatoshi: a.amountZatoshi.toString(),
           memo: a.memo,
           status: a.status,
@@ -397,7 +400,7 @@ export async function GET(
       csvRows.push("--- SPEND APPROVAL AUDIT LOG ---");
       csvRows.push("ApprovalID,CreatedAt,RecipientAddress,AmountTAZ,Status,TxID,AnchorBlock,Memo");
       auditData.approvalRequests.forEach((a) => {
-        csvRows.push(`"${a.id}","${a.createdAt}","${a.recipientAddress}","${a.amountZEC}","${a.status}","${a.txid || ""}","${a.anchorBlock || ""}","${(a.memo || "").replace(/"/g, '""')}"`);
+        csvRows.push(`"${a.id}","${a.createdAt}","${a.recipientAddress}","${a.amountTAZ}","${a.status}","${a.txid || ""}","${a.anchorBlock || ""}","${(a.memo || "").replace(/"/g, '""')}"`);
       });
 
       const csvContent = csvRows.join("\n");

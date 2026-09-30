@@ -155,7 +155,7 @@ export function Header() {
             </button>
 
             {/* Subtle Divider */}
-            <div className="h-4 w-px bg-[var(--border-subtle)]/70 hidden sm:block shrink-0" />
+            <div className="h-4 w-px bg-[var(--border-subtle)] hidden sm:block shrink-0" />
 
             {/* Mobile Logo Fallback */}
             <div className="sm:hidden shrink-0">
@@ -172,7 +172,7 @@ export function Header() {
                   >
                     {breadcrumb.section}
                   </Link>
-                  <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]/60 shrink-0" />
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
                   <span className="font-semibold text-[var(--text-primary)] truncate">
                     {breadcrumb.page}
                   </span>
