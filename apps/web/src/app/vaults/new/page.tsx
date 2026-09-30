@@ -16,7 +16,7 @@ export default function NewVaultPage() {
           Create New Shielded Vault
         </h1>
         <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
-          Follow this 3-step wizard to configure key holders and generate distributed threshold key shares without trusted coordinators.
+          Record the key holders. This wizard does not run the ceremony and does not produce an address.
         </p>
       </div>
 

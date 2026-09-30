@@ -15,11 +15,17 @@ type ApprovalDetailRecord = {
   vault?: {
     label: string;
     threshold: number;
+    totalParticipants?: number | null;
     /// Null until a ceremony has produced one.
     shieldedAddress?: string | null;
-    participants?: unknown[];
+    participants?: Array<{ id: string; label: string }>;
   } | null;
-  signatureRoundEvents?: unknown[];
+  signatureRoundEvents?: Array<{
+    participantId: string;
+    roundType: string;
+    status: string;
+    culpritDetected: boolean;
+  }>;
 };
 
 export default async function ApprovalDetailPage({
@@ -48,7 +54,7 @@ export default async function ApprovalDetailPage({
   }
 
   // Supabase fallback
-  if (!dbApproval) {
+  if (!dbApproval && supabase) {
     try {
       const { data: sbApproval } = await supabase
         .from("approval_requests")
@@ -64,12 +70,28 @@ export default async function ApprovalDetailPage({
           recipientAddress: sbApproval.recipient_address,
           status: sbApproval.status,
           txid: sbApproval.txid,
-          vault: {
-            label: sbApproval.vaults?.label || "Foundation Treasury",
-            threshold: sbApproval.vaults?.threshold || 2,
-            participants: [],
-          },
-          signatureRoundEvents: sbApproval.signature_round_events || [],
+          vault: sbApproval.vaults
+            ? {
+                label: sbApproval.vaults.label,
+                threshold: sbApproval.vaults.threshold,
+                totalParticipants: sbApproval.vaults.total_participants,
+                shieldedAddress: sbApproval.vaults.shielded_address,
+                participants: [],
+              }
+            : null,
+          signatureRoundEvents: (sbApproval.signature_round_events || []).map(
+            (event: {
+              participant_id: string;
+              round_type: string;
+              status: string;
+              culprit_detected?: boolean;
+            }) => ({
+              participantId: event.participant_id,
+              roundType: event.round_type,
+              status: event.status,
+              culpritDetected: Boolean(event.culprit_detected),
+            })
+          ),
         };
       }
     } catch (sbErr) {
@@ -81,14 +103,23 @@ export default async function ApprovalDetailPage({
     ? {
         id: dbApproval.id,
         amountZec: (Number(dbApproval.amountZatoshi) / 100000000).toFixed(8),
-        purpose: dbApproval.memo || "Treasury disbursement",
-        vaultName: dbApproval.vault?.label || "Foundation Treasury",
-        recipientAddress: dbApproval.recipientAddress,
+        purpose: dbApproval.memo,
+        vaultName: dbApproval.vault?.label ?? null,
+        recipientAddress: dbApproval.recipientAddress || null,
         status: dbApproval.status,
         txid: dbApproval.txid,
-        threshold: dbApproval.vault?.threshold || 2,
-        participants: dbApproval.vault?.participants || [],
-        signatureRoundEvents: dbApproval.signatureRoundEvents || [],
+        threshold: dbApproval.vault?.threshold ?? null,
+        totalParticipants: dbApproval.vault?.totalParticipants ?? null,
+        participants: (dbApproval.vault?.participants || []).map((participant) => ({
+          id: participant.id,
+          label: participant.label,
+        })),
+        signatureRoundEvents: (dbApproval.signatureRoundEvents || []).map((event) => ({
+          participantId: event.participantId,
+          roundType: event.roundType,
+          status: event.status,
+          culpritDetected: event.culpritDetected,
+        })),
       }
     : undefined;
 

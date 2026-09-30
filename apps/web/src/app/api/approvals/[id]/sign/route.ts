@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { coordinatorClient } from "@/lib/coordinator-client";
+import { f4RejectionMessage } from "@/lib/f4-message";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function POST(
   try {
     const { id: approvalId } = await params;
     const body = await request.json().catch(() => ({}));
-    const { signer, status = "APPROVED", txid } = body;
+    const { signer, status = "APPROVED" } = body;
 
     const approval = await prisma.approvalRequest.findUnique({
       where: { id: approvalId },
@@ -103,9 +104,31 @@ export async function POST(
           events: liveState.events,
         });
       } catch (coordErr) {
-        // If live coordinator is unreachable and not syncOnly, warn of custody constraint
+        if (approval.status === "BROADCASTED") {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "This request is already broadcast. Its stored txid and status were left unchanged.",
+            },
+            { status: 409 }
+          );
+        }
         console.warn("Coordinator sync failed, falling back to local verification:", coordErr);
       }
+    }
+
+    // A simulated sign must not rewrite a broadcast. The browser used to send
+    // stand-in txids (and a REJECTED status) that replaced the real one.
+    if (approval.status === "BROADCASTED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "This request is already broadcast. A simulated sign cannot change its txid or status.",
+        },
+        { status: 409 }
+      );
     }
 
     // ── Simulation / Dev Mode ────────────────────────────────
@@ -184,10 +207,7 @@ export async function POST(
         status: shareStatus,
         culpritDetected: status === "REJECTED",
         errorCode: status === "REJECTED" ? "INVALID_SHARE" : null,
-        errorDetails:
-          status === "REJECTED"
-            ? `${participant.label}'s device submitted an invalid signature share that failed mathematical verification against the vault public key.`
-            : null,
+        errorDetails: status === "REJECTED" ? f4RejectionMessage(participant.label) : null,
       },
     });
 
@@ -205,14 +225,11 @@ export async function POST(
     const isThresholdMet = collectedCount >= approval.vault.threshold;
 
     let updatedStatus = approval.status;
-    let finalTxid = approval.txid;
+    // Never take a txid from the request body. A browser-supplied id is not a broadcast.
+    const finalTxid = approval.txid;
 
     if (isThresholdMet && status !== "REJECTED") {
       updatedStatus = "APPROVED";
-      if (txid) {
-        finalTxid = txid;
-        updatedStatus = "BROADCASTED";
-      }
     } else if (status === "REJECTED") {
       updatedStatus = "REJECTED";
     }
@@ -226,8 +243,9 @@ export async function POST(
       },
     });
 
-    // 5. Update Supabase
+    // 5. Update Supabase when it is configured
     try {
+      if (!supabase) throw new Error("Supabase is not configured");
       await supabase
         .from("approval_requests")
         .update({

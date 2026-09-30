@@ -14,11 +14,27 @@ export async function GET() {
       prisma.approvalRequest.count(),
     ]);
 
-    // Test Supabase connectivity
-    const { data: supabaseVaults, error: supabaseError } = await supabase
-      .from("vaults")
-      .select("id, label, status")
-      .limit(5);
+    // Test Supabase connectivity when it is configured
+    let supabaseStatus: {
+      connected: boolean;
+      records: unknown[];
+      error: string | null;
+    } = {
+      connected: false,
+      records: [],
+      error: "Supabase is not configured",
+    };
+    if (supabase) {
+      const { data: supabaseVaults, error: supabaseError } = await supabase
+        .from("vaults")
+        .select("id, label, status")
+        .limit(5);
+      supabaseStatus = {
+        connected: !supabaseError,
+        records: supabaseVaults || [],
+        error: supabaseError ? supabaseError.message : null,
+      };
+    }
 
     return NextResponse.json({
       status: "connected",
@@ -27,11 +43,7 @@ export async function GET() {
         vaultsCount: vaultCount,
         approvalRequestsCount: requestCount,
       },
-      supabase: {
-        connected: !supabaseError,
-        records: supabaseVaults || [],
-        error: supabaseError ? supabaseError.message : null,
-      },
+      supabase: supabaseStatus,
       network: "testnet",
     });
   } catch (error) {

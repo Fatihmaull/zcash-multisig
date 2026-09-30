@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useUI } from "@/context/UIContext";
@@ -28,44 +28,27 @@ export function Header() {
   const pathname = usePathname();
   const { toggleMobileMenu, activeScenario, setActiveScenario, theme, toggleTheme } = useUI();
   const { triggerSplashNavigation } = useSplashScreen();
-  const [balance, setBalance] = useState<string | null>("0.2000");
   const [scenarioNotification, setScenarioNotification] = useState<{
     scenario: MockScenario;
     title: string;
     desc: string;
   } | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    fetch("/api/wallet/balance")
-      .then((res) => res.json())
-      .then((json) => {
-        if (isMounted && json.success && json.data?.ironwood) {
-          const formatted = parseFloat(json.data.ironwood).toFixed(4);
-          setBalance(formatted);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   const scenarioOptions: SelectOption<MockScenario>[] = [
     { 
       value: "happy_path", 
       label: "Normal (2-of-3)",
-      sublabel: "Standard threshold signing flow" 
+      sublabel: "Simulated. Two of three mark the request approved." 
     },
     { 
       value: "non_responding", 
       label: "1 Signer Offline",
-      sublabel: "Automatic fallback to standby signer (Timeout)" 
+      sublabel: "Simulated. One signer does not respond." 
     },
     { 
       value: "malicious_share", 
       label: "Corrupt Key",
-      sublabel: "F4 culprit identification & safety abort" 
+      sublabel: "Simulated. An invalid share is rejected." 
     },
   ];
 
@@ -75,7 +58,7 @@ export function Header() {
     if (selected) {
       setScenarioNotification({
         scenario: val,
-        title: `Skenario Aktif: ${selected.label}`,
+        title: `Scenario: ${selected.label}`,
         desc: selected.sublabel || "",
       });
       setTimeout(() => {
@@ -220,21 +203,20 @@ export function Header() {
                 onChange={handleScenarioChange}
                 searchPlaceholder="Search scenario..."
                 align="right"
-                icon={<Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />}
+                icon={<Sparkles className="w-3.5 h-3.5 text-[var(--text-secondary)]" />}
                 dropdownClassName="w-72 sm:w-80"
               />
             </div>
 
-            {/* Live On-Chain Balance Badge */}
-            <Link
-              href="/vaults/vault-demo-001"
-              className="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--bg-secondary)]/70 hover:bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:border-[var(--zcash-gold-border)] transition text-xs shadow-xs group"
-              title="Live On-Chain Balance (Ironwood)"
+            {/* No figure unless it was read with a vault viewing key. This chip is not a vault. */}
+            <span
+              className="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-[var(--bg-secondary)]/70 border border-[var(--border-subtle)] text-xs"
+              title="A shielded balance needs that vault's viewing key. None is shown here."
             >
-              <Wallet className="w-3.5 h-3.5 text-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="font-mono font-bold text-[var(--text-primary)]">{balance ?? "0.2000"}</span>
-              <span className="text-[10px] text-[var(--zcash-gold)] font-bold font-mono">TAZ</span>
-            </Link>
+              <Wallet className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+              <span className="font-mono font-bold text-[var(--text-primary)]">—</span>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">no viewing key</span>
+            </span>
 
             {/* Theme Toggle Button */}
             <button
@@ -245,20 +227,23 @@ export function Header() {
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {theme === "dark" ? (
-                <Sun className="w-4 h-4 text-amber-400" />
+                <Sun className="w-4 h-4 text-[var(--text-secondary)]" />
               ) : (
-                <Moon className="w-4 h-4 text-slate-700" />
+                <Moon className="w-4 h-4 text-[var(--text-secondary)]" />
               )}
             </button>
 
             {/* Status Pills */}
             <div className="hidden xl:flex items-center gap-2 pl-2 border-l border-[var(--border-subtle)]/70">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono font-medium">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border"
+                style={{
+                  background: "var(--success-bg)",
+                  borderColor: "var(--success-border)",
+                  color: "var(--success-text)",
+                }}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Non-Custodial</span>
               </span>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono text-[var(--text-muted)] bg-[var(--bg-secondary)]/80 border border-[var(--border-subtle)]/70">
@@ -271,8 +256,14 @@ export function Header() {
 
       {/* Floating Scenario Activation Toast */}
       {scenarioNotification && (
-        <div className="fixed top-20 right-4 sm:right-6 z-50 max-w-sm sm:max-w-md p-4 rounded-xl bg-[var(--bg-card)] border border-amber-500/30 text-[var(--text-primary)] shadow-2xl backdrop-blur-xl animate-fade-in flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+        <div
+          className="fixed top-20 right-4 sm:right-6 z-50 max-w-sm sm:max-w-md p-4 rounded-xl bg-[var(--bg-card)] text-[var(--text-primary)] shadow-lg flex items-start gap-3 border"
+          style={{ borderColor: "var(--warning-border)" }}
+        >
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "var(--warning-bg)", color: "var(--warning)" }}
+          >
             <Sparkles className="w-4 h-4" />
           </div>
           <div className="space-y-1.5 flex-1 min-w-0">
@@ -287,11 +278,11 @@ export function Header() {
                 <Button
                   variant="primary"
                   size="sm"
-                  href="/approvals/demo-proposal-001"
+                  href="/approvals"
                   className="text-[11px] py-1 px-3 rounded-lg"
                   iconRight={<ArrowUpRight className="w-3 h-3" />}
                 >
-                  Uji Skenario di Proposal
+                  Open approvals
                 </Button>
               </div>
             )}

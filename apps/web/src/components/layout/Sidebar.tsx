@@ -60,19 +60,7 @@ export function Sidebar() {
         if (!isMounted || (err as Error)?.name === "AbortError") {
           return;
         }
-        if (isMounted) {
-          setStats((prev) => prev ?? {
-            activeVaultsCount: 1,
-            pendingApprovalsCount: 0,
-            activeVault: {
-              id: "vault-demo-001",
-              label: "Primary Vault",
-              threshold: 2,
-              totalParticipants: 3,
-              network: "TESTNET",
-            },
-          });
-        }
+        // Leave stats unset. A failed fetch is not a vault.
       } finally {
         if (isMounted) {
           setIsLoadingStats(false);
@@ -108,26 +96,22 @@ export function Sidebar() {
       label: "Vaults",
       href: "/vaults",
       icon: Vault,
-      badge: isLoadingStats
-        ? "..."
-        : `${stats?.activeVaultsCount ?? 1} Active`,
+      badge: isLoadingStats ? "..." : stats ? `${stats.activeVaultsCount} Active` : "—",
       badgeVariant: "vault" as const,
     },
     {
       label: "Approvals",
       href: "/approvals",
       icon: FileCheck,
-      badge: isLoadingStats
-        ? "..."
-        : `${stats?.pendingApprovalsCount ?? 0} Pending`,
+      badge: isLoadingStats ? "..." : stats ? `${stats.pendingApprovalsCount} Pending` : "—",
       badgeVariant: "approval" as const,
       hasPendingAlert: (stats?.pendingApprovalsCount ?? 0) > 0,
     },
     {
       label: "Ceremony Wizard",
-      href: stats?.activeVault?.id 
+      href: stats?.activeVault?.id
         ? `/vaults/${stats.activeVault.id}/ceremony`
-        : "/vaults/vault-demo-001/ceremony",
+        : "/vaults",
       icon: KeyRound,
       badge: "Demo",
       badgeVariant: "default" as const,
@@ -162,10 +146,10 @@ export function Sidebar() {
       <div className="px-4 py-2.5 border-b border-[var(--border-subtle)]/40 bg-[var(--bg-secondary)]/50 text-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
+            <span
+              className="inline-flex rounded-full h-2 w-2"
+              style={{ background: "var(--success)" }}
+            />
             <span className="text-[var(--text-secondary)] font-medium">Zcash Testnet</span>
           </div>
           <span className="text-[11px] text-[var(--text-muted)] font-mono">Shielded</span>
@@ -224,7 +208,7 @@ export function Sidebar() {
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-md font-medium tracking-tight font-mono transition-colors ${
                     item.badgeVariant === "approval" && item.hasPendingAlert
-                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25"
+                      ? "bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]"
                       : isActive
                         ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] border border-[var(--zcash-gold-border)]"
                         : "bg-[var(--border-subtle)]/70 text-[var(--text-muted)] border border-transparent"
@@ -250,23 +234,30 @@ export function Sidebar() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-[var(--zcash-gold)] transition-colors truncate max-w-[130px]">
               {isLoadingStats ? (
-                <span className="inline-block w-20 h-3.5 bg-[var(--border-subtle)] animate-pulse rounded"></span>
+                <span className="inline-block w-20 h-3.5 bg-[var(--border-subtle)] rounded"></span>
               ) : (
-                stats?.activeVault?.label || "Dev Treasury"
+                stats?.activeVault?.label || "No vault recorded"
               )}
             </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              {isLoadingStats ? (
-                "..."
-              ) : (
-                `${stats?.activeVault?.threshold ?? 2} of ${stats?.activeVault?.totalParticipants ?? 3}`
-              )}
+            <span
+              className="text-[10px] font-mono px-1.5 py-0.5 rounded-md border"
+              style={{
+                background: "var(--success-bg)",
+                color: "var(--success-text)",
+                borderColor: "var(--success-border)",
+              }}
+            >
+              {isLoadingStats
+                ? "..."
+                : stats?.activeVault
+                  ? `${stats.activeVault.threshold} of ${stats.activeVault.totalParticipants}`
+                  : "—"}
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
             <span>Network</span>
-            <span className="text-[var(--zcash-gold)] font-medium font-mono">
-              {stats?.activeVault?.network ?? "Testnet"}
+            <span className="text-[var(--text-secondary)] font-medium font-mono">
+              {stats?.activeVault?.network ?? "—"}
             </span>
           </div>
         </Link>
@@ -274,7 +265,7 @@ export function Sidebar() {
 
       {/* Zero Custody Proof Footer */}
       <div className="p-4 border-t border-[var(--border-subtle)]/40 bg-[var(--bg-secondary)]/40 space-y-1.5">
-        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+        <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--success-text)" }}>
           <Lock className="w-3.5 h-3.5 shrink-0" />
           <span>Keys Held By You</span>
         </div>
@@ -299,7 +290,7 @@ export function Sidebar() {
             onClick={closeMobileMenu}
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
           />
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] p-3 z-10 animate-in slide-in-from-left duration-200">
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] p-3 z-10">
             {renderNavContent()}
           </div>
         </div>

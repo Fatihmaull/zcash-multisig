@@ -20,7 +20,6 @@ export async function GET() {
   let activeVaultsCount = 0;
   let pendingApprovalsCount = 0;
   let activeVault: SidebarStatsResponse["activeVault"] = null;
-  let dbSuccess = false;
 
   // 1. Try local Prisma DB
   try {
@@ -33,7 +32,6 @@ export async function GET() {
       }),
     ]);
 
-    dbSuccess = true;
     const activeList = vaults.filter((v) => v.status === "ACTIVE");
     activeVaultsCount = activeList.length > 0 ? activeList.length : vaults.length;
     pendingApprovalsCount = pendingApprovals.length;
@@ -53,7 +51,7 @@ export async function GET() {
   }
 
   // 2. Supabase fallback if local DB failed or has 0 vaults
-  if (!activeVault) {
+  if (!activeVault && supabase) {
     try {
       const [sbVaultsRes, sbApprovalsRes] = await Promise.all([
         supabase
@@ -67,7 +65,6 @@ export async function GET() {
       ]);
 
       if (sbVaultsRes.data && sbVaultsRes.data.length > 0) {
-        dbSuccess = true;
         const sbVaults = sbVaultsRes.data;
         const activeList = sbVaults.filter((v) => v.status === "ACTIVE");
         activeVaultsCount = activeList.length > 0 ? activeList.length : sbVaults.length;
@@ -89,19 +86,6 @@ export async function GET() {
     } catch (error) {
       console.warn("Supabase query failed in /api/sidebar/stats:", error);
     }
-  }
-
-  // 3. Fallback demo data if neither database returned records
-  if (!dbSuccess && !activeVault) {
-    activeVault = {
-      id: "vault-demo-001",
-      label: "Foundation Treasury",
-      threshold: 2,
-      totalParticipants: 3,
-      network: "TESTNET",
-    };
-    activeVaultsCount = 1;
-    pendingApprovalsCount = 1;
   }
 
   return NextResponse.json(

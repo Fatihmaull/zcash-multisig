@@ -2,51 +2,55 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
-import { prisma } from "@/lib/prisma";
 
 const execAsync = promisify(exec);
 
 export interface OnchainWalletBalance {
   total: string;
   ironwood: string;
-  sapling: string;
-  orchard: string;
-  unshielded: string;
-  height: number;
+  sapling: string | null;
+  orchard: string | null;
+  unshielded: string | null;
+  /** Null when the balance command did not report a height. */
+  height: number | null;
   pool: string;
   address: string;
   synced: boolean;
   timestamp: number;
 }
 
-// In-memory cache to prevent spawning child processes on every render
-let balanceCache: { data: OnchainWalletBalance; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 10_000; // 10 seconds
+let balanceCache: { data: OnchainWalletBalance | null; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 10_000;
+
+/**
+ * Parse a TAZ decimal into zatoshi without binary floating point, then format
+ * back to 8 decimal places. That is the zatoshi scale, not a rounded reading.
+ */
+function formatTaz(value: string): string | null {
+  if (!/^\d+(\.\d+)?$/.test(value)) return null;
+  const [whole, frac = ""] = value.split(".");
+  const digits = (frac + "00000000").slice(0, 8);
+  const zat = BigInt(whole) * 100_000_000n + BigInt(digits);
+  const abs = zat < 0n ? -zat : zat;
+  const w = abs / 100_000_000n;
+  const f = (abs % 100_000_000n).toString().padStart(8, "0");
+  return `${w.toString()}.${f}`;
+}
 
 /**
  * The Ironwood balance of one vault, or null when we cannot honestly say.
  *
- * **A shielded balance cannot be read from an address.** That is the point of
- * a shielded pool: the chain does not tell you what an address holds. Reading
- * a vault's balance needs that vault's viewing key, and scanning with it.
- *
- * So this returns a number only when the wallet we actually track *is* this
- * vault — the operator's local `zcash-devtool` wallet, synced from a viewing
- * key. For every other vault the honest answer is "we do not know", and it is
- * returned as `null` rather than substituted with something plausible.
- *
- * This exists because the vault list used to call {@link getLiveWalletBalance}
- * once and print that one figure under every vault card, labelled "Live
- * Ironwood". Three vaults, three different addresses, one number — and for
- * vaults created through the UI the address was a hardcoded placeholder, so
- * the card claimed an on-chain balance for an address nobody controlled.
+ * A shielded balance cannot be read from an address. This returns a number
+ * only when the local `zcash-devtool` wallet reports an address equal to
+ * this vault's, which is what a viewing-key scan of this vault looks like.
+ * There is no hardcoded stand-in.
  */
 export async function getVaultIronwoodBalance(
   shieldedAddress: string | null | undefined
-): Promise<{ ironwood: string; height: number; source: string } | null> {
+): Promise<{ ironwood: string; height: number | null; source: string } | null> {
   if (!shieldedAddress) return null;
   const wallet = await getLiveWalletBalance();
-  if (!wallet.address || wallet.address !== shieldedAddress) return null;
+  if (!wallet?.address || wallet.address !== shieldedAddress || !wallet.ironwood) return null;
   return {
     ironwood: wallet.ironwood,
     height: wallet.height,
@@ -54,13 +58,22 @@ export async function getVaultIronwoodBalance(
   };
 }
 
-export async function getLiveWalletBalance(forceRefresh = false): Promise<OnchainWalletBalance> {
+/**
+ * The operator's local devtool wallet, or null.
+ *
+ * Null is the result when the binary or the wallet is absent, or when the
+ * command does not report both an Ironwood figure and an address. Callers
+ * must not substitute a number. Broadcast rows in the database are not
+ * subtracted: that remainder was never a chain reading.
+ */
+export async function getLiveWalletBalance(
+  forceRefresh = false
+): Promise<OnchainWalletBalance | null> {
   const now = Date.now();
   if (!forceRefresh && balanceCache && balanceCache.expiresAt > now) {
     return balanceCache.data;
   }
 
-  // Workspace root resolution
   const workspaceRoot = path.resolve(process.cwd(), "../..");
   const devtoolBinary = path.join(
     workspaceRoot,
@@ -71,73 +84,50 @@ export async function getLiveWalletBalance(forceRefresh = false): Promise<Onchai
     "tools/zcash-devtool/wallet-data/dev.wallet"
   );
 
-  // Fallback defaults if devtool or wallet does not exist
-  let rawIronwoodZat = BigInt(10_000_000); // 0.10000000 TAZ from faucet
-  let rawHeight = 4379870;
-  let rawAddress =
-    "utest1quqhwz3035hsf3z2pv4v24qce5r42qalfeqgzxslfjrys660kfg5m6spw4fahvcpw02y4x38t4j3ykh44lnvmvct3zkjuuugggr2k772lh6gvs52t62yv94m2gngu7n7t0yk0whue3rtk5y73w9xj2hssm4p46wvsw5n8rqctm6c63vwdl3df2t6t9aqpr42qgs90cpyup7zghh8482";
+  const store = (data: OnchainWalletBalance | null) => {
+    balanceCache = { data, expiresAt: now + CACHE_TTL_MS };
+    return data;
+  };
 
-  if (fs.existsSync(devtoolBinary) && fs.existsSync(walletDir)) {
-    try {
-      const cmd = `sh -c '. "$HOME/.cargo/env" 2>/dev/null || true; "${devtoolBinary}" wallet -w "${walletDir}" balance'`;
-      const { stdout } = await execAsync(cmd, {
-        timeout: 10000,
-        env: { ...process.env, RUST_LOG: "error" },
-      });
-
-      const ironwoodMatch = stdout.match(/Ironwood Spendable:\s*([0-9.]+)\s*TAZ/);
-      const heightMatch = stdout.match(/Height:\s*([0-9]+)/);
-      const addrMatch = stdout.match(/Some\("([^"]+)"\)/);
-
-      if (ironwoodMatch) {
-        rawIronwoodZat = BigInt(Math.round(parseFloat(ironwoodMatch[1]) * 100_000_000));
-      }
-      if (heightMatch) {
-        rawHeight = parseInt(heightMatch[1], 10);
-      }
-      if (addrMatch) {
-        rawAddress = addrMatch[1];
-      }
-    } catch (error) {
-      console.error("Error querying zcash-devtool balance:", error);
-    }
+  if (!fs.existsSync(devtoolBinary) || !fs.existsSync(walletDir)) {
+    return store(null);
   }
 
-  // Calculate total spent from BROADCASTED transactions
-  let totalSpentZat = BigInt(0);
   try {
-    const broadcastedApprovals = await prisma.approvalRequest.findMany({
-      where: { status: "BROADCASTED" },
-      select: { amountZatoshi: true },
+    const cmd = `sh -c '. "$HOME/.cargo/env" 2>/dev/null || true; "${devtoolBinary}" wallet -w "${walletDir}" balance'`;
+    const { stdout } = await execAsync(cmd, {
+      timeout: 10000,
+      env: { ...process.env, RUST_LOG: "error" },
     });
-    for (const b of broadcastedApprovals) {
-      totalSpentZat += b.amountZatoshi;
+
+    const ironwoodMatch = stdout.match(/Ironwood Spendable:\s*([0-9.]+)\s*TAZ/);
+    const heightMatch = stdout.match(/Height:\s*([0-9]+)/);
+    const addrMatch = stdout.match(/Some\("([^"]+)"\)/);
+    const ironwood = ironwoodMatch ? formatTaz(ironwoodMatch[1]) : null;
+    const address = addrMatch?.[1] ?? null;
+
+    if (!ironwood || !address) {
+      return store(null);
     }
-  } catch (err) {
-    console.error("Error calculating broadcasted spends:", err);
+
+    const saplingMatch = stdout.match(/Sapling Spendable:\s*([0-9.]+)\s*TAZ/);
+    const orchardMatch = stdout.match(/Orchard Spendable:\s*([0-9.]+)\s*TAZ/);
+    const transparentMatch = stdout.match(/Transparent:\s*([0-9.]+)\s*TAZ/);
+
+    return store({
+      total: ironwood,
+      ironwood,
+      sapling: saplingMatch ? formatTaz(saplingMatch[1]) : null,
+      orchard: orchardMatch ? formatTaz(orchardMatch[1]) : null,
+      unshielded: transparentMatch ? formatTaz(transparentMatch[1]) : null,
+      height: heightMatch ? parseInt(heightMatch[1], 10) : null,
+      pool: "Ironwood",
+      address,
+      synced: true,
+      timestamp: now,
+    });
+  } catch (error) {
+    console.error("Error querying zcash-devtool balance:", error);
+    return store(null);
   }
-
-  // Compute live available balance after broadcast spends
-  const availableIronwoodZat = rawIronwoodZat > totalSpentZat ? rawIronwoodZat - totalSpentZat : BigInt(0);
-  const ironwoodFormatted = (Number(availableIronwoodZat) / 100_000_000).toFixed(8);
-
-  const result: OnchainWalletBalance = {
-    total: ironwoodFormatted,
-    ironwood: ironwoodFormatted,
-    sapling: "0.00000000",
-    orchard: "0.00000000",
-    unshielded: "0.00000000",
-    height: rawHeight,
-    pool: "Ironwood",
-    address: rawAddress,
-    synced: true,
-    timestamp: now,
-  };
-
-  balanceCache = {
-    data: result,
-    expiresAt: now + CACHE_TTL_MS,
-  };
-
-  return result;
 }

@@ -62,7 +62,7 @@ export default async function VaultDetailPage({
   }
 
   // Fallback to Supabase if not in local DB
-  if (!vault) {
+  if (!vault && supabase) {
     try {
       const { data: sbVault } = await supabase
         .from("vaults")
@@ -97,19 +97,20 @@ export default async function VaultDetailPage({
     }
   }
 
-  const vaultLabel = vault?.label || "Foundation Treasury";
-  const vaultThreshold = vault?.threshold || 2;
-  const vaultParticipants = vault?.participants && vault.participants.length > 0
-    ? vault.participants
-    : [
-        { id: "part-alice", label: "Alice (Lead Treasurer)", isActive: true },
-        { id: "part-bob", label: "Bob (Finance Director)", isActive: true },
-        { id: "part-carol", label: "Carol (Standby Signer)", isActive: true },
-      ];
-  // No fallback. A vault without an address has not had its ceremony, and
-  // showing the operator's own wallet address in its place presents someone
-  // else's address as this vault's.
-  const vaultAddress = vault?.shieldedAddress ?? null;
+  if (!vault) {
+    return (
+      <div className="max-w-5xl mx-auto p-8 text-sm text-[var(--text-secondary)]">
+        Vault not found.
+      </div>
+    );
+  }
+
+  const vaultLabel = vault.label;
+  const vaultThreshold = vault.threshold;
+  const vaultParticipants = vault.participants;
+  // An ACTIVE vault can still have no address stored here. That is not the
+  // same claim as "the ceremony has not run".
+  const vaultAddress = vault.shieldedAddress ?? null;
 
   // Non-null only when the wallet we can actually read is this vault's.
   const vaultBalance = await getVaultIronwoodBalance(vaultAddress);
@@ -131,13 +132,17 @@ export default async function VaultDetailPage({
               {vaultLabel}
             </h1>
             {isPendingDkg ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border font-mono"
+                style={{ background: "var(--warning-bg)", color: "var(--warning-text)", borderColor: "var(--warning-border)" }}
+              >
                 PENDING DKG
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border font-mono"
+                style={{ background: "var(--success-bg)", color: "var(--success-text)", borderColor: "var(--success-border)" }}
+              >
                 ACTIVE
               </span>
             )}
@@ -160,7 +165,7 @@ export default async function VaultDetailPage({
               variant="outline"
               size="sm"
               href={`/vaults/${id}/ceremony`}
-              icon={<KeyRound className="w-4 h-4 text-amber-500" />}
+              icon={<KeyRound className="w-4 h-4 text-[var(--text-secondary)]" />}
             >
               Simulate Key Ceremony
             </Button>
@@ -170,7 +175,7 @@ export default async function VaultDetailPage({
             <Button
               variant="outline"
               size="sm"
-              icon={<FileDown className="w-4 h-4 text-emerald-500" />}
+              icon={<FileDown className="w-4 h-4" style={{ color: "var(--success)" }} />}
             >
               Audit Export
             </Button>
@@ -207,11 +212,14 @@ export default async function VaultDetailPage({
 
       {/* Pending DKG Alert Notice */}
       {isPendingDkg && (
-        <div className="p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] flex items-start justify-between gap-4">
+        <div
+          className="p-4 sm:p-5 rounded-2xl border flex items-start justify-between gap-4"
+          style={{ borderColor: "var(--warning-border)", background: "var(--warning-bg)" }}
+        >
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-amber-500" />
-              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              <KeyRound className="w-4 h-4" style={{ color: "var(--warning)" }} />
+              <h3 className="text-sm font-semibold" style={{ color: "var(--warning-text)" }}>
                 Key Ceremony Belum Ditandatangani (PENDING_DKG)
               </h3>
             </div>
@@ -238,27 +246,28 @@ export default async function VaultDetailPage({
             Vault Shielded Address (Ironwood Testnet)
           </span>
           {isPendingDkg ? (
-            <span className="text-amber-600 dark:text-amber-400 font-mono text-[11px] flex items-center gap-1.5 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              Pending DKG Setup
+            <span className="font-mono text-[11px] font-medium" style={{ color: "var(--warning-text)" }}>
+              Ceremony has not run
             </span>
-          ) : (
-            <span className="text-emerald-600 dark:text-emerald-400 font-mono text-[11px] flex items-center gap-1.5 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Receiver Active
+          ) : !vaultAddress ? (
+            <span className="font-mono text-[11px] font-medium text-[var(--text-muted)]">
+              Address not recorded
             </span>
-          )}
+          ) : null}
         </div>
         <div className="bg-[var(--bg-secondary)] p-3 rounded-xl border border-[var(--border-subtle)] flex items-center justify-between gap-3">
           <p className="text-xs font-mono text-[var(--text-secondary)] break-all select-all leading-relaxed">
-            {vaultAddress ?? "No address yet — this vault's ceremony has not run."}
+            {vaultAddress
+              ?? (isPendingDkg
+                ? "No address yet — this vault's ceremony has not run."
+                : "Address not recorded in this app.")}
           </p>
         </div>
       </div>
 
       {/* 3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
-        {vaultBalance ? (
+        {vaultBalance && onchainBalance ? (
           <LiveBalanceCard initialData={onchainBalance} />
         ) : (
           <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs flex flex-col justify-between">
@@ -294,7 +303,7 @@ export default async function VaultDetailPage({
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs flex flex-col justify-between">
           <div>
             <span className="text-xs text-[var(--text-muted)] font-medium">Key Custody</span>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">Zero Custody</div>
+            <div className="text-2xl font-bold mt-1" style={{ color: "var(--success-text)" }}>Non-custodial</div>
           </div>
           <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)]">
             <p className="text-[11px] text-[var(--text-muted)]">Keys held exclusively on client devices</p>
@@ -309,28 +318,29 @@ export default async function VaultDetailPage({
             <Users className="w-4 h-4 text-[var(--zcash-gold)]" />
             <span>Key Holders &amp; Devices ({vaultParticipants.length})</span>
           </h2>
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+          <span className="text-xs flex items-center gap-1" style={{ color: "var(--success-text)" }}>
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Zero Keys on Server</span>
           </span>
         </div>
 
         <div className="divide-y divide-[var(--border-subtle)] text-xs">
-          {vaultParticipants.map((p: ParticipantItem, idx: number) => (
-            <div key={p.id || idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="text-sm font-semibold text-[var(--text-primary)]">{p.label}</div>
-                <div className="text-xs text-[var(--text-muted)]">Participant #{idx + 1} • Key Share Registered</div>
+          {vaultParticipants.length === 0 ? (
+            <p className="py-3.5 text-xs text-[var(--text-muted)]">No participants recorded.</p>
+          ) : (
+            vaultParticipants.map((p: ParticipantItem, idx: number) => (
+              <div key={p.id || idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">{p.label}</div>
+                  <div className="text-xs text-[var(--text-muted)] font-mono break-all">
+                    {p.publicKeyIdentifier
+                      ? `Public key identifier recorded · ${p.publicKeyIdentifier}`
+                      : "No public key identifier recorded"}
+                  </div>
+                </div>
               </div>
-              <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium font-mono ${
-                p.isActive 
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                  : "bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-default)]"
-              } self-start sm:self-auto`}>
-                {p.isActive ? "CONNECTED" : "STANDBY"}
-              </span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

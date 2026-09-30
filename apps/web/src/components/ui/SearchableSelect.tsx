@@ -151,9 +151,9 @@ export function SearchableSelect<T = string | number>({
                     }}
                     role="option"
                     aria-selected={isSelected}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs transition-all text-left cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs text-left cursor-pointer ${
                       isSelected
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/25"
+                        ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] font-semibold border border-[var(--zcash-gold-border)]"
                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] border border-transparent"
                     }`}
                   >
@@ -169,7 +169,7 @@ export function SearchableSelect<T = string | number>({
                       </div>
                     </div>
                     {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 ml-1.5" />
+                      <Check className="w-3.5 h-3.5 text-[var(--zcash-gold)] shrink-0 ml-1.5" />
                     )}
                   </button>
                 );

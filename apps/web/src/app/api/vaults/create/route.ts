@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Sync to Supabase
     try {
+      if (!supabase) throw new Error("Supabase is not configured");
       const { error: supabaseVaultErr } = await supabase.from("vaults").upsert(
         {
           id: newVault.id,

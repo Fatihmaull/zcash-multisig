@@ -86,7 +86,7 @@ export default async function DashboardPage() {
       const b = await getVaultIronwoodBalance(v.shieldedAddress);
       if (b) {
         treasuryZat += Math.round(parseFloat(b.ironwood) * 100_000_000);
-        atHeight = Math.max(atHeight, b.height);
+        if (b.height != null) atHeight = Math.max(atHeight, b.height);
         readable += 1;
       } else {
         unreadable += 1;
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
   }
 
   // Supabase fallback if local DB has 0 vaults
-  if (!activeVault) {
+  if (!activeVault && supabase) {
     try {
       const [sbVaultsRes, sbApprovalsRes] = await Promise.all([
         supabase.from("vaults").select("*, participants(*)").order("created_at", { ascending: false }),
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
           status: a.status,
           expiresAt: a.expires_at ? new Date(a.expires_at) : null,
           vault: {
-            label: a.vaults?.label || "Foundation Treasury",
+            label: a.vaults?.label || "Vault",
           },
         };
       }
@@ -185,11 +185,9 @@ export default async function DashboardPage() {
     <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
       {/* Hero Welcome Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 sm:p-8 lg:p-10 shadow-xs">
-        <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-gradient-to-br from-amber-500/20 via-fuchsia-500/15 to-cyan-500/20 blur-3xl pointer-events-none" />
-
         <div className="relative z-10 max-w-2xl space-y-3.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-cyan-500/15 border border-amber-500/30 text-xs text-[var(--text-primary)] font-medium">
-            <Shield className="w-3.5 h-3.5 text-amber-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--zcash-gold-dim)] border border-[var(--zcash-gold-border)] text-xs text-[var(--text-primary)] font-medium">
+            <Shield className="w-3.5 h-3.5 text-[var(--zcash-gold)]" />
             <span>Zcash Shielded Multisig • Zero Custody</span>
           </div>
 
@@ -198,7 +196,13 @@ export default async function DashboardPage() {
           </h1>
 
           <p className="text-[var(--text-secondary)] text-sm sm:text-base leading-relaxed">
-            A collaborative treasury vault where transfers require cryptographic consensus from at least <strong>{activeVault?.threshold || 2} of {activeVault?.totalParticipants || 3} signers</strong>. Your private keys stay safely on your devices — never stored on a server.
+            A collaborative treasury vault where transfers require cryptographic consensus from{" "}
+            {activeVault ? (
+              <strong>{activeVault.threshold} of {activeVault.totalParticipants} signers</strong>
+            ) : (
+              "the vault's signers"
+            )}
+            . Private keys stay on the devices that hold them.
           </p>
 
           <div className="pt-2 flex flex-wrap gap-3">
@@ -214,7 +218,7 @@ export default async function DashboardPage() {
               variant="outline"
               size="md"
               href="/approvals"
-              icon={<FileCheck2 className="w-4 h-4 text-amber-500" />}
+              icon={<FileCheck2 className="w-4 h-4" style={{ color: "var(--warning)" }} />}
             >
               Pending Approvals ({approvalsCount})
             </Button>
@@ -228,7 +232,7 @@ export default async function DashboardPage() {
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-[var(--text-muted)]">Active Vaults</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 dark:text-amber-400">
+            <div className="w-7 h-7 rounded-lg bg-[var(--zcash-gold-dim)] flex items-center justify-center text-[var(--zcash-gold)]">
               <Lock className="w-4 h-4" />
             </div>
           </div>
@@ -236,7 +240,7 @@ export default async function DashboardPage() {
             {vaultsCount} Vault{vaultsCount !== 1 ? "s" : ""}
           </div>
           <div className="text-xs text-[var(--text-muted)]">
-            Policy: {activeVault?.threshold || 2}-of-{activeVault?.totalParticipants || 3} threshold
+            Policy: {activeVault ? `${activeVault.threshold} of ${activeVault.totalParticipants}` : "—"}
           </div>
         </div>
 
@@ -244,14 +248,17 @@ export default async function DashboardPage() {
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-[var(--text-muted)]">Awaiting Signature</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 dark:text-amber-400">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: "var(--warning-bg)", color: "var(--warning)" }}
+            >
               <FileCheck2 className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-bold font-mono text-[var(--text-primary)]">
             {approvalsCount} Proposal{approvalsCount !== 1 ? "s" : ""}
           </div>
-          <div className="text-xs text-amber-600 dark:text-amber-400">
+          <div className="text-xs" style={{ color: approvalsCount > 0 ? "var(--warning-text)" : "var(--text-muted)" }}>
             {approvalsCount > 0 ? "Threshold pending" : "No pending proposals"}
           </div>
         </div>
@@ -261,12 +268,13 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-[var(--text-muted)]">Shielded Treasury</span>
             {readable > 0 && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Read from chain" />
+              <span className="w-2 h-2 rounded-full" style={{ background: "var(--success)" }} title="Read with a viewing key" />
             )}
           </div>
-          <div className={`text-2xl font-bold font-mono flex items-baseline gap-1.5 ${
-            readable > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text-muted)]"
-          }`}>
+          <div
+            className="text-2xl font-bold font-mono flex items-baseline gap-1.5"
+            style={{ color: readable > 0 ? "var(--success-text)" : "var(--text-muted)" }}
+          >
             <span>{readable > 0 ? (treasuryZat / 100_000_000).toFixed(8) : "—"}</span>
             {readable > 0 && (
               <span className="text-xs font-bold text-[var(--zcash-gold)]">TAZ</span>
@@ -286,11 +294,14 @@ export default async function DashboardPage() {
         <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-[var(--text-muted)]">Network Node</span>
-            <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: "var(--info-bg)", color: "var(--info)" }}
+            >
               <Sparkles className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold font-mono text-[var(--zcash-gold)]">Testnet</div>
+          <div className="text-2xl font-bold font-mono text-[var(--text-primary)]">Testnet</div>
           <div className="text-xs text-[var(--text-muted)]">Ironwood Pool (NU6.3)</div>
         </div>
       </div>
@@ -318,7 +329,14 @@ export default async function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
+                    <span
+                      className="px-2 py-0.5 rounded text-[11px] font-semibold border font-mono"
+                      style={{
+                        background: "var(--warning-bg)",
+                        color: "var(--warning-text)",
+                        borderColor: "var(--warning-border)",
+                      }}
+                    >
                       Awaiting Signatures
                     </span>
                     <span className="text-xs text-[var(--text-muted)] font-mono">ID: {latestApproval.id}</span>
@@ -335,7 +353,7 @@ export default async function DashboardPage() {
 
                 <div className="text-left sm:text-right">
                   <div className="text-xs font-semibold text-[var(--text-primary)]">Status: {latestApproval.status}</div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                  <div className="text-[11px] text-[var(--text-secondary)]">
                     Vault: {latestApproval.vault.label}
                   </div>
                 </div>
@@ -396,7 +414,16 @@ export default async function DashboardPage() {
                     {activeVault.threshold}-of-{activeVault.totalParticipants} threshold policy
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold border font-mono"
+                  style={
+                    activeVault.status === "PENDING_DKG"
+                      ? { background: "var(--warning-bg)", color: "var(--warning-text)", borderColor: "var(--warning-border)" }
+                      : activeVault.status === "ACTIVE"
+                        ? { background: "var(--success-bg)", color: "var(--success-text)", borderColor: "var(--success-border)" }
+                        : { background: "var(--border-subtle)", color: "var(--text-muted)", borderColor: "var(--border-default)" }
+                  }
+                >
                   {activeVault.status}
                 </span>
               </div>
@@ -412,7 +439,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--text-muted)]">Spend Policy:</span>
-                  <span className="text-[var(--zcash-gold)] font-semibold">
+                  <span className="text-[var(--text-primary)] font-semibold">
                     At least {activeVault.threshold} signers approve
                   </span>
                 </div>
@@ -422,7 +449,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[var(--text-muted)]">Key Custody:</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">100% On-Device</span>
+                  <span className="font-medium" style={{ color: "var(--success-text)" }}>On-device</span>
                 </div>
               </div>
 
