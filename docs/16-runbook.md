@@ -191,11 +191,12 @@ QUORUM_SIGNER_PASSPHRASE="$QUORUM_DEV_PASSPHRASE" \
 the whole script does not put the prompt in the terminal you are watching: those signers
 are backgrounded and their stdout goes to log files.
 
-The prompt itself:
+The prompt itself. The vault line is `VAULT_LABEL`, or the vault directory's
+basename when that is unset — `ceremony` for `./secrets/ceremony`:
 
 ```
   APPROVAL REQUEST  99b6bf69-…
-  vault    Foundation Treasury
+  vault    ceremony
   sighash  613a0b41f944e109…
 
   FROM THE TRANSACTION — verified against your own share
