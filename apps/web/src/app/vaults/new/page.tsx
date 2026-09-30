@@ -4,11 +4,11 @@ import { ArrowLeft } from "lucide-react";
 
 export default function NewVaultPage() {
   return (
-    <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <Link
           href="/vaults"
-          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition mb-3 cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-palette mb-3 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Vaults
         </Link>
@@ -16,7 +16,7 @@ export default function NewVaultPage() {
           Create New Shielded Vault
         </h1>
         <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
-          Follow this 3-step wizard to configure key holders and generate distributed threshold key shares without trusted coordinators.
+          Record the key holders. This wizard does not run the ceremony and does not produce an address.
         </p>
       </div>
 

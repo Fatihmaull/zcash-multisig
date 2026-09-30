@@ -53,36 +53,32 @@ export function buttonVariants({
 }) {
   // Base classes: strictly boxy (rounded-none), sharp crisp borders, modern typography
   const base =
-    "inline-flex items-center justify-center font-heading tracking-tight select-none cursor-pointer transition-all duration-150 rounded-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--zcash-gold)] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none";
+    "inline-flex items-center justify-center font-heading tracking-tight select-none cursor-pointer rounded-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--zcash-gold)] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none transition-palette";
 
   const variants: Record<ButtonVariant, string> = {
     // Primary: Solid cypherpunk Zcash gold button with white text
     primary:
-      "bg-[var(--zcash-gold)] hover:bg-[var(--zcash-gold-hover)] text-white font-bold border border-[var(--zcash-gold)] shadow-xs hover:shadow-amber-500/20 active:bg-[var(--zcash-gold-hover)]",
+      "bg-[var(--zcash-gold)] hover:bg-[var(--zcash-gold-hover)] text-[#080b11] font-bold border border-[var(--zcash-gold)]",
     
     // Outline: Adapts to Light (dark text & slate border) and Dark (white text & translucent white border)
     outline:
-      "border border-slate-300 dark:border-white/20 bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 hover:border-slate-400 dark:hover:border-white/40 text-slate-900 dark:text-white font-medium",
-    
-    // Secondary: Filled card surface adapting to light/dark backgrounds
+      "border border-[var(--border-strong)] bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium",
+
     secondary:
-      "border border-slate-200 dark:border-[var(--border-default)] bg-slate-100 dark:bg-[var(--bg-secondary)] hover:bg-slate-200/80 dark:hover:bg-[var(--bg-surface-hover)] hover:border-slate-300 dark:hover:border-[var(--border-strong)] text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white font-medium",
-    
-    // Ghost: Transparent borderless button adapting to light/dark hover
+      "border border-[var(--border-default)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] font-medium",
+
     ghost:
-      "border border-transparent bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-medium",
+      "border border-transparent bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] font-medium",
     
     // Danger: Red alert action adapting to light/dark
     danger:
-      "border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-semibold",
-    
-    // Success: Green confirmation action adapting to light/dark
+      "border border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger-text)] font-semibold",
+
     success:
-      "border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold",
-    
-    // Accent: Electric cyan/sky accent adapting to light/dark
+      "border border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-text)] font-semibold",
+
     accent:
-      "border border-sky-200 dark:border-[#38BDF8]/40 bg-sky-50 dark:bg-[#38BDF8]/15 hover:bg-sky-100 dark:hover:bg-[#38BDF8]/25 text-sky-700 dark:text-[#38BDF8] font-semibold",
+      "border border-[var(--info-border)] bg-[var(--info-bg)] text-[var(--info)] font-semibold",
   };
 
   const sizes: Record<ButtonSize, string> = {

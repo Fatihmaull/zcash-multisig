@@ -89,7 +89,7 @@ export function SearchableSelect<T = string | number>({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full h-9 flex items-center justify-between gap-2 px-3 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] text-xs text-[var(--text-primary)] transition-all shadow-xs focus:outline-none focus:ring-1 focus:ring-[var(--zcash-gold)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
+        className={`w-full h-9 flex items-center justify-between gap-2 px-3 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] text-xs text-[var(--text-primary)] transition-palette shadow-xs focus:outline-none focus:ring-1 focus:ring-[var(--zcash-gold)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${triggerClassName}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -102,17 +102,13 @@ export function SearchableSelect<T = string | number>({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
-        <ChevronDown
-          className={`w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 shrink-0 ${
-            isOpen ? "rotate-180 text-[var(--zcash-gold)]" : ""
-          }`}
-        />
+        <ChevronDown className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className={`absolute z-50 mt-1.5 w-full min-w-[220px] max-w-[340px] rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-xl shadow-black/20 backdrop-blur-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+          className={`absolute z-50 mt-1.5 w-full min-w-[220px] max-w-[340px] rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] overflow-hidden ${
             align === "right" ? "right-0" : "left-0"
           } ${dropdownClassName}`}
         >
@@ -151,9 +147,9 @@ export function SearchableSelect<T = string | number>({
                     }}
                     role="option"
                     aria-selected={isSelected}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs transition-all text-left cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs text-left cursor-pointer ${
                       isSelected
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/25"
+                        ? "bg-[var(--zcash-gold-dim)] text-[var(--zcash-gold)] font-semibold border border-[var(--zcash-gold-border)]"
                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] border border-transparent"
                     }`}
                   >
@@ -169,7 +165,7 @@ export function SearchableSelect<T = string | number>({
                       </div>
                     </div>
                     {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-amber-500 shrink-0 ml-1.5" />
+                      <Check className="w-3.5 h-3.5 text-[var(--zcash-gold)] shrink-0 ml-1.5" />
                     )}
                   </button>
                 );

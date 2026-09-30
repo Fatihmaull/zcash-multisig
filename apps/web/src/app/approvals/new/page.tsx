@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/Button";
 
 export default function NewProposalPage() {
   const router = useRouter();
-  const [recipientAddress, setRecipientAddress] = useState(
-    "utest1e8r405y4n63fyc7c2zak6jvuhjtqfjuyh7m58tdfagusj3ggeyw40dqcatd90asu6wqj5gdm9e0fz2hyzj36h62tvervzu4uvaf97ungzlcurke65y32wzr2u05n6ak5m2c2y5c9rthztrpr3yk6p24nzguts34zet3seml70856fxcrrehptfq8mqfyx0km2et8m4a72vjukmr9gg6"
-  );
-  const [amountZec, setAmountZec] = useState("0.05000000");
-  const [memo, setMemo] = useState("Developer grant disbursement & security review");
+  const [recipientAddress, setRecipientAddress] = useState("");
+  const [amountZec, setAmountZec] = useState("");
+  const [memo, setMemo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,11 +43,11 @@ export default function NewProposalPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <Link
           href="/approvals"
-          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition mb-3 cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-palette mb-3 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Approvals
         </Link>
@@ -66,7 +64,10 @@ export default function NewProposalPage() {
         className="p-6 sm:p-8 rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-xs space-y-5"
       >
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+          <div
+            className="p-3.5 rounded-xl border text-xs flex items-center gap-2"
+            style={{ background: "var(--danger-bg)", borderColor: "var(--danger-border)", color: "var(--danger-text)" }}
+          >
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -96,14 +97,15 @@ export default function NewProposalPage() {
               value={amountZec}
               onChange={(e) => setAmountZec(e.target.value)}
               required
-              placeholder="0.05000000"
               className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-secondary)] text-[var(--text-primary)] font-mono text-sm focus:outline-none focus:border-[var(--zcash-gold)]"
             />
             <span className="absolute right-3.5 top-2.5 text-xs font-bold text-[var(--zcash-gold)]">
               TAZ
             </span>
           </div>
-          <span className="text-[11px] text-[var(--text-muted)]">Available shielded balance: 0.10000000 TAZ (Ironwood)</span>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            A shielded balance is not shown here — it needs the vault&apos;s viewing key.
+          </span>
         </div>
 
         <div className="space-y-1.5">
@@ -119,13 +121,16 @@ export default function NewProposalPage() {
           />
         </div>
 
-        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs space-y-1.5 text-[var(--text-secondary)]">
-          <div className="flex items-center gap-1.5 font-semibold text-[var(--zcash-gold)]">
+        <div
+          className="p-4 rounded-xl border text-xs space-y-1.5 text-[var(--text-secondary)]"
+          style={{ borderColor: "var(--info-border)", background: "var(--info-bg)" }}
+        >
+          <div className="flex items-center gap-1.5 font-semibold" style={{ color: "var(--info)" }}>
             <Shield className="w-3.5 h-3.5" />
-            <span>Threshold Policy: 2-of-3 Required</span>
+            <span>Submitting does not collect a signature</span>
           </div>
           <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-            By creating this proposal, Alice automatically pre-signs Round 1 &amp; Round 2. The proposal will sync directly to Supabase and await co-signer approval.
+            The vault&apos;s own threshold applies. This form does not pre-sign for anyone.
           </p>
         </div>
 

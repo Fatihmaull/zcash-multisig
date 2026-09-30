@@ -64,7 +64,7 @@ export default async function ApprovalsPage() {
   }
 
   // Supabase fallback if local DB has fewer records
-  if (requests.length === 0) {
+  if (requests.length === 0 && supabase) {
     try {
       const { data: sbRequests } = await supabase
         .from("approval_requests")
@@ -115,7 +115,7 @@ export default async function ApprovalsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
@@ -143,24 +143,37 @@ export default async function ApprovalsPage() {
             const receivedEvents = req.signatureRoundEvents.filter(
               (e) => e.status === "RECEIVED" && e.roundType === "SIGNATURE_SHARE"
             );
-            const collectedCount = Math.max(1, receivedEvents.length);
+            const collectedCount = receivedEvents.length;
+            const isBroadcast = req.status === "BROADCASTED";
+            const statusClass =
+              req.status === "BROADCASTED" || req.status === "APPROVED"
+                ? "bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]"
+                : req.status === "REJECTED"
+                  ? "bg-[var(--danger-bg)] text-[var(--danger-text)] border border-[var(--danger-border)]"
+                  : req.status === "PENDING"
+                    ? "bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]"
+                    : "bg-[var(--border-subtle)] text-[var(--text-muted)] border border-[var(--border-default)]";
 
             return (
               <div 
                 key={req.id}
-                className="p-5 sm:p-6 hover:bg-[var(--bg-surface-hover)] transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-5 sm:p-6 hover:bg-[var(--bg-surface-hover)] transition-palette flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-2 max-w-xl">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold font-mono ${statusClass}`}>
                       {req.status}
                     </span>
                     <span className="text-xs text-[var(--text-muted)] font-mono">ID: {req.id}</span>
-                    <span className="text-[var(--text-muted)]">•</span>
-                    <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-500" />
-                      <span>{req.expiresAt ? new Date(req.expiresAt).toLocaleDateString() : "24h window"}</span>
-                    </span>
+                    {req.expiresAt && (
+                      <>
+                        <span className="text-[var(--text-muted)]">•</span>
+                        <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{new Date(req.expiresAt).toLocaleDateString()}</span>
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   <h3 className="text-base font-semibold text-[var(--text-primary)]">
@@ -181,20 +194,22 @@ export default async function ApprovalsPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[var(--border-subtle)]">
                   <div className="text-left md:text-right">
                     <div className="text-xs font-semibold text-[var(--text-primary)]">
-                      Signatures: {collectedCount} of {req.vault.threshold} Collected
+                      {isBroadcast && collectedCount === 0
+                        ? "Signatures: not recorded"
+                        : `Signatures: ${collectedCount} of ${req.vault.threshold} collected`}
                     </div>
-                    <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                    <div className="text-[11px] text-[var(--text-secondary)]">
                       Vault: {req.vault.label}
                     </div>
                   </div>
 
                   <Button
-                    variant="primary"
+                    variant={isBroadcast ? "outline" : "primary"}
                     size="sm"
                     href={`/approvals/${req.id}`}
                     iconRight={<ArrowUpRight className="w-3.5 h-3.5" />}
                   >
-                    Review &amp; Sign
+                    {isBroadcast ? "View" : "Review & Sign"}
                   </Button>
                 </div>
               </div>

@@ -75,7 +75,7 @@ interface SbVaultRecord {
 }
 
   // Supabase fallback if local DB has fewer records
-  if (vaults.length === 0) {
+  if (vaults.length === 0 && supabase) {
     try {
       const { data: sbVaults } = await supabase
         .from("vaults")
@@ -126,7 +126,7 @@ interface SbVaultRecord {
   const pendingDkgCount = vaults.filter((v) => v.status === "PENDING_DKG").length;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -134,11 +134,17 @@ interface SbVaultRecord {
               Shielded Multisig Vaults
             </h1>
             <div className="hidden sm:flex items-center gap-1.5 pl-2">
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span
+                className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border"
+                style={{ background: "var(--success-bg)", color: "var(--success-text)", borderColor: "var(--success-border)" }}
+              >
                 {activeVaultsCount} Active
               </span>
               {pendingDkgCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                <span
+                  className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border"
+                  style={{ background: "var(--warning-bg)", color: "var(--warning-text)", borderColor: "var(--warning-border)" }}
+                >
                   {pendingDkgCount} Pending Setup
                 </span>
               )}
@@ -175,20 +181,23 @@ interface SbVaultRecord {
           return (
             <div 
               key={vault.id}
-              className={`p-6 rounded-2xl border bg-[var(--bg-card)] shadow-xs transition flex flex-col justify-between space-y-4 ${
-                isPendingDkg 
-                  ? "border-amber-500/40 hover:border-amber-500/60 bg-amber-500/[0.02]" 
+              className={`p-6 rounded-2xl border bg-[var(--bg-card)] shadow-xs transition-palette flex flex-col justify-between space-y-4 ${
+                isPendingDkg
+                  ? "border-[var(--warning-border)]"
                   : "border-[var(--border-default)] hover:border-[var(--zcash-gold-border)]"
               }`}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
-                      isPendingDkg 
-                        ? "bg-amber-500/15 border-amber-500/30 text-amber-500" 
-                        : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
-                    }`}>
+                    <div
+                      className="w-10 h-10 rounded-xl border flex items-center justify-center"
+                      style={
+                        isPendingDkg
+                          ? { background: "var(--warning-bg)", borderColor: "var(--warning-border)", color: "var(--warning)" }
+                          : { background: "var(--zcash-gold-dim)", borderColor: "var(--zcash-gold-border)", color: "var(--zcash-gold)" }
+                      }
+                    >
                       <Shield className="w-5 h-5" />
                     </div>
                     <div>
@@ -199,18 +208,25 @@ interface SbVaultRecord {
 
                   <div className="flex items-center gap-1.5">
                     {pendingApprovalsCount > 0 && !isPendingDkg && (
-                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
+                      <span
+                        className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border font-mono"
+                        style={{ background: "var(--warning-bg)", color: "var(--warning-text)", borderColor: "var(--warning-border)" }}
+                      >
                         {pendingApprovalsCount} Need Sign
                       </span>
                     )}
                     {isPendingDkg ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border font-mono"
+                        style={{ background: "var(--warning-bg)", color: "var(--warning-text)", borderColor: "var(--warning-border)" }}
+                      >
                         PENDING DKG
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border font-mono"
+                        style={{ background: "var(--success-bg)", color: "var(--success-text)", borderColor: "var(--success-border)" }}
+                      >
                         ACTIVE
                       </span>
                     )}
@@ -218,11 +234,14 @@ interface SbVaultRecord {
                 </div>
 
                 {isPendingDkg && (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
-                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div
+                    className="p-3 rounded-xl border text-xs flex items-start gap-2"
+                    style={{ background: "var(--warning-bg)", borderColor: "var(--warning-border)", color: "var(--warning-text)" }}
+                  >
+                    <KeyRound className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "var(--warning)" }} />
                     <div className="leading-snug">
                       <span className="font-semibold">Key Ceremony Belum Ditandatangani</span>
-                      <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 mt-0.5">
+                      <p className="text-[11px] mt-0.5 text-[var(--text-secondary)]">
                         Vault belum aktif karena para key holder belum menjalankan DKG Ceremony untuk membentuk group key.
                       </p>
                     </div>
@@ -230,7 +249,10 @@ interface SbVaultRecord {
                 )}
 
                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-mono break-all bg-[var(--bg-secondary)] p-2.5 rounded-xl border border-[var(--border-subtle)]">
-                  {vault.shieldedAddress || "No shielded address assigned yet (Pending DKG generation)"}
+                  {vault.shieldedAddress
+                    || (isPendingDkg
+                      ? "No shielded address yet — this vault's ceremony has not run."
+                      : "Address not recorded in this app.")}
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border-subtle)] text-xs">
@@ -244,9 +266,10 @@ interface SbVaultRecord {
                         <span className="text-[10px] text-[var(--zcash-gold)] font-bold">TAZ</span>
                       )}
                     </div>
-                    <span className={`text-[9px] font-mono block mt-0.5 ${
-                      balance ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text-muted)]"
-                    }`}>
+                    <span
+                      className="text-[9px] font-mono block mt-0.5"
+                      style={{ color: balance ? "var(--success-text)" : "var(--text-muted)" }}
+                    >
                       {isPendingDkg
                         ? "○ No ceremony yet"
                         : balance
@@ -259,7 +282,7 @@ interface SbVaultRecord {
                     <span className="font-semibold text-[var(--text-primary)] block mt-0.5">
                       {vault.threshold} of {vault.totalParticipants} signers
                     </span>
-                    <span className="text-[10px] text-[var(--zcash-gold)] font-mono block mt-0.5">
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono block mt-0.5">
                       {vault.network}
                     </span>
                   </div>
@@ -301,7 +324,7 @@ interface SbVaultRecord {
                       variant="ghost"
                       size="sm"
                       href={`/vaults/${vault.id}/ceremony`}
-                      icon={<KeyRound className="w-3.5 h-3.5 text-[var(--zcash-gold)]" />}
+                      icon={<KeyRound className="w-3.5 h-3.5" />}
                     >
                       Simulate Ceremony
                     </Button>
@@ -324,9 +347,9 @@ interface SbVaultRecord {
         {/* Create New Vault Placeholder Card */}
         <Link
           href="/vaults/new"
-          className="p-8 rounded-2xl border border-dashed border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] bg-[var(--bg-secondary)] hover:bg-[var(--zcash-gold-dim)] transition flex flex-col items-center justify-center text-center group min-h-[260px] space-y-3 cursor-pointer"
+          className="p-8 rounded-2xl border border-dashed border-[var(--border-default)] hover:border-[var(--zcash-gold-border)] bg-[var(--bg-secondary)] hover:bg-[var(--zcash-gold-dim)] transition-palette flex flex-col items-center justify-center text-center group min-h-[260px] space-y-3 cursor-pointer"
         >
-          <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] group-hover:bg-amber-500/10 group-hover:border-amber-500/30 border border-[var(--border-default)] flex items-center justify-center text-[var(--text-muted)] group-hover:text-amber-500 transition shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] group-hover:bg-[var(--zcash-gold-dim)] group-hover:border-[var(--zcash-gold-border)] border border-[var(--border-default)] flex items-center justify-center text-[var(--text-muted)] group-hover:text-[var(--zcash-gold)] shadow-xs">
             <Plus className="w-6 h-6" />
           </div>
           <div>

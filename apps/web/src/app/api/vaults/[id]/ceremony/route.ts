@@ -39,19 +39,24 @@ export async function POST(
       );
     }
 
-    // 2. Validate cryptographic shielded address format (reject unverified / arbitrary strings)
-    if (!shieldedAddress || !isValidZcashTestnetUnifiedAddress(shieldedAddress)) {
+    // A browser is not a ceremony. Without a coordinator that has already
+    // verified one, this route does not store an address or mark the vault
+    // ACTIVE — including when the body contains a well-formed utest1 string.
+    if (!coordinatorClient.isLive()) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "Invalid shielded address. A valid Zcash testnet unified address (starting with 'utest1...') is required for vault activation.",
+            "This route does not record an address from the browser. A vault address is stored only after a coordinator-verified ceremony.",
         },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
-    const validatedAddress = shieldedAddress.trim();
+    const validatedAddress =
+      typeof shieldedAddress === "string" && isValidZcashTestnetUnifiedAddress(shieldedAddress)
+        ? shieldedAddress.trim()
+        : null;
 
     // 3. In live mode the vault is read from the coordinator, not asserted here
     //
@@ -126,7 +131,7 @@ export async function POST(
         );
       }
 
-      if (vault.shieldedAddress !== validatedAddress) {
+      if (validatedAddress && vault.shieldedAddress !== validatedAddress) {
         // Not fatal — the coordinator is authoritative and we take its answer
         // — but a mismatch means the browser was working from stale or wrong
         // data and somebody should know.
@@ -152,6 +157,7 @@ export async function POST(
 
     // 5. Sync to Supabase
     try {
+      if (!supabase) throw new Error("Supabase is not configured");
       await supabase
         .from("vaults")
         .update({
@@ -203,7 +209,7 @@ export async function GET(
       updated_at?: string | null;
     }
 
-    if (!vault) {
+    if (!vault && supabase) {
       const { data: sbVault } = await supabase
         .from("vaults")
         .select("*, participants(*)")

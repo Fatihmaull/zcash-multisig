@@ -49,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans min-h-screen antialiased bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200`}>
+      <body className={`${plusJakartaSans.variable} ${jetbrainsMono.variable} font-sans min-h-screen antialiased bg-[var(--bg-primary)] text-[var(--text-primary)]`}>
         <UIProvider>
           <SplashScreenProvider>
             <AppShell>

@@ -27,33 +27,18 @@ export async function POST(request: NextRequest) {
         vaultId: defaultVaultId,
         recipientAddress,
         amountZatoshi,
-        memo: memo || "Disbursement transfer",
+        memo: typeof memo === "string" && memo.trim() ? memo.trim() : null,
         status: "PENDING",
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
 
-    // 2. Pre-record Alice's signature (Initiator / Lead Signer)
-    await prisma.signatureRoundEvent.create({
-      data: {
-        approvalRequestId: newApproval.id,
-        participantId: "part-alice",
-        roundType: "COMMITMENT",
-        status: "RECEIVED",
-      },
-    });
-
-    await prisma.signatureRoundEvent.create({
-      data: {
-        approvalRequestId: newApproval.id,
-        participantId: "part-alice",
-        roundType: "SIGNATURE_SHARE",
-        status: "RECEIVED",
-      },
-    });
+    // No signature is recorded here. A proposal is not an approval, and
+    // writing a RECEIVED share for "Alice" counted a signature nobody made.
 
     // 3. Sync to Supabase
     try {
+      if (!supabase) throw new Error("Supabase is not configured");
       await supabase.from("approval_requests").insert({
         id: newApproval.id,
         vault_id: newApproval.vaultId,
@@ -62,13 +47,6 @@ export async function POST(request: NextRequest) {
         memo: newApproval.memo,
         status: "PENDING",
         expires_at: newApproval.expiresAt ? newApproval.expiresAt.toISOString() : null,
-      });
-
-      await supabase.from("signature_round_events").insert({
-        approval_request_id: newApproval.id,
-        participant_id: "part-alice",
-        round_type: "SIGNATURE_SHARE",
-        status: "RECEIVED",
       });
     } catch (sbErr) {
       console.error("Supabase new approval sync error:", sbErr);

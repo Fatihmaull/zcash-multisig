@@ -3,7 +3,7 @@
 //
 // GET /api/vaults/[id]/audit-export?format=csv|json
 //
-// Generates an exportable, tamper-evident audit record of:
+// Generates an exportable audit record of:
 // 1. Vault configuration and threshold policy
 // 2. Cryptographic participants and verification keys (public only)
 // 3. Complete approval request lifecycle and round attribution events
@@ -26,9 +26,13 @@ interface AuditExportPayload {
     generatedAt: string;
     network: string;
     protocolVersion: string;
-    viewingKeyScope: string;
-    viewingKeyFingerprint: string;
-    exportHashScheme: string;
+    viewingKeyScope: string | null;
+    /**
+     * First 16 and last 8 characters of the decrypted viewing key.
+     * A truncation, not a hash and not a fingerprint.
+     */
+    truncatedViewingKey: string;
+    disclaimer: string;
   };
   vault: {
     id: string;
@@ -48,7 +52,7 @@ interface AuditExportPayload {
   approvalRequests: Array<{
     id: string;
     recipientAddress: string;
-    amountZEC: string;
+    amountTAZ: string;
     amountZatoshi: string;
     memo: string | null;
     status: string;
@@ -203,7 +207,7 @@ export async function GET(
     });
 
     // Fallback: If not found in local DB, fetch from Supabase
-    if (!vault) {
+    if (!vault && supabase) {
       const { data: rawSbVault } = await supabase
         .from("vaults")
         .select("*, participants(*), approval_requests(*, signature_round_events(*))")
@@ -268,15 +272,17 @@ export async function GET(
       return NextResponse.json({ error: "Vault not found" }, { status: 404 });
     }
 
-    // 2. Process viewing key fingerprint (opt-in auditor assurance)
-    let fvkFingerprint = "No FVK registered (Application log fallback)";
+    // The exact disclaimer, in both formats. Paraphrasing it is how it got lost.
+    const disclaimer = "The event log is ours. The chain is not.";
+
+    // 2. Truncation of the viewing key, when one is stored. Not a hash.
+    let truncatedViewingKey = "No viewing key stored";
     if (vault.viewingKeys && vault.viewingKeys.length > 0) {
       try {
         const decryptedKey = decryptViewingKey(vault.viewingKeys[0].encryptedViewingKey);
-        // Display truncated privacy-preserving fingerprint
-        fvkFingerprint = `${decryptedKey.slice(0, 16)}...${decryptedKey.slice(-8)}`;
+        truncatedViewingKey = `${decryptedKey.slice(0, 16)}...${decryptedKey.slice(-8)}`;
       } catch {
-        fvkFingerprint = "FVK registered (encrypted at rest)";
+        truncatedViewingKey = "Viewing key stored, encrypted — not shown";
       }
     }
 
@@ -295,9 +301,12 @@ export async function GET(
         generatedAt: new Date().toISOString(),
         network: vault.network,
         protocolVersion: "ZIP-312 / FROST-RedPallas v3 (Ironwood Pool)",
-        viewingKeyScope: vault.viewingKeys?.[0]?.scope || "FULL_VIEWING",
-        viewingKeyFingerprint: fvkFingerprint,
-        exportHashScheme: "Tamper-Evident SHA-256 Attribution Chain",
+        viewingKeyScope:
+          vault.viewingKeys && vault.viewingKeys.length > 0
+            ? vault.viewingKeys[0].scope ?? null
+            : null,
+        truncatedViewingKey,
+        disclaimer,
       },
       vault: {
         id: vault.id,
@@ -315,11 +324,11 @@ export async function GET(
         isActive: p.isActive,
       })),
       approvalRequests: vault.approvalRequests.map((a) => {
-        const amountZEC = (Number(a.amountZatoshi) / 100_000_000).toFixed(8);
+        const amountTAZ = (Number(a.amountZatoshi) / 100_000_000).toFixed(8);
         return {
           id: a.id,
           recipientAddress: a.recipientAddress,
-          amountZEC,
+          amountTAZ,
           amountZatoshi: a.amountZatoshi.toString(),
           memo: a.memo,
           status: a.status,
@@ -350,9 +359,8 @@ export async function GET(
           ? "BALANCE_READ_FROM_CHAIN_FOR_THIS_VAULT"
           : "NOT_RECONCILED_NO_VIEWING_KEY_AVAILABLE_HERE",
         howToVerify:
-          "Import the viewing key above into a wallet, sync, and compare against the events " +
-          "below. This export is only as trustworthy as that comparison — the event log is " +
-          "ours, the chain is not.",
+          "Import the viewing key into a wallet, sync, and compare against the events below. " +
+          disclaimer,
       },
     };
 
@@ -363,7 +371,8 @@ export async function GET(
       csvRows.push(`GeneratedAt,${auditData.exportMetadata.generatedAt}`);
       csvRows.push(`Network,${auditData.exportMetadata.network}`);
       csvRows.push(`Protocol,${auditData.exportMetadata.protocolVersion}`);
-      csvRows.push(`FVK_Fingerprint,${auditData.exportMetadata.viewingKeyFingerprint}`);
+      csvRows.push(`TruncatedViewingKey,${auditData.exportMetadata.truncatedViewingKey}`);
+      csvRows.push(`Disclaimer,"${auditData.exportMetadata.disclaimer}"`);
       csvRows.push(
         `IronwoodBalance,${
           auditData.onchainVerification.liveBalanceTAZ
@@ -381,17 +390,17 @@ export async function GET(
       csvRows.push(`ShieldedAddress,${auditData.vault.shieldedAddress || "N/A"}`);
       csvRows.push("");
 
-      csvRows.push("--- PARTICIPANTS (ZERO PRIVATE MATERIAL) ---");
-      csvRows.push("ParticipantID,Label,Status,VerifyingKeyShare");
+      csvRows.push("--- PARTICIPANTS ---");
+      csvRows.push("ParticipantID,Label,Status,PublicKeyIdentifier");
       auditData.participants.forEach((p) => {
         csvRows.push(`"${p.id}","${p.label}","${p.isActive ? "ACTIVE" : "STANDBY"}","${p.publicKeyIdentifier || "N/A"}"`);
       });
       csvRows.push("");
 
       csvRows.push("--- SPEND APPROVAL AUDIT LOG ---");
-      csvRows.push("ApprovalID,CreatedAt,RecipientAddress,AmountZEC,Status,TxID,AnchorBlock,Memo");
+      csvRows.push("ApprovalID,CreatedAt,RecipientAddress,AmountTAZ,Status,TxID,AnchorBlock,Memo");
       auditData.approvalRequests.forEach((a) => {
-        csvRows.push(`"${a.id}","${a.createdAt}","${a.recipientAddress}","${a.amountZEC}","${a.status}","${a.txid || ""}","${a.anchorBlock || ""}","${(a.memo || "").replace(/"/g, '""')}"`);
+        csvRows.push(`"${a.id}","${a.createdAt}","${a.recipientAddress}","${a.amountTAZ}","${a.status}","${a.txid || ""}","${a.anchorBlock || ""}","${(a.memo || "").replace(/"/g, '""')}"`);
       });
 
       const csvContent = csvRows.join("\n");
