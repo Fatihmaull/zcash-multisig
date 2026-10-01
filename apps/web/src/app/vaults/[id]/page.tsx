@@ -306,7 +306,9 @@ export default async function VaultDetailPage({
             <div className="text-2xl font-bold mt-1" style={{ color: "var(--success-text)" }}>Non-custodial</div>
           </div>
           <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)]">
-            <p className="text-[11px] text-[var(--text-muted)]">Keys held exclusively on client devices</p>
+            <p className="text-[11px] text-[var(--text-muted)] leading-snug">
+              Spend key shares stay on each signer&apos;s machine. The server stores only this vault&apos;s encrypted viewing key, if one was added, which can read balances but cannot spend.
+            </p>
           </div>
         </div>
       </div>
@@ -320,7 +322,7 @@ export default async function VaultDetailPage({
           </h2>
           <span className="text-xs flex items-center gap-1" style={{ color: "var(--success-text)" }}>
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Zero Keys on Server</span>
+            <span>No key shares on the server</span>
           </span>
         </div>
 

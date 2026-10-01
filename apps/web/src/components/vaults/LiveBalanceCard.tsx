@@ -67,7 +67,12 @@ export function LiveBalanceCard({ initialData, vaultAddress }: LiveBalanceCardPr
         {data ? (
           <span>
             {data.pool}
-            {data.height != null ? ` · height ${data.height.toLocaleString("en-US")}` : ""}
+            {data.height != null && (
+              <>
+                {" · height "}
+                <span className="font-mono">{data.height.toLocaleString("en-US")}</span>
+              </>
+            )}
           </span>
         ) : addressMismatch ? (
           <span>This wallet address is not this vault&apos;s address, so its balance is not shown.</span>
