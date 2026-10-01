@@ -103,6 +103,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 | [16-runbook.md](docs/16-runbook.md) | **Clean machine to a confirmed spend — every command, verified** |
 | [17-loi-drafts.md](docs/17-loi-drafts.md) | Outreach drafts, ready to send, written against the R6 honesty rules |
 | [18-video-agent-master-prompt.md](docs/18-video-agent-master-prompt.md) | **Hand this whole file to whoever produces the demo video** |
+| [19-after-submission.md](docs/19-after-submission.md) | What we deferred past the deadline, and why — written before it, so a deferral cannot pass for an oversight |
 | [12-spike-s1-report.md](docs/12-spike-s1-report.md) | **Spike S1 findings — what actually works, what was broken, what is still open** |
 | [11-contract-review.md](docs/11-contract-review.md) | Open questions on the coordinator contract — resolve before 22 Sep, then delete |
 
