@@ -169,7 +169,7 @@ export function Sidebar() {
           if (item.href === "/") {
             return (
               <button
-                key={item.href}
+                key={item.label}
                 onClick={() => {
                   closeMobileMenu();
                   triggerSplashNavigation("/");
@@ -190,7 +190,7 @@ export function Sidebar() {
 
           return (
             <Link
-              key={item.href}
+              key={item.label}
               href={item.href}
               onClick={closeMobileMenu}
               className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-palette ${
