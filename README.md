@@ -2,16 +2,142 @@
 
 **Shared custody for Zcash shielded funds (Private Multisig).**
 
-Language: **English** | [Bahasa Indonesia](README.id.md)
+---
 
-Zcash shielded pools have no multisig opcode. An organisation holding ZEC today must either use a
-transparent address — losing the entire reason to use Zcash — or let one person hold the seed.
-Quorum is the organisational layer over re-randomized FROST that makes threshold control of
-shielded funds usable by a treasurer on a Monday morning.
+## Why Quorum Was Built (The Problem Background)
+
+### The Impossible Dilemma of Shielded Custody
+
+On transparent blockchains like Bitcoin and Ethereum, every transaction, treasury balance, and payment counterparty is visible to anyone with an internet connection. For organizations, foundations, and corporate treasuries, holding operational funds transparently leaks payroll details, vendor agreements, and financial reserves to competitors and adversaries.
+
+**Zcash shielded pools solve this.** Using zero-knowledge cryptography (Orchard & Sapling), shielded transactions encrypt amounts, senders, and receivers directly on-chain.
+
+**However, Zcash shielded pools have no native multisig opcode.** Unlike transparent Bitcoin scripts (`OP_CHECKMULTISIG`) or Ethereum smart contract wallets (e.g. Safe), the Zcash shielded protocol has no built-in mechanism to enforce "M-of-N" multi-party consensus on-chain.
+
+As a result, any organization wanting to hold shielded ZEC has historically been forced into an impossible trade-off:
+
+1. **Option A: Revert to transparent addresses (`t-addresses`).**  
+   The organization can use conventional multisig, but at the cost of publishing its entire treasury balance and all transaction histories — discarding the core reason to use Zcash in the first place.
+2. **Option B: Let a single individual hold the shielded seed phrase / private key.**  
+   This creates a catastrophic single point of failure: employee departure, laptop theft, extortion, or insider fraud can instantly compromise the entire treasury. No financial auditor, compliance board, or GRC framework will accept single-custodian control for organizational capital.
+
+### Why Cryptography Alone Was Not Enough
+
+The cryptographic foundation that breaks this deadlock already exists: **FROST (Flexible Round-Optimized Schnorr Threshold)** over the RedPallas ciphersuite (specified in ZIP-312), developed and audited by the Zcash Foundation and external cryptographers. FROST allows a distributed group of participants to produce valid Schnorr signatures without the complete private key ever existing in one place.
+
+However, raw cryptographic primitives cannot be operated by an enterprise treasury on a Monday morning:
+- Non-cryptographers cannot manually coordinate low-level terminal relays or raw byte exchanges for **Distributed Key Generation (DKG)**.
+- Organizations require an **approval state machine**, proposal reviews, spending limits, and multi-tier signer workflows.
+- In distributed environments, signers go offline or send corrupted shares. The system must provide **deterministic culprit attribution** (identifying who failed or misbehaved) and dynamic fallback routing.
+- Auditors and compliance teams require **cryptographically verifiable viewing-key audit trails** so accountants can inspect transaction histories without gaining spend authorization.
+
+### What Quorum Delivers
+
+**Quorum is the organizational and governance layer built over re-randomized FROST.**
+
+We did not build the cryptography — `frost-core` v3.0.0 is audited, and the network transport exists. Quorum builds everything in between:
+- **Zero Custody by Design:** The coordinator daemon and web application never see, transmit, or store private keys or key shares.
+- **Threshold Security (t-of-n):** Shielded fund transfers require cryptographically verified consensus from device-isolated signer processes.
+- **Auditability Without Spend Authority:** Opt-in viewing key integration enables auditable transparency for stakeholders while keeping spend keys decentralized.
+- **Fault Attribution & Recovery:** Built-in detection for misbehaving or stalled signers with automatic failover to standby participants.
 
 > **We are not building cryptography.** `frost-core` v3.0.0 is audited and stable. The
 > transport (`frostd`) exists. The gap is everything between the library and an organisation
 > that has to pass a controls audit. That is what we build, and that is why 26 days is realistic.
+
+---
+
+## Technical Stack & Architecture Mindmap
+
+```mermaid
+mindmap
+  root((Quorum Stack))
+    Web Tier
+      Next.js 16 App Router
+      React 19 and Tailwind CSS v4
+      Vault and DKG Wizard
+      Approval and Spend Proposal UI
+      Viewing Key Audit Trail Viewer
+    Data and Security
+      PostgreSQL Database
+      Prisma ORM 6.19
+      Zero-Custody Metadata Schema
+      AES-256-GCM FVK Envelope Encryption
+    Orchestration Layer
+      quorum-coordinatord Axum Daemon
+      Two-Round FROST State Machine
+      Culprit Attribution Engine
+      Mock Coordinator Fallback
+    Cryptographic Core
+      frost-core v3.0.0
+      RedPallas Ciphersuite
+      ZIP-312 Re-randomized Schnorr
+      Orchard FVK Derivation
+      quorum-dkgd and quorum-signd
+    Relay and Key Isolation
+      frostd WebSocket Relay
+      Local Encrypted Key Shares
+      PCZT Transaction Pipeline
+    Zcash Network Tier
+      Ironwood Shielded Pool
+      Public Lightwalletd gRPC
+      zcash-devtool Wallet Engine
+```
+
+### Component Interaction & Trust Boundaries
+
+```mermaid
+graph TD
+    subgraph ClientBrowser["Web Tier (Next.js 16 / React 19)"]
+        UI["Web Dashboard & DKG Wizard"]
+        API["Route Handlers (/api/*)"]
+        MockCoord["Mock Coordinator Fallback"]
+    end
+
+    subgraph StorageLayer["Data & Persistence"]
+        DB[("PostgreSQL Database")]
+        Prisma["Prisma ORM (Zero-Custody)"]
+        CryptoKey["AES-256-GCM Encrypted FVK"]
+    end
+
+    subgraph Orchestration["Orchestration Layer (Zero-Custody)"]
+        CoordDaemon["quorum-coordinatord (Rust / Axum)"]
+        StateEngine["Round 1 & 2 FROST State Machine"]
+        CulpritDetect["Culprit Attribution & Failover"]
+    end
+
+    subgraph SignersNetwork["Device-Isolated Signer Tier"]
+        SignerA["Signer 1: Alice (quorum-signd)"]
+        SignerB["Signer 2: Bob (quorum-signd)"]
+        SignerC["Signer 3: Carol (quorum-signd)"]
+        Relay["frostd Communication Relay"]
+    end
+
+    subgraph ZcashChain["Zcash Testnet Network"]
+        LWD["Lightwalletd (testnet.zec.rocks)"]
+        DevTool["zcash-devtool (PCZT Builder)"]
+        Ironwood["Ironwood Shielded Pool"]
+    end
+
+    UI --> API
+    API --> Prisma
+    Prisma --> DB
+    DB -.-> CryptoKey
+    API --> CoordDaemon
+    API -.-> MockCoord
+
+    CoordDaemon --> StateEngine
+    StateEngine --> CulpritDetect
+    CoordDaemon <--> Relay
+
+    Relay <--> SignerA
+    Relay <--> SignerB
+    Relay <--> SignerC
+
+    API --> LWD
+    DevTool --> LWD
+    LWD --> Ironwood
+```
 
 ---
 
