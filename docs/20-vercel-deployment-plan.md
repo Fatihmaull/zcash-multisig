@@ -8,7 +8,7 @@ This document defines the deployment architecture, configuration, step-by-step p
 ## 1. Architectural Boundaries on Vercel
 
 Quorum is a hybrid system divided strictly across trust boundaries:
-- **Rust Protocol Core & Signers (`packages/core`, `quorum-dkgd`, `quorum-signd`)**: Run exclusively on participants' local machines or HSMs. Private key shares **never** leave participant environments and **never** touch Vercel.
+- **Rust Protocol Core & Signers (`packages/core`, `quorum-dkgd`, `quorum-signerd`)**: Run exclusively on participants' local machines or HSMs. Private key shares **never** leave participant environments and **never** touch Vercel.
 - **Web Tier (`apps/web`)**: Next.js 16 App Router application with React 19, Tailwind CSS v4, and Prisma ORM. This is the component deployed to Vercel Serverless / Edge infrastructure.
 - **Database Layer**: Hosted PostgreSQL (e.g. Supabase, Neon, AWS RDS). Vercel Serverless Functions connect via pooled `DATABASE_URL`.
 - **Zcash Network Access**: Public lightwalletd gRPC/JSON gateway (`https://testnet.zec.rocks:443`).
@@ -45,7 +45,49 @@ Vercel deployment supports two operational modes:
 | Mode | Coordinator Backend | `COORDINATOR_URL` | Use Case |
 |---|---|---|---|
 | **Mode A: Cloud Preview / Hackathon Demo** *(Recommended for Vercel)* | Built-in Mock Coordinator (`src/lib/mock-coordinator.ts`) | **Unset** | Public showcase, hackathon evaluation, UI review. Simulates DKG sessions, participant commitments, and threshold signing rounds without requiring local daemons. |
-| **Mode B: Hybrid Live Coordinator** | Remote `quorum-coordinatord` instance | Set to external daemon URL (e.g., `https://coordinator.yourdomain.com`) | End-to-end multi-party signing with a hosted coordinator daemon reachable over HTTPS. |
+| **Mode B: Hybrid Live Coordinator** | Remote `quorum-coordinatord`, **behind an authenticating proxy** | Set to that proxy's URL | End-to-end multi-party signing. **Read the warning below before using this.** |
+
+> [!CAUTION]
+> ### `/coordinator/*` has no authentication. Do not expose it directly.
+>
+> Every route on the browser surface is unauthenticated by design: the split that
+> matters in this product is that the browser tier **cannot sign**, and that is enforced
+> structurally rather than by a credential. Only `/signer/*` carries a per-participant
+> bearer token.
+>
+> So a `quorum-coordinatord` reachable on the open internet lets anyone:
+>
+> | Route | What they get |
+> |---|---|
+> | `/coordinator/vault/audit` | The vault's **unified full viewing key** — its entire transaction history, permanently |
+> | `/coordinator/approval/authorized` | A **signed transaction**, ready to broadcast |
+> | `/coordinator/vault/list` | Every vault the coordinator knows |
+> | `/coordinator/vault/register` | Registration, which also mints participant tokens |
+>
+> None of this moves funds that a quorum did not already approve, and none of it
+> produces a signature — below the threshold the signature does not exist. But a
+> published viewing key is a permanent privacy loss, and an authorized transaction in a
+> stranger's hands is a spend that goes out on their schedule rather than yours.
+>
+> **If you run Mode B, put something in front of it that authenticates.** A reverse proxy
+> with mutual TLS or an access gateway, allowing only the Vercel deployment and the
+> participants' machines. Never `quorum-coordinatord` bound to a public interface on its
+> own.
+>
+> This is also why [`.env.example`](../.env.example) says not to expose the port, and why
+> `approval_authorized`'s own documentation says the same. **Mode A does not have this
+> problem** — no coordinator is reachable at all.
+
+> [!IMPORTANT]
+> **In Mode A every signing interaction on the deployed site is simulated**, because the
+> mock coordinator is what answers. The UI labels those flows on screen and those labels
+> must stay — a judge following a link from the submission will click *Sign as Bob* and
+> is entitled to know what they just saw. The submission's §9 says the same thing; this
+> is the deployment that makes it concrete.
+>
+> The real signing path is three `quorum-signerd` processes on participants' machines,
+> which is what the demo video records and what the on-chain transactions came from.
+> Vercel is where the interface lives, not where the custody happens.
 
 > [!NOTE]
 > In both modes, `zcash-devtool` binary execution (`src/lib/onchain-balance.ts`) gracefully degrades: when the local binary or wallet directory is absent on Vercel's serverless filesystem, balance endpoints return `null` instead of throwing, maintaining application stability.
@@ -80,7 +122,7 @@ Configure the following environment variables in **Vercel Project Settings → E
 | `NEXT_PUBLIC_ZCASH_NETWORK` | Production, Preview, Dev | Public | Must be `testnet` (Constraint C9). |
 | `ZCASH_NETWORK` | Production, Preview, Dev | Public | Must be `testnet`. |
 | `LIGHTWALLETD_ENDPOINT` | Production, Preview, Dev | Public | Testnet lightwalletd URL: `https://testnet.zec.rocks:443`. |
-| `COORDINATOR_URL` | Production, Preview, Dev | Sensitive (Optional) | Leave **blank** for Mock Coordinator demo mode. Set only if connecting to an external live `quorum-coordinatord`. |
+| `COORDINATOR_URL` | Production, Preview, Dev | Sensitive (Optional) | Leave **blank** for Mock Coordinator demo mode. Set only if connecting to an external live `quorum-coordinatord` **that sits behind an authenticating proxy** — see the caution under Deployment Modes. |
 
 > [!CRITICAL]
 > **Constraint C9 Reminder:** Quorum is strictly testnet-only. Do **not** set network variables to mainnet. The CI ciphersuite guard and application runtime explicitly reject mainnet designations.

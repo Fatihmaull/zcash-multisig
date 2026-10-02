@@ -113,6 +113,16 @@ jobs:
 
       # The Prisma client is generated, not committed. tsc cannot resolve
       # @prisma/client without this step.
+      # `generate` tolerates a missing env var; `validate` does not, and that gap
+      # is why a `directUrl` added on 2 Oct broke every Prisma command on a
+      # fresh clone while CI stayed green. Validate first, with placeholders —
+      # it reads the schema and never opens a connection.
+      - name: Validate Prisma schema
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+        run: pnpm --filter web exec prisma validate
+
       - name: Generate Prisma client
         run: pnpm --filter web exec prisma generate
 
