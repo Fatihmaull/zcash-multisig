@@ -91,7 +91,14 @@ Verified 15–16 September 2026. Rationale and failure modes in
     it from the group key**: `ak` is in the address, so anyone holding the address could
     rebuild the viewing key and read the vault's entire history. See
     `quorum-core/src/vault_key.rs`.
-11. **`vault-3p` is burned. Never fund it again.** On 25 Sep its three sealed shares and its
+11. **Do not move `reddsa` past 0.5.x.** `reddsa 0.6` dropped the FROST ciphersuites
+    ([reddsa#963](https://github.com/ZcashFoundation/reddsa/issues/963)); they are moving to
+    the FROST repository instead, and the maintainer has said the move keeps `KeyPackage`
+    serialization and everything else as is. So the upgrade path is *to the FROST repo's
+    crate when it lands*, not to `reddsa 0.6`, and 0.5.x stays supported until then.
+    Confirmed by the maintainer in
+    [frost#1094](https://github.com/ZcashFoundation/frost/issues/1094), 1 Oct 2026.
+12. **`vault-3p` is burned. Never fund it again.** On 25 Sep its three sealed shares and its
     vault seed were committed to the public repo (#36), and the passphrase that opens them is a
     constant in `examples/ceremony.rs` — so they were shares in name only. Testnet, so nothing
     was lost. Removed from the tree; still in git history, because you cannot un-publish a key
@@ -201,6 +208,22 @@ transaction nobody saw. Reading lives in `quorum_core::transaction` now, shared 
 signer; a signer derives the sighash and randomizers from the PCZT, checks each action's `rk`
 against its **own** group key, and refuses on disagreement. `quorum-signerd` also asks a human
 before signing — `QUORUM_SIGNER_AUTO_APPROVE=1` skips it for scripted runs and says so loudly.
+
+**Quantum recoverability is answered, and we lose it** (frost#1094, 21 Sep). Asked directly,
+the FROST maintainer said that using
+`from_sk_ak_incompatible_with_quantum_recoverability_and_will_be_removed` means *"you are
+giving up on quantum recoverability and would need to migrate to a new wallet"*. Not partial,
+and not deferrable inside the vault.
+
+The right path is ZIP-2005 §4.2.3 *Usage with FROST* — agree `sk` privately, derive `nk`,
+`qsk`, `qk`, `rivk_ext` with `use_qsk = true`, then `FullViewingKey::from_bytes(ak ‖ nk ‖
+rivk_ext)`. **Our `VaultSeed` already is the "agree `sk` privately" step**, so only the
+derivation call differs. It is blocked on `use_qsk` and `rivk_ext` reaching the `orchard` we
+build against; doing it by hand against a draft spec in a custody tool is not a pre-deadline
+change. **First work after submission** — see `docs/19-after-submission.md`.
+
+Stop describing this as an open question. It was one until 21 September and the answer is
+unfavourable, which is exactly why it has to be stated rather than left soft.
 
 **A PCZT is checked against the vault before signing** (P3-A7). It was not, and the demo happily
 reported `APPROVED, 2 signatures` for another vault's transaction — real quorum, valid FROST

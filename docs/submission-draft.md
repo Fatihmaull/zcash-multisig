@@ -227,16 +227,44 @@ whether something is audited, say we are unsure.
   — the coordinator, the daemons, the share-at-rest format — has had no external review of any
   kind.
 - **ZIP-312 is still Draft.** The Zcash Foundation's 2026 roadmap says it is being finalised.
-- **We depend on an unmerged upstream patch.** Deriving a vault's viewing key from a group key
-  nobody holds the spending key for needs a constructor that is not in the published `orchard`
-  crate; it comes from [zcash/orchard#475](https://github.com/zcash/orchard/pull/475), still
-  open. **That constructor is named for being incompatible with quantum recoverability** —
-  which is the property Ironwood exists to provide. Whether a FROST vault can therefore live
-  properly in Ironwood long-term is **an open question we have raised and cannot answer
-  ourselves.** `zcash-sign` has the same dependency.
-- **Quantum:** ZIP-2005 gives quantum *recoverability*, not quantum resistance. RedPallas
-  signatures remain vulnerable to Shor's algorithm. See the point above for why our use is
-  additionally uncertain.
+- **Our vaults forfeit Ironwood's quantum recoverability. This is answered, not open.**
+  Deriving a vault's viewing key from a group key nobody holds the spending key for needs a
+  constructor absent from the published `orchard` crate; it comes from
+  [zcash/orchard#475](https://github.com/zcash/orchard/pull/475), still open, and it is named
+  for the trade-off it makes. `zcash-sign` has the same dependency.
+
+  We asked the Zcash Foundation what it costs, in
+  [ZcashFoundation/frost#1094](https://github.com/ZcashFoundation/frost/issues/1094). The
+  maintainer's answer, on 21 September:
+
+  > *"if you use `from_sk_ak_incompatible_with_quantum_recoverability_and_will_be_removed` you
+  > are giving up on quantum recoverability and would need to migrate to a new wallet then that
+  > is supported."*
+
+  So a vault built by this tool loses the property Ironwood exists to provide, and the remedy
+  is a later migration rather than anything we can do in the vault. **An earlier draft of this
+  section called that an open question. It was answered and we had read it as milder than it
+  is.**
+
+  **The correct path exists and we know its shape.** ZIP-2005 §4.2.3 *Usage with FROST*:
+  members agree `sk` privately, derive `nk`, `qsk`, `qk` and `rivk_ext` with `use_qsk = true`,
+  then build the viewing key with `FullViewingKey::from_bytes(ak ‖ nk ‖ rivk_ext)` instead.
+  Another integrator on that thread already does it this way. Our ceremony's `VaultSeed` is
+  exactly the *"agree `sk` privately"* step, so the architecture is compatible and only the
+  derivation call differs.
+
+  **We have not switched, and the reason is the deadline.** `use_qsk` and `rivk_ext` are not in
+  the `orchard` we build against; taking this path today means hand-implementing key derivation
+  against a draft specification, in a custody tool, with no published test vectors. That is a
+  worse trade than saying plainly what we did. It is the first work after this submission.
+- **Quantum, generally:** ZIP-2005 gives quantum *recoverability*, not quantum resistance.
+  RedPallas signatures remain vulnerable to Shor's algorithm regardless of the point above.
+- **The randomizer is visible to the coordinator, and that is a privacy property.** Each
+  action's `alpha` travels from coordinator to signer in the clear. Anyone who reads it and
+  knows the vault's `ak` can compute `rk` and link that transaction to the vault. Funds are
+  unaffected; unlinkability is not. On a loopback interface this is moot, which is how we run
+  it, and the coordinator port is not meant to face a network. A deployment that separates the
+  machines needs transport encryption there.
 - **Release candidates.** Pinned to `pczt 0.8.0-rc.1` and `zcash_client_backend 0.24.0-rc.1`.
 - **What a signer can verify, and what it cannot.** Signers derive the sighash and the
   randomizers from the transaction themselves and check every action against their own group
