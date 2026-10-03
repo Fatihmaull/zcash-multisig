@@ -120,18 +120,36 @@ you approached each of them individually.
 > §4.2.3, another integrator on that thread already does it that way, and it's the first
 > thing I do after submitting rather than something I rush three days before a deadline.
 >
+> **I'm not the only one here, and pretending otherwise would be strange.** Konclave has a
+> group vault on Zcash with FROST and nineteen verifiable mainnet transactions, which is
+> further than I've got, and their thread in this category is worth reading for the
+> correction log alone. Zafe is building a mobile shielded multisig on Ironwood on the same
+> crates I'm using, and their viewing key derivation is more correct than mine, which I
+> only know because I read their comment on a Foundation issue. I think what I'm building
+> sits above a wallet rather than being one, but I'd rather say that out loud and be
+> corrected than act like I hadn't noticed them.
+>
 > Code: https://github.com/Fatihmaull/zcash-multisig
 >
 > I'd genuinely value being told where this is wrong. The parts I'm least sure about are
-> the ceremony's trust assumptions and whether the audit export is actually useful to
-> anyone who has had to satisfy a funder.
+> the ceremony's trust assumptions, whether the audit export is actually useful to anyone
+> who has had to satisfy a funder, and whether the line I'm drawing between a vault and a
+> governance layer is a real one or just the shape of what I happened to build.
 
-**Three choices in there worth keeping.** The two mistakes sit in the middle rather than
+**Four choices in there worth keeping.** The two mistakes sit in the middle rather than
 buried at the end, because for this audience that's the most interesting thing we have and
 the only part nobody could write without having built it. The unfavourable answer from the
 Foundation is quoted in full with a link, because hiding it on the same forum where that
-thread is searchable isn't a risk worth taking. And there's no ask at all. A thread that
-wants something reads as promotion. A thread that wants criticism gets replies.
+thread is searchable isn't a risk worth taking. There's no ask at all: a thread that wants
+something reads as promotion, a thread that wants criticism gets replies.
+
+And the other two projects are named, with what each does better than us. On a forum where
+both are already posting, not mentioning them reads as either not having looked or hoping
+nobody else did. Naming them costs a paragraph and buys the only thing we're actually
+asking for, which is to be taken seriously enough to be argued with. The closing line
+extends the same offer to our own positioning, since "governance layer, not a wallet" is a
+distinction we drew ourselves and it deserves to be tested by people who have shipped
+further.
 
 ---
 
