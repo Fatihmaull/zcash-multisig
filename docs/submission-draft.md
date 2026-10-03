@@ -38,12 +38,13 @@ missing today.
 
 ## 2. The evidence, first
 
-Two real transactions on Zcash testnet, both 2-of-3 threshold-signed shielded **Ironwood**
+Three real transactions on Zcash testnet, all 2-of-3 threshold-signed shielded **Ironwood**
 spends.
 
 | | txid | Block | What it proves |
 |---|---|---|---|
 | **25 Sep** | `259242c6d3c518224627e6b7b7488191d4cbbb32dfd84c2e09e144f9410b3a61` | 4,390,493 | **The one that matters.** Its three key shares were generated in three separate OS processes, over a real `frostd`, and were never in the same place — not while signing, and not while being created. |
+| 27 Sep | `bcaba4235fc9b63b93ff706c099a61a7abee916bd697a614de45d98ff8489454` | 4,400,816 | Same vault. The run where the path from quorum to chain was two commands rather than six. |
 | 23 Sep | `0ef1e96411b770fb0aec7d35c820510cd303f696126ac85782158c75382681ce` | 4,383,363 | The first one. Its vault came from a single-process development fixture, so it proves the spend path but not the custody claim. |
 
 We keep these apart deliberately. They are not interchangeable, and presenting them as one
@@ -62,6 +63,22 @@ zcash-devtool wallet -w ./watch sync && zcash-devtool wallet -w ./watch list-tx
 
 That is the same mechanism as F6 below, and the same one an auditor would use. It reads the
 chain, not our database.
+
+**And here is what none of that proves.** The chain does not show that these signatures were
+produced by a threshold of signers. A FROST-aggregated RedPallas signature is meant to be
+indistinguishable from an ordinary single-signer one, and that indistinguishability is the
+privacy property rather than a gap in our evidence. So:
+
+| | What it attests |
+|---|---|
+| A block explorer | The transaction exists, is shielded, and was mined in that block |
+| The vault's viewing key | What it moved, to where, and that **this vault** spent it |
+| Neither of them | That **two of three parties** produced the signature |
+
+The threshold nature is attested by the code, the tests, and the three-process run, not by
+the chain. We say so because a reader who assumes the chain carries it would be assuming
+something we cannot show them, and because the strongest version of this claim is the one
+that survives someone checking it.
 
 <!-- DEV B: if you find a testnet explorer that renders these reliably, link it — but keep
      the viewing-key method as the primary. It is the stronger claim and it is ours. -->
