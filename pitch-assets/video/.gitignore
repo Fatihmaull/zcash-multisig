@@ -1,0 +1,15 @@
+node_modules/
+frames/
+cues/
+narration-work/
+act-timing.json
+*.srt
+contact-sheet.png
+qa-report.json
+render-manifest.json
+*.mp4
+*.mov
+*.wav
+*.m4a
+*.pcm
+.DS_Store

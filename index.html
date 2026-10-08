@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kantor Raffa - 3D AI Autonomous Studio</title>
+  
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Three.js (r128) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            zinc: {
+              950: '#09090b',
+              900: '#121215',
+              850: '#18181b',
+              800: '#27272a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #09090b;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas#webgl-canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      outline: none;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(9, 9, 11, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+    @keyframes eq-wave {
+      0%, 100% { height: 4px; }
+      50% { height: 16px; }
+    }
+    .eq-bar-1 { animation: eq-wave 0.8s ease-in-out infinite; }
+    .eq-bar-2 { animation: eq-wave 1.2s ease-in-out 0.2s infinite; }
+    .eq-bar-3 { animation: eq-wave 0.9s ease-in-out 0.4s infinite; }
+    .eq-bar-4 { animation: eq-wave 1.1s ease-in-out 0.1s infinite; }
+
+    /* Subtle 3D Tag Marker Overlay */
+    .agent-nametag {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="text-zinc-100 font-sans h-screen w-screen relative overflow-hidden">
+
+  <!-- Hidden YouTube IFrame Audio Target -->
+  <div id="youtube-audio-player" class="pointer-events-none fixed -top-[9999px] -left-[9999px] opacity-0 w-1 h-1"></div>
+
+  <!-- Header / Studio Status Navbar -->
+  <header class="fixed top-0 left-0 right-0 h-14 z-30 flex items-center justify-between px-5 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80">
+    <div class="flex items-center gap-3.5">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-400 flex items-center justify-center font-mono font-bold text-white text-xs shadow-lg shadow-indigo-500/20">
+        KR
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold tracking-wide uppercase text-zinc-100 flex items-center gap-1.5">
+            Kantor Raffa
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono font-medium">3D AI Studio</span>
+          </span>
+          <span class="flex h-2 w-2 relative">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+        </div>
+        <p class="text-[11px] text-zinc-400 font-mono flex items-center gap-2">
+          <span>Boss: <strong class="text-zinc-200">Raffa (Chief Architect)</strong></span>
+          <span class="text-zinc-600">•</span>
+          <span class="text-emerald-400">6 Agents Connected</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick Action Controls -->
+    <div class="flex items-center gap-2.5">
+      <button id="btn-open-dispatcher" class="px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-medium text-xs flex items-center gap-2 transition active:scale-95 shadow-sm">
+        <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span>Mission Dispatcher</span>
+        <kbd class="px-1 py-0.2 rounded bg-indigo-900/60 border border-indigo-500/40 text-[9px] font-mono">J</kbd>
+      </button>
+
+      <button id="btn-toggle-terminal" class="px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 font-mono text-xs flex items-center gap-2 transition active:scale-95">
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+        <span>Terminal Stream</span>
+        <kbd class="px-1 py-0.2 rounded bg-zinc-800 border border-zinc-700 text-[9px]">T</kbd>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3D Canvas Stage -->
+  <canvas id="webgl-canvas"></canvas>
+  <div id="labels-container" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+
+  <!-- HUD Control Hints (Bottom Center) -->
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md shadow-2xl text-[11px] text-zinc-400 font-mono">
+    <span>Move:</span>
+    <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-200 text-[10px]">W</kbd>
+    <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-200 text-[10px]">A</kbd>
+    <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-200 text-[10px]">S</kbd>
+    <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-200 text-[10px]">D</kbd>
+    <span class="text-zinc-600">|</span>
+    <span>Click floor to navigate</span>
+  </div>
+
+  <!-- Floating BGM Player Widget (Bottom-Left) -->
+  <div id="audio-widget" class="fixed bottom-5 left-5 z-20 w-72 rounded-2xl bg-zinc-950/85 backdrop-blur-xl border border-zinc-800/90 shadow-2xl p-3.5 flex flex-col gap-2 transition-all duration-300">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2.5 overflow-hidden">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+          <div class="flex items-end gap-0.5 h-4">
+            <span id="eq-1" class="w-1 bg-emerald-400 rounded-full eq-bar-1"></span>
+            <span id="eq-2" class="w-1 bg-emerald-400 rounded-full eq-bar-2"></span>
+            <span id="eq-3" class="w-1 bg-emerald-400 rounded-full eq-bar-3"></span>
+            <span id="eq-4" class="w-1 bg-emerald-400 rounded-full eq-bar-4"></span>
+          </div>
+        </div>
+        <div class="overflow-hidden">
+          <div class="text-xs font-semibold text-zinc-100 truncate">Pitch Dark</div>
+          <div class="text-[10px] text-zinc-400 font-mono truncate">CHON • Ambient Office Radio</div>
+        </div>
+      </div>
+      <button id="btn-toggle-play" class="w-8 h-8 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center transition active:scale-95 shrink-0 shadow-lg shadow-emerald-500/20">
+        <svg id="icon-play" class="w-4 h-4 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg id="icon-pause" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+    </div>
+    
+    <div class="flex items-center gap-2 pt-1 border-t border-zinc-900 text-zinc-400 text-[10px]">
+      <button id="btn-mute" class="hover:text-zinc-200 transition" title="Mute [M]">
+        <svg id="vol-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <input id="volume-slider" type="range" min="0" max="100" value="70" class="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+      <span id="vol-label" class="font-mono text-[9px] w-6 text-right">70%</span>
+    </div>
+  </div>
+
+  <!-- Mission Dispatcher Modal (Multi-Repo & Jira Workflow) -->
+  <div id="modal-dispatcher" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 hidden animate-in fade-in duration-200">
+    <div class="w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-zinc-800/80 bg-zinc-900/40 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+              Autonomous Mission Dispatcher
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Multi-Repo Ready</span>
+            </h2>
+            <p class="text-xs text-zinc-400">Select target repository & Jira ticket for autonomous pipeline execution.</p>
+          </div>
+        </div>
+        <button id="btn-close-dispatcher" class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 overflow-y-auto space-y-5 custom-scrollbar flex-1 text-xs">
+        <!-- Step 1: GitLab Repository Selector -->
+        <div>
+          <label class="block text-xs font-medium text-zinc-300 mb-2 flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded bg-orange-500/20 text-orange-400 inline-flex items-center justify-center font-mono text-[9px] font-bold">1</span>
+              <span>Target GitLab Repository</span>
+            </span>
+            <span class="text-[10px] text-zinc-500 font-mono">4 Repos Available</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="repo-selector-grid">
+            <!-- Repos populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Step 2: Jira Ticket Selection -->
+        <div>
+          <label class="block text-xs font-medium text-zinc-300 mb-2 flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded bg-blue-500/20 text-blue-400 inline-flex items-center justify-center font-mono text-[9px] font-bold">2</span>
+              <span>Select Active Jira Ticket</span>
+            </span>
+            <span class="text-[10px] text-zinc-500 font-mono">Sprint 34 Backlog</span>
+          </label>
+          <div class="space-y-2" id="ticket-list-container">
+            <!-- Tickets populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-zinc-800 bg-zinc-900/30 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-[11px] text-zinc-400 font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Antigravity Engine: <strong class="text-zinc-300">Armed</strong></span>
+        </div>
+        <button id="btn-trigger-execution" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 hover:from-indigo-500 hover:to-emerald-400 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span>⚡ Execute Autonomous Task</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Terminal & Diff Inspector Drawer (Right Side) -->
+  <aside id="terminal-drawer" class="fixed right-0 top-14 bottom-0 w-full sm:w-[480px] bg-zinc-950/95 border-l border-zinc-800 z-40 transform translate-x-full transition-transform duration-300 ease-out flex flex-col backdrop-blur-2xl shadow-2xl">
+    <!-- Terminal Header -->
+    <div class="p-3.5 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+      <div class="flex items-center gap-2 font-mono text-xs text-zinc-300">
+        <div class="flex gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+        </div>
+        <span class="ml-1 font-bold text-zinc-200">ORCHESTRATION PIPELINE STREAM</span>
+      </div>
+      <button id="btn-close-terminal-drawer" class="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Stepper Indicator -->
+    <div class="px-4 py-2.5 bg-zinc-900/30 border-b border-zinc-800 text-[10px] font-mono">
+      <div class="flex items-center justify-between text-zinc-400 mb-1.5">
+        <span>ACTIVE WORKFLOW</span>
+        <span id="step-badge" class="text-indigo-400 font-bold uppercase">IDLE</span>
+      </div>
+      <div class="grid grid-cols-5 gap-1 text-center" id="stepper-boxes">
+        <div data-s="pm" class="py-1 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">1. TARA</div>
+        <div data-s="lead" class="py-1 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">2. ARGA</div>
+        <div data-s="code" class="py-1 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">3. CODE</div>
+        <div data-s="qa" class="py-1 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">4. QA</div>
+        <div data-s="ops" class="py-1 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">5. GITLAB</div>
+      </div>
+    </div>
+
+    <!-- Terminal Console Log Output -->
+    <div id="terminal-logs" class="flex-1 p-4 font-mono text-[11px] leading-relaxed text-zinc-300 overflow-y-auto space-y-1.5 custom-scrollbar bg-black/40">
+      <div class="text-emerald-400 font-bold">✨ Kantor Raffa Virtual AI Orchestrator v3.0 online.</div>
+      <div class="text-zinc-500">> Select target repo and trigger dispatch to initiate autonomous code generation.</div>
+    </div>
+
+    <!-- Live Git Diff Preview Block (Appears during Code Step) -->
+    <div id="git-diff-card" class="border-t border-zinc-800 bg-zinc-900/60 p-3.5 hidden">
+      <div class="flex items-center justify-between text-xs mb-2">
+        <span class="font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span id="diff-filename">src/components/AuthModal.tsx</span>
+        </span>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+42 -4 lines</span>
+      </div>
+      <div class="bg-black/80 rounded-lg p-2.5 font-mono text-[10px] text-zinc-300 overflow-x-auto space-y-0.5 border border-zinc-800/80 custom-scrollbar max-h-32" id="diff-code-container">
+        <!-- Rendered Code Diff -->
+      </div>
+    </div>
+
+    <!-- Merge Request Result Card -->
+    <div id="mr-completion-card" class="p-4 border-t border-emerald-500/30 bg-emerald-950/20 hidden">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </div>
+        <div class="flex-1 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-emerald-300" id="mr-badge-title">GitLab MR !48 Created</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">Auto Merged Ready</span>
+          </div>
+          <p class="text-zinc-400 text-[11px] mt-0.5 font-mono" id="mr-branch-info">feat/JIRA-104-auth-modal $\rightarrow$ develop</p>
+          <div class="mt-2.5 flex items-center gap-2">
+            <button class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition">View Merge Request</button>
+            <span class="text-[10px] text-zinc-400">Jira: <strong class="text-amber-400">In Review</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    /* =========================================================================
+       1. YOUTUBE IFRAME AUDIO INTEGRATION
+       Video: Chon - Pitch Dark (ID: sF80I-TQiW0)
+       ========================================================================= */
+    let ytPlayer = null;
+    let isPlaying = false;
+    let isMuted = false;
+
+    // Load YouTube API script
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = function() {
+      ytPlayer = new YT.Player('youtube-audio-player', {
+        height: '100',
+        width: '100',
+        videoId: 'sF80I-TQiW0',
+        playerVars: {
+          autoplay: 0,
+          loop: 1,
+          playlist: 'sF80I-TQiW0',
+          controls: 0,
+          showinfo: 0,
+          modestbranding: 1
+        },
+        events: {
+          onReady: (event) => {
+            event.target.setVolume(70);
+          },
+          onStateChange: (event) => {
+            if (event.data === YT.PlayerState.PLAYING) {
+              setPlayState(true);
+            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+              setPlayState(false);
+            }
+          }
+        }
+      });
+    };
+
+    function setPlayState(playing) {
+      isPlaying = playing;
+      const playIcon = document.getElementById('icon-play');
+      const pauseIcon = document.getElementById('icon-pause');
+      const eqBars = [document.getElementById('eq-1'), document.getElementById('eq-2'), document.getElementById('eq-3'), document.getElementById('eq-4')];
+
+      if (playing) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        eqBars.forEach((bar, idx) => bar.classList.add(`eq-bar-${idx+1}`));
+      } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        eqBars.forEach((bar, idx) => bar.classList.remove(`eq-bar-${idx+1}`));
+      }
+    }
+
+    const btnTogglePlay = document.getElementById('btn-toggle-play');
+    btnTogglePlay.addEventListener('click', () => {
+      if (!ytPlayer || !ytPlayer.playVideo) return;
+      if (isPlaying) {
+        ytPlayer.pauseVideo();
+      } else {
+        ytPlayer.playVideo();
+      }
+    });
+
+    const volSlider = document.getElementById('volume-slider');
+    const volLabel = document.getElementById('vol-label');
+    volSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      volLabel.textContent = `${val}%`;
+      if (ytPlayer && ytPlayer.setVolume) {
+        ytPlayer.setVolume(val);
+        if (val > 0 && isMuted) {
+          isMuted = false;
+          ytPlayer.unMute();
+        }
+      }
+    });
+
+    const btnMute = document.getElementById('btn-mute');
+    btnMute.addEventListener('click', () => {
+      if (!ytPlayer) return;
+      isMuted = !isMuted;
+      if (isMuted) {
+        ytPlayer.mute();
+        volLabel.textContent = '0%';
+      } else {
+        ytPlayer.unMute();
+        volLabel.textContent = `${volSlider.value}%`;
+      }
+    });
+
+    /* =========================================================================
+       2. REPOSITORY & JIRA MOCK DATA
+       ========================================================================= */
+    const REPOSITORIES = [
+      {
+        id: 'frontend-dashboard-v2',
+        name: 'frontend-dashboard-v2',
+        group: 'core-apps',
+        branch: 'main',
+        tech: 'Next.js 15, Tailwind, TanStack',
+        description: 'Primary customer admin portal & analytics suite.'
+      },
+      {
+        id: 'payment-service-gateway',
+        name: 'payment-service-gateway',
+        group: 'backend-services',
+        branch: 'develop',
+        tech: 'Go, PostgreSQL, Redis, Kafka',
+        description: 'Payment orchestration & webhook settlement microservice.'
+      },
+      {
+        id: 'design-system-tokens',
+        name: 'design-system-tokens',
+        group: 'shared-libs',
+        branch: 'main',
+        tech: 'TypeScript, Tailwind Tokens, Radix UI',
+        description: 'Cross-platform UI components & atomized design tokens.'
+      },
+      {
+        id: 'mobile-app-client',
+        name: 'mobile-app-client',
+        group: 'core-apps',
+        branch: 'develop',
+        tech: 'React Native, Expo, Zustand',
+        description: 'B2C iOS and Android companion mobile application.'
+      }
+    ];
+
+    const JIRA_TICKETS = [
+      {
+        key: 'JIRA-104',
+        repoId: 'frontend-dashboard-v2',
+        type: 'FEAT',
+        title: 'Slicing Auth Modal & Session Guard',
+        priority: 'HIGH',
+        scope: '3 Files • Auth Component, Hook, CSS',
+        ac: 'Glassmorphic dialog, Zod schema validation, automatic token refresh timer.',
+        branch: 'feat/JIRA-104-auth-modal',
+        fileChanged: 'src/components/auth/AuthModal.tsx',
+        diffLines: [
+          '<span class="text-zinc-500">@@ -14,6 +14,14 @@ export function AuthModal({ isOpen, onClose }) {</span>',
+          '<span class="text-rose-400">-  // TODO: Implement login validation</span>',
+          '<span class="text-emerald-400">+  const { loginWithOAuth, isSubmitting } = useOAuth();</span>',
+          '<span class="text-emerald-400">+  const form = useForm({ resolver: zodResolver(authSchema) });</span>',
+          '<span class="text-zinc-500">   return (</span>',
+          '<span class="text-emerald-400">+    <Dialog.Root open={isOpen} onOpenChange={onClose}></span>',
+          '<span class="text-emerald-400">+      <Dialog.Overlay className="backdrop-blur-md bg-black/40" /></span>',
+          '<span class="text-emerald-400">+      <LoginForm onSubmit={form.handleSubmit(loginWithOAuth)} /></span>',
+          '<span class="text-emerald-400">+    </Dialog.Root></span>',
+          '<span class="text-zinc-500">   );</span>'
+        ]
+      },
+      {
+        key: 'JIRA-218',
+        repoId: 'payment-service-gateway',
+        type: 'API',
+        title: 'Integrasi Payment Gateway Midtrans QRIS Dynamic',
+        priority: 'CRITICAL',
+        scope: '2 Files • Router, Midtrans Client',
+        ac: 'Handle webhook signature validation, generate snap URL, Redis 15-min idempotency lock.',
+        branch: 'feat/JIRA-218-midtrans-qris',
+        fileChanged: 'internal/gateway/midtrans_qris.go',
+        diffLines: [
+          '<span class="text-zinc-500">@@ -45,4 +45,12 @@ func (s *Service) ChargeQRIS(ctx context.Context, req *ChargeRequest) {</span>',
+          '<span class="text-emerald-400">+  snapResp, err := s.midtransClient.CreateTransaction(ctx, &midtrans.TransactionDetails{</span>',
+          '<span class="text-emerald-400">+    OrderID:  req.ReferenceID,</span>',
+          '<span class="text-emerald-400">+    GrossAmt: req.Amount,</span>',
+          '<span class="text-emerald-400">+  })</span>',
+          '<span class="text-emerald-400">+  if err != nil { return nil, fmt.Errorf("qris charge failed: %w", err) }</span>',
+          '<span class="text-emerald-400">+  s.cache.Set(ctx, req.ReferenceID, snapResp.QRCodeURL, 15*time.Minute)</span>'
+        ]
+      },
+      {
+        key: 'JIRA-305',
+        repoId: 'design-system-tokens',
+        type: 'REFACTOR',
+        title: 'Refactor State Management & Atom Tokens',
+        priority: 'MEDIUM',
+        scope: '4 Files • Theme Context & Button styles',
+        ac: 'Migrate legacy CSS classes to semantic design tokens with dark-mode variable parity.',
+        branch: 'refactor/JIRA-305-tokens',
+        fileChanged: 'packages/tokens/src/colors.ts',
+        diffLines: [
+          '<span class="text-zinc-500">@@ -1,7 +1,9 @@</span>',
+          '<span class="text-rose-400">-export const primary = "#6366f1";</span>',
+          '<span class="text-emerald-400">+export const semanticTokens = {</span>',
+          '<span class="text-emerald-400">+  surface: { primary: "var(--color-surface-950)", elevated: "var(--color-surface-900)" },</span>',
+          '<span class="text-emerald-400">+  action:  { default: "var(--color-indigo-600)", hover: "var(--color-indigo-500)" }</span>',
+          '<span class="text-emerald-400">+};</span>'
+        ]
+      }
+    ];
+
+    let selectedRepoId = REPOSITORIES[0].id;
+    let selectedTicketKey = JIRA_TICKETS[0].key;
+    let isPipelineExecuting = false;
+
+    /* =========================================================================
+       3. 3D THREE.JS VIRTUAL OFFICE ENGINE
+       ========================================================================= */
+    const canvas = document.getElementById('webgl-canvas');
+    const labelsContainer = document.getElementById('labels-container');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#09090b');
+    scene.fog = new THREE.FogExp2('#09090b', 0.022);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Isometric camera view offset
+    const CAM_OFFSET = new THREE.Vector3(16, 20, 16);
+    camera.position.copy(CAM_OFFSET);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Studio Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(ambientLight);
+
+    const mainStudioLight = new THREE.DirectionalLight(0xe0e7ff, 1.2);
+    mainStudioLight.position.set(20, 35, 15);
+    mainStudioLight.castShadow = true;
+    mainStudioLight.shadow.mapSize.width = 2048;
+    mainStudioLight.shadow.mapSize.height = 2048;
+    mainStudioLight.shadow.camera.near = 10;
+    mainStudioLight.shadow.camera.far = 60;
+    mainStudioLight.shadow.camera.left = -20;
+    mainStudioLight.shadow.camera.right = 20;
+    mainStudioLight.shadow.camera.top = 20;
+    mainStudioLight.shadow.camera.bottom = -20;
+    mainStudioLight.shadow.bias = -0.0005;
+    scene.add(mainStudioLight);
+
+    // Subtle Cyan & Indigo Point Lights for futuristic architectural vibes
+    const accentLight1 = new THREE.PointLight(0x6366f1, 2, 25);
+    accentLight1.position.set(-6, 6, -6);
+    scene.add(accentLight1);
+
+    const accentLight2 = new THREE.PointLight(0x10b981, 1.8, 25);
+    accentLight2.position.set(6, 6, 6);
+    scene.add(accentLight2);
+
+    // Floor: Dark modern architectural grid
+    const floorGeo = new THREE.PlaneGeometry(36, 36);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x121215,
+      roughness: 0.85,
+      metalness: 0.1
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Subtle Floor Grid
+    const gridHelper = new THREE.GridHelper(36, 36, 0x27272a, 0x18181b);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    // Outer Perimeter Low-Walls
+    function createWall(w, h, d, x, z) {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, h / 2, z);
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      scene.add(mesh);
+      return mesh;
+    }
+    createWall(36, 1.2, 0.6, 0, -18);
+    createWall(36, 1.2, 0.6, 0, 18);
+    createWall(0.6, 1.2, 36, -18, 0);
+    createWall(0.6, 1.2, 36, 18, 0);
+
+    // Holographic Central War Room Dispatcher Table
+    const holoTableGroup = new THREE.Group();
+    holoTableGroup.position.set(0, 0, 0);
+
+    const holoBaseGeo = new THREE.CylinderGeometry(2.4, 2.8, 0.7, 32);
+    const holoBaseMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5, metalness: 0.5 });
+    const holoBase = new THREE.Mesh(holoBaseGeo, holoBaseMat);
+    holoBase.position.y = 0.35;
+    holoBase.castShadow = true;
+    holoBase.receiveShadow = true;
+    holoTableGroup.add(holoBase);
+
+    // Glowing holographic glass disc
+    const holoDiscGeo = new THREE.CylinderGeometry(2.2, 2.2, 0.05, 32);
+    const holoDiscMat = new THREE.MeshStandardMaterial({
+      color: 0x6366f1,
+      emissive: 0x4f46e5,
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.85
+    });
+    const holoDisc = new THREE.Mesh(holoDiscGeo, holoDiscMat);
+    holoDisc.position.y = 0.72;
+    holoTableGroup.add(holoDisc);
+
+    // Floating 3D holographic wireframe ring
+    const holoRingGeo = new THREE.TorusGeometry(1.6, 0.04, 16, 64);
+    const holoRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true });
+    const holoRing = new THREE.Mesh(holoRingGeo, holoRingMat);
+    holoRing.rotation.x = Math.PI / 2;
+    holoRing.position.y = 1.3;
+    holoTableGroup.add(holoRing);
+
+    scene.add(holoTableGroup);
+
+    // Decorative Indoor Plants
+    function createPottedPlant(x, z) {
+      const plantGroup = new THREE.Group();
+      plantGroup.position.set(x, 0, z);
+
+      const potGeo = new THREE.CylinderGeometry(0.45, 0.35, 0.7, 16);
+      const potMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.9 });
+      const pot = new THREE.Mesh(potGeo, potMat);
+      pot.position.y = 0.35;
+      pot.castShadow = true;
+      plantGroup.add(pot);
+
+      const foliageMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.7 });
+      for (let i = 0; i < 4; i++) {
+        const leafGeo = new THREE.SphereGeometry(0.35, 8, 8);
+        const leaf = new THREE.Mesh(leafGeo, foliageMat);
+        leaf.position.set((Math.random() - 0.5) * 0.4, 0.8 + Math.random() * 0.3, (Math.random() - 0.5) * 0.4);
+        leaf.scale.set(0.8, 1.4, 0.8);
+        leaf.castShadow = true;
+        plantGroup.add(leaf);
+      }
+      scene.add(plantGroup);
+    }
+    createPottedPlant(-15, -15);
+    createPottedPlant(15, -15);
+    createPottedPlant(-15, 15);
+    createPottedPlant(15, 15);
+
+    // Helper to generate low-poly human avatar
+    function createHumanAvatar(shirtColorHex, hairColorHex, isBoss = false) {
+      const avatar = new THREE.Group();
+
+      // Torso / Body
+      const bodyGeo = new THREE.BoxGeometry(0.65, 0.85, 0.45);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: shirtColorHex, roughness: 0.7 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.95;
+      body.castShadow = true;
+      avatar.add(body);
+
+      // Legs
+      const legGeo = new THREE.BoxGeometry(0.24, 0.75, 0.28);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 });
+      
+      const leftLeg = new THREE.Mesh(legGeo, legMat);
+      leftLeg.position.set(-0.18, 0.4, 0);
+      leftLeg.castShadow = true;
+      avatar.add(leftLeg);
+
+      const rightLeg = new THREE.Mesh(legGeo, legMat);
+      rightLeg.position.set(0.18, 0.4, 0);
+      rightLeg.castShadow = true;
+      avatar.add(rightLeg);
+
+      // Head
+      const headGeo = new THREE.BoxGeometry(0.48, 0.5, 0.45);
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.8 }); // Stylized golden skin
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 1.62;
+      head.castShadow = true;
+      avatar.add(head);
+
+      // Hair
+      const hairGeo = new THREE.BoxGeometry(0.52, 0.22, 0.48);
+      const hairMat = new THREE.MeshStandardMaterial({ color: hairColorHex, roughness: 0.9 });
+      const hair = new THREE.Mesh(hairGeo, hairMat);
+      hair.position.set(0, 1.84, 0);
+      avatar.add(hair);
+
+      // Boss distinction (Crown / Accent)
+      if (isBoss) {
+        const crownGeo = new THREE.ConeGeometry(0.25, 0.25, 4);
+        const crownMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.4 });
+        const crown = new THREE.Mesh(crownGeo, crownMat);
+        crown.position.set(0, 2.05, 0);
+        crown.rotation.x = Math.PI;
+        avatar.add(crown);
+      }
+
+      avatar.userData.legs = [leftLeg, rightLeg];
+      avatar.userData.body = body;
+      return avatar;
+    }
+
+    // Workstation Desk Builder
+    function createWorkstationDesk(x, z, rotY) {
+      const deskGroup = new THREE.Group();
+      deskGroup.position.set(x, 0, z);
+      deskGroup.rotation.y = rotY;
+
+      // Tabletop
+      const topGeo = new THREE.BoxGeometry(2.4, 0.1, 1.2);
+      const topMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.6 });
+      const top = new THREE.Mesh(topGeo, topMat);
+      top.position.y = 0.95;
+      top.castShadow = true;
+      top.receiveShadow = true;
+      deskGroup.add(top);
+
+      // Legs
+      const legGeo = new THREE.BoxGeometry(0.08, 0.95, 1.0);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x18181b });
+      const leg1 = new THREE.Mesh(legGeo, legMat);
+      leg1.position.set(-1.08, 0.475, 0);
+      leg1.castShadow = true;
+      deskGroup.add(leg1);
+
+      const leg2 = new THREE.Mesh(legGeo, legMat);
+      leg2.position.set(1.08, 0.475, 0);
+      leg2.castShadow = true;
+      deskGroup.add(leg2);
+
+      // Dual Monitors
+      const monMat = new THREE.MeshStandardMaterial({ color: 0x09090b });
+      const glowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+      function createMonitor(mx, my, mz, ry) {
+        const mGroup = new THREE.Group();
+        mGroup.position.set(mx, my, mz);
+        mGroup.rotation.y = ry;
+
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.04), monMat);
+        screen.position.y = 0.35;
+        screen.castShadow = true;
+        mGroup.add(screen);
+
+        const screenGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.4), glowMat);
+        screenGlow.position.set(0, 0.35, 0.025);
+        mGroup.add(screenGlow);
+
+        const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35), monMat);
+        stand.position.y = 0.175;
+        mGroup.add(stand);
+
+        return mGroup;
+      }
+
+      const mon1 = createMonitor(-0.45, 1.0, -0.2, 0.15);
+      const mon2 = createMonitor(0.45, 1.0, -0.2, -0.15);
+      deskGroup.add(mon1);
+      deskGroup.add(mon2);
+
+      // Ergonomic Office Chair
+      const chairGeo = new THREE.BoxGeometry(0.65, 0.5, 0.6);
+      const chairMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.8 });
+      const chair = new THREE.Mesh(chairGeo, chairMat);
+      chair.position.set(0, 0.55, 0.45);
+      chair.castShadow = true;
+      deskGroup.add(chair);
+
+      scene.add(deskGroup);
+      return deskGroup;
+    }
+
+    // Agent Registry Data
+    const AGENTS = [
+      { id: 'tara', name: 'Tara', role: 'PM & Triage', stepKey: 'pm', color: '#f43f5e', shirt: 0xf43f5e, hair: 0x312e81, x: -7, z: -7, rot: Math.PI / 4 },
+      { id: 'arga', name: 'Arga', role: 'Lead Architect', stepKey: 'lead', color: '#a855f7', shirt: 0xa855f7, hair: 0x18181b, x: 0, z: -9, rot: 0 },
+      { id: 'bimo', name: 'Bimo', role: 'Senior Frontend', stepKey: 'code', color: '#06b6d4', shirt: 0x06b6d4, hair: 0x78350f, x: 7, z: -7, rot: -Math.PI / 4 },
+      { id: 'kian', name: 'Kian', role: 'Backend Specialist', stepKey: 'code', color: '#eab308', shirt: 0xeab308, hair: 0x09090b, x: 7, z: 7, rot: -3 * Math.PI / 4 },
+      { id: 'vani', name: 'Vani', role: 'QA Sentinel', stepKey: 'qa', color: '#10b981', shirt: 0x10b981, hair: 0x831843, x: 0, z: 9, rot: Math.PI },
+      { id: 'reno', name: 'Reno', role: 'DevOps & Release', stepKey: 'ops', color: '#3b82f6', shirt: 0x3b82f6, hair: 0x374151, x: -7, z: 7, rot: 3 * Math.PI / 4 }
+    ];
+
+    // Spawn Workstations & Agent 3D Avatars
+    AGENTS.forEach(ag => {
+      // Spawn desk
+      createWorkstationDesk(ag.x, ag.z, ag.rot);
+
+      // Spawn NPC Avatar seated in chair
+      const npc = createHumanAvatar(ag.shirt, ag.hair, false);
+      // Place seated behind desk
+      const offsetDist = 0.45;
+      npc.position.set(
+        ag.x + Math.sin(ag.rot) * offsetDist,
+        0.1,
+        ag.z + Math.cos(ag.rot) * offsetDist
+      );
+      npc.rotation.y = ag.rot + Math.PI;
+      scene.add(npc);
+      ag.avatarMesh = npc;
+
+      // Create floating 3D overhead tag overlay
+      const tagDiv = document.createElement('div');
+      tagDiv.className = 'agent-nametag flex flex-col items-center';
+      tagDiv.innerHTML = `
+        <div id="bubble-${ag.id}" class="hidden mb-1 px-2.5 py-1 rounded-xl bg-zinc-900/95 border border-zinc-700/80 shadow-2xl text-[10px] text-zinc-100 font-mono tracking-tight text-center max-w-[160px] animate-bounce">
+          Thinking...
+        </div>
+        <div class="px-2 py-0.5 rounded-md bg-zinc-950/90 border border-zinc-800 text-[10px] font-medium flex items-center gap-1.5 shadow-lg backdrop-blur-md">
+          <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${ag.color}"></span>
+          <span class="text-zinc-200">${ag.name}</span>
+          <span class="text-[9px] text-zinc-400 font-mono">(${ag.role.split(' ')[0]})</span>
+        </div>
+      `;
+      labelsContainer.appendChild(tagDiv);
+      ag.labelElement = tagDiv;
+      ag.bubbleElement = tagDiv.querySelector(`#bubble-${ag.id}`);
+    });
+
+    // Player (Raffa - The Boss)
+    const raffa = {
+      mesh: createHumanAvatar(0x18181b, 0x09090b, true),
+      x: 0,
+      z: 5,
+      targetX: 0,
+      targetZ: 5,
+      speed: 0.18,
+      isMoving: false,
+      stepTimer: 0
+    };
+    raffa.mesh.position.set(raffa.x, 0, raffa.z);
+    scene.add(raffa.mesh);
+
+    // Player Label
+    const playerTag = document.createElement('div');
+    playerTag.className = 'agent-nametag';
+    playerTag.innerHTML = `
+      <div class="px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-500/40 text-[10px] font-bold text-indigo-300 flex items-center gap-1 shadow-lg">
+        <span>👑 Raffa (Chief)</span>
+      </div>
+    `;
+    labelsContainer.appendChild(playerTag);
+
+    // Controls State
+    const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
+
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+      }
+      if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+      if (e.key.toLowerCase() === 'j') toggleDispatcher(true);
+      if (e.key.toLowerCase() === 't') toggleTerminal();
+      if (e.key.toLowerCase() === 'm') btnMute.click();
+      if (e.key === 'Escape') {
+        toggleDispatcher(false);
+        toggleTerminal(false);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+    });
+
+    // Raycast click-to-move floor navigation
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('click', (e) => {
+      // Discard clicks on UI overlays
+      if (e.target.closest('#modal-dispatcher') || e.target.closest('#terminal-drawer') || e.target.closest('#audio-widget') || e.target.closest('header')) {
+        return;
+      }
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(floor);
+
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        raffa.targetX = Math.max(-16, Math.min(16, point.x));
+        raffa.targetZ = Math.max(-16, Math.min(16, point.z));
+      }
+    });
+
+    // Responsive Canvas Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Populate Modal Repos
+    const repoGrid = document.getElementById('repo-selector-grid');
+    function renderRepoOptions() {
+      repoGrid.innerHTML = '';
+      REPOSITORIES.forEach(repo => {
+        const isSelected = repo.id === selectedRepoId;
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border cursor-pointer transition flex flex-col justify-between ${
+          isSelected 
+            ? 'bg-indigo-950/40 border-indigo-500/60 ring-1 ring-indigo-500/30' 
+            : 'bg-zinc-900/40 border-zinc-800 hover:border-zinc-700'
+        }`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-mono font-semibold text-xs text-zinc-100">${repo.name}</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">${repo.branch}</span>
+            </div>
+            <p class="text-[11px] text-zinc-400 leading-tight mb-2">${repo.description}</p>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-zinc-500 font-mono pt-2 border-t border-zinc-800/80">
+            <span>${repo.group}</span>
+            <span class="text-indigo-400">${repo.tech.split(',')[0]}</span>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          selectedRepoId = repo.id;
+          renderRepoOptions();
+          renderTicketOptions();
+        });
+        repoGrid.appendChild(card);
+      });
+    }
+
+    // Populate Modal Tickets
+    const ticketListContainer = document.getElementById('ticket-list-container');
+    function renderTicketOptions() {
+      ticketListContainer.innerHTML = '';
+      const filteredTickets = JIRA_TICKETS.filter(t => t.repoId === selectedRepoId);
+      
+      if (filteredTickets.length === 0) {
+        ticketListContainer.innerHTML = `<div class="p-3 text-center text-zinc-500 text-xs">No active tickets for this repo.</div>`;
+        return;
+      }
+
+      filteredTickets.forEach(ticket => {
+        const isSelected = ticket.key === selectedTicketKey;
+        const card = document.createElement('div');
+        card.className = `p-3.5 rounded-xl border cursor-pointer transition ${
+          isSelected 
+            ? 'bg-indigo-950/40 border-indigo-500/60 ring-1 ring-indigo-500/30' 
+            : 'bg-zinc-900/40 border-zinc-800 hover:border-zinc-700'
+        }`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-xs ${ticket.type === 'FEAT' ? 'text-indigo-400' : 'text-amber-400'}">${ticket.key}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 font-mono">${ticket.type}</span>
+            </div>
+            <span class="text-[10px] px-1.5 py-0.2 rounded font-mono ${
+              ticket.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+            }">${ticket.priority}</span>
+          </div>
+          <h4 class="text-xs font-semibold text-zinc-100 mb-1">${ticket.title}</h4>
+          <p class="text-[11px] text-zinc-400 mb-2 leading-relaxed">${ticket.ac}</p>
+          <div class="text-[10px] font-mono text-zinc-500 flex items-center justify-between pt-2 border-t border-zinc-800/80">
+            <span>Scope: <strong class="text-zinc-300">${ticket.scope}</strong></span>
+            <span class="text-indigo-300">${ticket.branch}</span>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          selectedTicketKey = ticket.key;
+          renderTicketOptions();
+        });
+        ticketListContainer.appendChild(card);
+      });
+    }
+
+    renderRepoOptions();
+    renderTicketOptions();
+
+    /* =========================================================================
+       4. UI DRAWER & TERMINAL STREAM ENGINE
+       ========================================================================= */
+    const modalDispatcher = document.getElementById('modal-dispatcher');
+    const terminalDrawer = document.getElementById('terminal-drawer');
+    const terminalLogs = document.getElementById('terminal-logs');
+    const stepBadge = document.getElementById('step-badge');
+    const diffCard = document.getElementById('git-diff-card');
+    const diffFilename = document.getElementById('diff-filename');
+    const diffCodeContainer = document.getElementById('diff-code-container');
+    const mrCompletionCard = document.getElementById('mr-completion-card');
+
+    function toggleDispatcher(show) {
+      if (show) {
+        modalDispatcher.classList.remove('hidden');
+      } else {
+        modalDispatcher.classList.add('hidden');
+      }
+    }
+
+    function toggleTerminal(show = null) {
+      if (show === true) {
+        terminalDrawer.classList.remove('translate-x-full');
+      } else if (show === false) {
+        terminalDrawer.classList.add('translate-x-full');
+      } else {
+        terminalDrawer.classList.toggle('translate-x-full');
+      }
+    }
+
+    document.getElementById('btn-open-dispatcher').addEventListener('click', () => toggleDispatcher(true));
+    document.getElementById('btn-close-dispatcher').addEventListener('click', () => toggleDispatcher(false));
+    document.getElementById('btn-toggle-terminal').addEventListener('click', () => toggleTerminal());
+    document.getElementById('btn-close-terminal-drawer').addEventListener('click', () => toggleTerminal(false));
+
+    function appendTerminalLog(msg, colorClass = 'text-zinc-300') {
+      const line = document.createElement('div');
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      line.className = `leading-relaxed ${colorClass}`;
+      line.innerHTML = `<span class="text-zinc-600 font-mono">[${time}]</span> ${msg}`;
+      terminalLogs.appendChild(line);
+      terminalLogs.scrollTop = terminalLogs.scrollHeight;
+    }
+
+    function setPipelineStep(stepKey) {
+      stepBadge.textContent = stepKey.toUpperCase();
+      document.querySelectorAll('#stepper-boxes > div').forEach(el => {
+        if (el.dataset.s === stepKey) {
+          el.className = 'py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold animate-pulse';
+        } else {
+          el.className = 'py-1 rounded bg-zinc-900 text-zinc-500 border border-zinc-800';
+        }
+      });
+    }
+
+    // Smooth Camera Focus Target
+    let cameraFocusTarget = new THREE.Vector3(0, 0, 0);
+    const cameraDesiredPos = new THREE.Vector3().copy(CAM_OFFSET);
+
+    function focusCameraOn(x, z, zoomIn = false) {
+      cameraFocusTarget.set(x, 0.5, z);
+      const dist = zoomIn ? 10 : 16;
+      cameraDesiredPos.set(x + dist, dist * 1.25, z + dist);
+    }
+
+    function showAgentSpeech(agentId, text, duration = 3000) {
+      const ag = AGENTS.find(a => a.id === agentId);
+      if (ag && ag.bubbleElement) {
+        ag.bubbleElement.textContent = text;
+        ag.bubbleElement.classList.remove('hidden');
+        setTimeout(() => {
+          if (ag.bubbleElement.textContent === text) {
+            ag.bubbleElement.classList.add('hidden');
+          }
+        }, duration);
+      }
+    }
+
+    const wait = (ms) => new Promise(res => setTimeout(res, ms));
+
+    document.getElementById('btn-trigger-execution').addEventListener('click', async () => {
+      const ticket = JIRA_TICKETS.find(t => t.key === selectedTicketKey) || JIRA_TICKETS[0];
+      const repo = REPOSITORIES.find(r => r.id === selectedRepoId) || REPOSITORIES[0];
+
+      toggleDispatcher(false);
+      toggleTerminal(true);
+
+      if (isPipelineExecuting) return;
+      isPipelineExecuting = true;
+
+      mrCompletionCard.classList.add('hidden');
+      diffCard.classList.add('hidden');
+
+      appendTerminalLog(`🚀 [DISPATCH] Raffa armed pipeline for <strong class="text-indigo-400">${repo.name}</strong> • Ticket <strong class="text-emerald-400">${ticket.key}</strong>`, 'text-indigo-300 font-bold');
+
+      // 1. TARA (PM & Triage)
+      setPipelineStep('pm');
+      focusCameraOn(-7, -7, true);
+      showAgentSpeech('tara', 'Validating Jira specs & scope...', 3000);
+      appendTerminalLog(`📋 [TARA - PM] Parsing Acceptance Criteria for ${ticket.key} from Jira REST API...`, 'text-rose-300');
+      await wait(1800);
+      appendTerminalLog(`   > Scope verified: ${ticket.scope}. Handing over to Arga.`, 'text-zinc-400');
+
+      // 2. ARGA (Lead Architect)
+      setPipelineStep('lead');
+      focusCameraOn(0, -9, true);
+      showAgentSpeech('arga', 'Analyzing repo file tree...', 3000);
+      appendTerminalLog(`📐 [ARGA - LEAD] Cloning GitLab tree for ${repo.name} (${repo.branch})...`, 'text-purple-300');
+      await wait(2000);
+      appendTerminalLog(`   > Target file selected: ${ticket.fileChanged}`, 'text-zinc-400');
+      appendTerminalLog(`   > Architecture schema validated. Spawning coding agent.`, 'text-zinc-400');
+
+      // 3. BIMO / KIAN (Coder Agent)
+      setPipelineStep('code');
+      focusCameraOn(7, -7, true);
+      showAgentSpeech('bimo', 'Writing clean code...', 3500);
+      appendTerminalLog(`💻 [BIMO - FE] git checkout -b ${ticket.branch}`, 'text-cyan-300 font-mono');
+      await wait(1400);
+
+      // Show Git Diff
+      diffFilename.textContent = ticket.fileChanged;
+      diffCodeContainer.innerHTML = ticket.diffLines.join('<br>');
+      diffCard.classList.remove('hidden');
+      appendTerminalLog(`   > Generating atomic diff for ${ticket.fileChanged}...`, 'text-emerald-400');
+      await wait(2200);
+
+      // 4. VANI (QA Sentinel)
+      setPipelineStep('qa');
+      focusCameraOn(0, 9, true);
+      showAgentSpeech('vani', 'Running Vitest & Linter...', 3000);
+      appendTerminalLog(`🛡️ [VANI - QA] Running test suite: npm run test:ci`, 'text-emerald-300 font-mono');
+      await wait(1600);
+      appendTerminalLog(`   ✓ Test Suites: 8 passed, 8 total`, 'text-emerald-400');
+      appendTerminalLog(`   ✓ TypeCheck & Linter: 0 errors, 0 warnings`, 'text-emerald-400');
+
+      // 5. RENO (DevOps & GitLab Release)
+      setPipelineStep('ops');
+      focusCameraOn(-7, 7, true);
+      showAgentSpeech('reno', 'Pushing & Opening MR...', 3500);
+      appendTerminalLog(`🚀 [RENO - DEVOPS] git commit -m "feat(${ticket.key}): ${ticket.title}"`, 'text-blue-300 font-mono');
+      await wait(1400);
+      appendTerminalLog(`   > git push origin ${ticket.branch}`, 'text-zinc-400 font-mono');
+      await wait(1500);
+
+      const mrNumber = Math.floor(Math.random() * 50) + 12;
+      appendTerminalLog(`🎉 [GITLAB] Merge Request !${mrNumber} created successfully on ${repo.name}!`, 'text-emerald-400 font-bold');
+      appendTerminalLog(`📌 [JIRA] Ticket ${ticket.key} transitioned to 'IN_REVIEW'.`, 'text-amber-300');
+
+      // Show Completion Card
+      document.getElementById('mr-badge-title').textContent = `GitLab MR !${mrNumber} Opened`;
+      document.getElementById('mr-branch-info').textContent = `${ticket.branch} $\\rightarrow$ ${repo.branch} on ${repo.name}`;
+      mrCompletionCard.classList.remove('hidden');
+
+      setPipelineStep('idle');
+      isPipelineExecuting = false;
+
+      // Return camera smoothly to Raffa
+      setTimeout(() => {
+        focusCameraOn(raffa.x, raffa.z, false);
+      }, 3000);
+    });
+
+    /* =========================================================================
+       5. ANIMATION & RENDER LOOP
+       ========================================================================= */
+    const clock = new THREE.Clock();
+
+    function updatePlayerMovement(delta) {
+      let dx = 0;
+      let dz = 0;
+
+      if (keys.w || keys.ArrowUp) dz -= 1;
+      if (keys.s || keys.ArrowDown) dz += 1;
+      if (keys.a || keys.ArrowLeft) dx -= 1;
+      if (keys.d || keys.ArrowRight) dx += 1;
+
+      // Keyboard movement overrides click-to-move
+      if (dx !== 0 || dz !== 0) {
+        const len = Math.hypot(dx, dz);
+        dx /= len;
+        dz /= len;
+
+        // Diagonal isometric coordinate adjustment
+        raffa.x += (dx * 0.707 - dz * 0.707) * raffa.speed;
+        raffa.z += (dx * 0.707 + dz * 0.707) * raffa.speed;
+        raffa.targetX = raffa.x;
+        raffa.targetZ = raffa.z;
+        raffa.isMoving = true;
+
+        // Rotate face towards direction
+        const angle = Math.atan2(dx, dz) - Math.PI / 4;
+        raffa.mesh.rotation.y = angle;
+      } else {
+        // Move towards click target
+        const dist = Math.hypot(raffa.targetX - raffa.x, raffa.targetZ - raffa.z);
+        if (dist > 0.15) {
+          const moveX = (raffa.targetX - raffa.x) / dist;
+          const moveZ = (raffa.targetZ - raffa.z) / dist;
+          raffa.x += moveX * raffa.speed;
+          raffa.z += moveZ * raffa.speed;
+          raffa.isMoving = true;
+          raffa.mesh.rotation.y = Math.atan2(moveX, moveZ);
+        } else {
+          raffa.isMoving = false;
+        }
+      }
+
+      // Constrain inside room
+      raffa.x = Math.max(-15.5, Math.min(15.5, raffa.x));
+      raffa.z = Math.max(-15.5, Math.min(15.5, raffa.z));
+      raffa.mesh.position.set(raffa.x, 0, raffa.z);
+
+      // Leg swing animation when walking
+      if (raffa.isMoving) {
+        raffa.stepTimer += delta * 12;
+        raffa.mesh.userData.legs[0].rotation.x = Math.sin(raffa.stepTimer) * 0.6;
+        raffa.mesh.userData.legs[1].rotation.x = -Math.sin(raffa.stepTimer) * 0.6;
+      } else {
+        raffa.mesh.userData.legs[0].rotation.x = 0;
+        raffa.mesh.userData.legs[1].rotation.x = 0;
+      }
+
+      // If not focusing on an agent during pipeline, follow Raffa
+      if (!isPipelineExecuting) {
+        focusCameraOn(raffa.x, raffa.z, false);
+      }
+    }
+
+    // Project 3D positions to 2D HTML nametags
+    const tempVec = new THREE.Vector3();
+    function updateOverlayLabels() {
+      // Raffa Tag
+      tempVec.set(raffa.x, 2.3, raffa.z);
+      tempVec.project(camera);
+      if (tempVec.z < 1) {
+        const px = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
+        const py = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
+        playerTag.style.left = `${px}px`;
+        playerTag.style.top = `${py}px`;
+        playerTag.style.display = 'block';
+      } else {
+        playerTag.style.display = 'none';
+      }
+
+      // Agents Tags
+      AGENTS.forEach(ag => {
+        tempVec.set(ag.x, 2.1, ag.z);
+        tempVec.project(camera);
+        if (tempVec.z < 1) {
+          const px = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
+          const py = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
+          ag.labelElement.style.left = `${px}px`;
+          ag.labelElement.style.top = `${py}px`;
+          ag.labelElement.style.display = 'flex';
+        } else {
+          ag.labelElement.style.display = 'none';
+        }
+      });
+    }
+
+    // Main Engine Render Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsedTime = clock.getElapsedTime();
+
+      // Update Player
+      updatePlayerMovement(delta);
+
+      // Rotate Holographic War Room Table Ring
+      holoRing.rotation.z += delta * 0.8;
+      holoDisc.material.emissiveIntensity = 0.5 + Math.sin(elapsedTime * 3) * 0.25;
+
+      // Subtle Agent Idle Breathing Animation
+      AGENTS.forEach((ag, idx) => {
+        ag.avatarMesh.userData.body.position.y = 0.95 + Math.sin(elapsedTime * 2 + idx) * 0.02;
+      });
+
+      // Smooth Camera Damping Interpolation
+      camera.position.lerp(cameraDesiredPos, delta * 3.5);
+      camera.lookAt(cameraFocusTarget);
+
+      // Update 2D DOM tags
+      updateOverlayLabels();
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

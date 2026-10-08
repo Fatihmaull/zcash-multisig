@@ -1,0 +1,18 @@
+{
+  "name": "quorum-pitch-film",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs",
+    "cues": "node render.mjs --mode cues --duration 195",
+    "validate": "node render.mjs --mode validate --duration 195"
+  },
+  "dependencies": {
+    "@ffprobe-installer/ffprobe": "2.1.2",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/plus-jakarta-sans": "5.3.0",
+    "ffmpeg-static": "5.3.0",
+    "kokoro-js": "1.2.1",
+    "puppeteer-core": "25.12.0"
+  }
+}
