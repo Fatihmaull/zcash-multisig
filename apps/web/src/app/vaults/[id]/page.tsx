@@ -49,7 +49,7 @@ export default async function VaultDetailPage({
         shieldedAddress: res.shieldedAddress,
         status: res.status,
         network: res.network,
-        participants: res.participants.map((p: any) => ({
+        participants: res.participants.map((p: ParticipantItem) => ({
           id: p.id,
           label: p.label,
           publicKeyIdentifier: p.publicKeyIdentifier,

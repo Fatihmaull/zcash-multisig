@@ -84,13 +84,15 @@ export async function POST(request: NextRequest) {
       if (supabaseVaultErr) {
         console.error("Supabase vault sync error:", supabaseVaultErr);
       } else if (newVault.participants && newVault.participants.length > 0) {
-        const supabaseParticipants = newVault.participants.map((p: any) => ({
-          id: p.id,
-          vault_id: newVault.id,
-          label: p.label,
-          public_key_identifier: p.publicKeyIdentifier,
-          is_active: p.isActive,
-        }));
+        const supabaseParticipants = newVault.participants.map(
+          (p: { id: string; label: string; publicKeyIdentifier: string | null; isActive: boolean }) => ({
+            id: p.id,
+            vault_id: newVault.id,
+            label: p.label,
+            public_key_identifier: p.publicKeyIdentifier,
+            is_active: p.isActive,
+          })
+        );
         await supabase.from("participants").upsert(supabaseParticipants, { onConflict: "id" });
       }
     } catch (sbErr) {

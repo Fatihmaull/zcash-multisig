@@ -101,7 +101,7 @@ export default async function DashboardPage() {
         shieldedAddress: vaults[0].shieldedAddress,
         status: vaults[0].status,
         network: vaults[0].network,
-        participants: vaults[0].participants.map((p: any) => ({
+        participants: vaults[0].participants.map((p: DashboardParticipant) => ({
           id: p.id,
           label: p.label,
           publicKeyIdentifier: p.publicKeyIdentifier,
