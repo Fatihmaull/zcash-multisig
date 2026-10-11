@@ -32,7 +32,7 @@ export async function GET() {
       }),
     ]);
 
-    const activeList = vaults.filter((v) => v.status === "ACTIVE");
+    const activeList = vaults.filter((v: { status: string }) => v.status === "ACTIVE");
     activeVaultsCount = activeList.length > 0 ? activeList.length : vaults.length;
     pendingApprovalsCount = pendingApprovals.length;
 

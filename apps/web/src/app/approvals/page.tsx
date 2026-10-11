@@ -141,7 +141,7 @@ export default async function ApprovalsPage() {
           requests.map((req) => {
             const amountZec = (Number(req.amountZatoshi) / 100000000).toFixed(8);
             const receivedEvents = req.signatureRoundEvents.filter(
-              (e) => e.status === "RECEIVED" && e.roundType === "SIGNATURE_SHARE"
+              (e: { status: string; roundType: string }) => e.status === "RECEIVED" && e.roundType === "SIGNATURE_SHARE"
             );
             const collectedCount = receivedEvents.length;
             const isBroadcast = req.status === "BROADCASTED";

@@ -96,7 +96,7 @@ export async function POST(
         return NextResponse.json({
           success: true,
           liveCoordinator: true,
-          approval: updatedApproval,
+          status: updatedApproval.status,
           collectedCount: liveState.signaturesCollected,
           threshold: liveState.threshold,
           isThresholdMet: liveState.signaturesCollected >= liveState.threshold,
@@ -147,7 +147,7 @@ export async function POST(
 
     const trimmedSigner = signer.trim().toLowerCase();
     const participant = approval.vault.participants.find(
-      (p) =>
+      (p: { id: string; label: string }) =>
         p.label.toLowerCase() === trimmedSigner ||
         p.label.toLowerCase().includes(trimmedSigner) ||
         p.id.toLowerCase() === trimmedSigner
@@ -176,7 +176,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         message: `Participant ${participant.label} has already submitted their signature share.`,
-        approval,
+        status: approval.status,
         collectedCount: (
           await prisma.signatureRoundEvent.findMany({
             where: { approvalRequestId: approvalId, roundType: "SIGNATURE_SHARE", status: "RECEIVED" },
@@ -220,7 +220,7 @@ export async function POST(
       },
     });
 
-    const uniqueParticipants = new Set(allShares.map((s) => s.participantId));
+    const uniqueParticipants = new Set(allShares.map((s: { participantId: string }) => s.participantId));
     const collectedCount = uniqueParticipants.size;
     const isThresholdMet = collectedCount >= approval.vault.threshold;
 
@@ -269,7 +269,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      approval: updatedApproval,
+      status: updatedApproval.status,
       collectedCount,
       threshold: approval.vault.threshold,
       isThresholdMet,
