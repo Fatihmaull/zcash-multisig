@@ -175,7 +175,7 @@ interface SbVaultRecord {
           // key, and the chain will not tell us from an address alone.
           const balance = balances.get(vault.id) ?? null;
           const pendingApprovalsCount = vault.approvalRequests.filter(
-            (a) => a.status === "PENDING"
+            (a: { status: string }) => a.status === "PENDING"
           ).length;
 
           return (
@@ -290,7 +290,7 @@ interface SbVaultRecord {
                     <span className="text-[var(--text-muted)] block text-[11px]">Signers ({vault.participants.length})</span>
                     <span className="text-[var(--text-secondary)] font-medium">
                       {vault.participants.length > 0 
-                        ? vault.participants.map((p) => p.label).join(" • ")
+                        ? vault.participants.map((p: { label: string }) => p.label).join(" • ")
                         : "No participants registered"}
                     </span>
                   </div>

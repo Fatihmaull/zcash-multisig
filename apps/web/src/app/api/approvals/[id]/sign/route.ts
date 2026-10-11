@@ -147,7 +147,7 @@ export async function POST(
 
     const trimmedSigner = signer.trim().toLowerCase();
     const participant = approval.vault.participants.find(
-      (p) =>
+      (p: { id: string; label: string }) =>
         p.label.toLowerCase() === trimmedSigner ||
         p.label.toLowerCase().includes(trimmedSigner) ||
         p.id.toLowerCase() === trimmedSigner
@@ -220,7 +220,7 @@ export async function POST(
       },
     });
 
-    const uniqueParticipants = new Set(allShares.map((s) => s.participantId));
+    const uniqueParticipants = new Set(allShares.map((s: { participantId: string }) => s.participantId));
     const collectedCount = uniqueParticipants.size;
     const isThresholdMet = collectedCount >= approval.vault.threshold;
 

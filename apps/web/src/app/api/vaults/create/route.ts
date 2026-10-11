@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       if (supabaseVaultErr) {
         console.error("Supabase vault sync error:", supabaseVaultErr);
       } else if (newVault.participants && newVault.participants.length > 0) {
-        const supabaseParticipants = newVault.participants.map((p) => ({
+        const supabaseParticipants = newVault.participants.map((p: any) => ({
           id: p.id,
           vault_id: newVault.id,
           label: p.label,
