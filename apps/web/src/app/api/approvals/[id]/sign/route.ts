@@ -96,7 +96,7 @@ export async function POST(
         return NextResponse.json({
           success: true,
           liveCoordinator: true,
-          approval: updatedApproval,
+          status: updatedApproval.status,
           collectedCount: liveState.signaturesCollected,
           threshold: liveState.threshold,
           isThresholdMet: liveState.signaturesCollected >= liveState.threshold,
@@ -176,7 +176,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         message: `Participant ${participant.label} has already submitted their signature share.`,
-        approval,
+        status: approval.status,
         collectedCount: (
           await prisma.signatureRoundEvent.findMany({
             where: { approvalRequestId: approvalId, roundType: "SIGNATURE_SHARE", status: "RECEIVED" },
@@ -269,7 +269,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      approval: updatedApproval,
+      status: updatedApproval.status,
       collectedCount,
       threshold: approval.vault.threshold,
       isThresholdMet,
